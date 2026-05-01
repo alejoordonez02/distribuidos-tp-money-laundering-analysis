@@ -4,6 +4,7 @@ from enum import Enum
 from typing import Any
 from uuid import UUID
 
+from .eof import EOF
 from .errors import UnexpectedMessageError, UnknownMessageError
 
 
@@ -16,7 +17,7 @@ class UUIDEncoder(json.JSONEncoder):
 
 
 class MessageType(Enum):
-    pass
+    EOF = 0
 
 
 class Message:
@@ -59,6 +60,8 @@ class Message:
         """
         fields = json.loads(bytes2.decode("utf-8"))
         match fields[0]:
+            case MessageType.EOF.value:
+                return EOF.deserialize(bytes2)
             case _:
                 raise UnknownMessageError(
                     f"unknown message type {fields[0]} with contents {fields[1:]}"
