@@ -1,6 +1,6 @@
 <mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.6.1 Chrome/142.0.7444.265 Electron/39.5.2 Safari/537.36" version="29.6.1">
   <diagram name="Page-1" id="UKy_N7gX_Tydc2OIwvCh">
-    <mxGraphModel dx="1626" dy="859" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1119" dy="503" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -220,7 +220,7 @@
         <mxCell id="n2tvCCCdiCbCo0UTVlEO-102" parent="fs9q21IRB_kZDcTRvGr6-6" style="strokeWidth=1;html=1;shape=mxgraph.flowchart.database;whiteSpace=wrap;rotation=-90;" value="" vertex="1">
           <mxGeometry height="72.43" width="34" x="19.215000000000003" y="-19.215" as="geometry" />
         </mxCell>
-        <mxCell id="n2tvCCCdiCbCo0UTVlEO-103" parent="fs9q21IRB_kZDcTRvGr6-6" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;labelBackgroundColor=default;" value="Filtered by USD and date range A" vertex="1">
+        <mxCell id="n2tvCCCdiCbCo0UTVlEO-103" parent="fs9q21IRB_kZDcTRvGr6-6" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;labelBackgroundColor=default;" value="Filtered by USD and date range B" vertex="1">
           <mxGeometry height="30" width="60" x="6.219999999999999" y="42.00000000000003" as="geometry" />
         </mxCell>
         <mxCell id="n2tvCCCdiCbCo0UTVlEO-126" edge="1" parent="1" source="n2tvCCCdiCbCo0UTVlEO-117" style="edgeStyle=none;shape=connector;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=12;fontColor=default;labelBackgroundColor=default;endArrow=classic;" target="n2tvCCCdiCbCo0UTVlEO-131">
