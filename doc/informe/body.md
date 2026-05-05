@@ -59,3 +59,17 @@ Cantidad de transacciones con formato de pago *Wire* o *ACH* en el período A, c
 ### Paquetes
 
 ![](../diagrams/07packages-diagram.png){width=50%}
+
+# Desarrollo
+## Tareas a realizar
+Para el desarrollo del trabajo, se decidió que cada uno de los integrantes realice la implementación de uno o más casos de uso de punta a punta; con el objetivo de que todos podamos tener un seguimiento del total funcionamiento del sistema, pero sin la necesidad de entrar de lleno en los detalles específicos de cada caso de uso.  
+
+## Asignación
+Aquellas tareas de las que dependan todas los casos, serán desarrolladas en una primera implementación por todos los miembros del equipo, y serán modificadas como se requiera por quien lo necesite a lo largo de la continuación del trabajo.  
+El primer caso de uso será desarrollado en gran medida con la dinámica de *ping-pong pair-programming*; con el objetivo de usar el caso más simple para la interiorización de la implementación del trabajo para todos los miembros del equipo en paralelo.  
+El resto de ítems quedan divididos de la siguiente manera:
+
+- UC2: Valsagna Federico
+- UC3: Minervino Lorenzo.
+- UC4: Ordoñez Alejo.
+- UC5: Minervino Lorenzo.

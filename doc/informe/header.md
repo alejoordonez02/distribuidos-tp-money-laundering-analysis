@@ -42,7 +42,7 @@ header-includes:
     \begin{tabular}{lll}
         108397 - & \textbf{Alejo Ordoñez} \\[-2pt]
         108397 - & \textbf{Minervino Lorenzo} \\[-2pt]
-        108397 - & \textbf{valsagna federico} \\[-2pt]
+        108397 - & \textbf{Valsagna Federico} \\[-2pt]
     \end{tabular}
 
     \vfill
