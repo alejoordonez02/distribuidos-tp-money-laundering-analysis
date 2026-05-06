@@ -6,7 +6,12 @@ lang: es
 header-includes:
   - \usepackage{float}
   - \makeatletter
-  - \def\fps@figure{H} 
+  - \def\fps@figure{H}
+  - |
+    \renewcommand\paragraph{\@startsection{paragraph}{4}{\z@}%
+      {-2.5ex\@plus -1ex \@minus -.2ex}%
+      {0.5ex \@plus .2ex}%
+      {\normalfont\normalsize\bfseries}}
   - \makeatother
   - \usepackage{svg}
   - \usepackage{xcolor}
