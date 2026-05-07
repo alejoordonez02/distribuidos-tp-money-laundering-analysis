@@ -1,0 +1,18 @@
+### diseño y diagramas
+- Justificar el deployment: lo mejor sería tener un nodo por controller. Agruparlos lógicamente no tiene ningún tipo de sentido porque que una sóla máquina corra un filter que está al principio y otro que está al final es puramente arbitrario.
+- Hablar de la necesidad de la *atomicidad* del primer Filter. El problema acá es que un Filter debería mandar ACK a la cola que tiene con el gateway una vez que mandó las transacciones correspondientes a todas las colas que tiene en frente. Si el Filter se cae después de haberle mandado a una o más colas, pero no a todas, no va a mandar el ACK al exchange que tiene atrás y por tanto éste va a reenviar a otra instancia de Filter, que por último va a mandar transacciones duplicadas a las colas a las que el Filter que murió ya había mandado.
+- **Join** no debería ser global, mejor que lo tengan aquellos que lo necesiten. De hecho, como mencionamos en la corrección del martes, el Join es en realidad un **Aggregator**: ahí está la solución a la redundancia de aggregación que tenemos ahora mismo con aquellos branches del pipeline que tienen un Aggregator al final (y después el Join global).
+- Si vamos a hablar de cómo vamos a manejar los EOF para pasar de paso a paso en el pipeline, tendríamos que hacerlo en una sección aparte, y contando bien lo que charlamos del anillo, los atributos `total`, `global_processed` y `local_processed`, etc.
+- Justificar las afirmaciones del dataset con datos del dataset (xd), por ej: "Además, la variedad de bancos en el dataset es lo suficientemente alta como para ser una clave de distribución eficaz, evitando hotspots."
+- "El diagrama de actividades general muestra el flujo desde la perspectiva del cliente: este envía una única petición y espera cinco respuestas independientes. Internamente, los cinco pipelines se activan en paralelo (fork) y el cliente solo recibe respuesta cuando todos han finalizado (join)". Esto no es así, el cliente recibe las respuestas a medida que el servidor las envía, no cuando todos los pipelines finalizan.
+- Poner el proceso común de todos los pipelines (Cliente -> Gateway -> Filter) en un sólo diagrama para no repetirlo en todos los de secuencia/actividades.
+- Los paquetes creo que van a quedar mucho mejor organizados si tenemos uno por cada controller. Dejemos las generalizaciones lógicas para la implementación y la reutilización de código en el paquete `/common`, que ahora está como `/comms` porque es lo único que se me ocurrió que era común cuando hice el diagrama; pero eventualmente podrían haber más cosas.
+
+*Uno de los errores que creo que cometimos, quizás no a la hora de diseñar, pero sí a la hora de presentar el diseño, es ensuciar todas las vistas con la vista lógica.* Ej: la agrupación de Filters (y de GroupBys, Aggregators, etc.) nada debería tener que ver con cómo se despliegan, es sólo una cuestión de cómo agrupamos los componentes para programarlos y entenderlos, pero eso es otro plano, justamente el lógico.
+
+- Los **Mensajes** son parte de la vista lógica, no deberían estar en la vista de desarrollo y no sé siquiera si los incluiría en el informe aún. Mismo con **Middleware**.
+
+### redacción
+- Uniformizar los usos de terminología: si vamos a poner "$" para la plata, que esté siempre, usemos siempre "shard" o siempre "partición"; etc.
+- Suprimir aclaraciones obvias, por ej: "El Filter puede tener múltiples instancias corriendo en paralelo (indicado por el símbolo apilado en el diagrama), lo que permite escalar horizontalmente el procesamiento de datos."
+- "Esta bifurcación es lo que habilita la ejecución concurrente." "concurrente"?
