@@ -1,6 +1,6 @@
 # Arquitectura del sistema
 
-El sistema recibe un conjunto de datos de transacciones bancarias desde uno o más clientes simultáneamente y devuelve los resultados de cinco análisis distintos. La diversidad de los requerimientos — que abarcan desde un filtro simple hasta la detección de patrones en grafos y la consulta a servicios externos — motivó el diseño de una arquitectura de procesamiento distribuido en pipeline, donde cada caso de uso recorre una cadena de nodos especializados de forma concurrente con los demás.
+El sistema recibe un conjunto de datos de transacciones bancarias desde uno o más clientes simultáneamente y devuelve los resultados de cinco análisis distintos. La diversidad de los requerimientos, que abarcan desde un filtro simple hasta la detección de patrones en grafos y la consulta a servicios externos, motivó el diseño de una arquitectura de procesamiento distribuido en pipeline, donde cada caso de uso recorre una cadena de nodos especializados de forma concurrente con los demás.
 
 ## Casos de uso
 
@@ -23,179 +23,203 @@ Cantidad de transacciones con formato de pago *Wire* o *ACH* en el período A, c
 
 ![](../diagrams/08use-cases-diagram.png){width=50%}
 
-Los cinco casos de uso presentan niveles crecientes de complejidad: desde un filtro directo (UC1) hasta la detección de estructuras en un grafo de transacciones (UC4) o la delegación a un servicio externo de conversión de moneda (UC5). Esta escalera de complejidad es la que da forma a la arquitectura del sistema y se verá reflejada en cada una de las vistas que siguen.
+Los cinco casos de uso presentan niveles crecientes de complejidad: desde un filtro directo (UC1) hasta la detección de estructuras en un grafo de transacciones (UC4) o la normalización de moneda contra un servicio externo (UC5). Esta escalera de complejidad da forma a la arquitectura del sistema y se verá reflejada en cada una de las vistas que siguen.
 
 \newpage
 
-## Vista física
+## DAG de procesamiento
 
-La vista física describe qué componentes existen en el sistema, cómo se relacionan entre sí y cómo se despliegan en la infraestructura.
+El conjunto de pipelines puede modelarse como un DAG (*Directed Acyclic Graph*): un grafo dirigido sin ciclos donde cada nodo representa una transformación y cada arista un stream de registros tipados. La ausencia de ciclos garantiza que el procesamiento siempre converge y que las dependencias entre etapas son explícitas: un nodo solo puede procesar datos cuando sus predecesores ya los produjeron.
 
-### Robustez
+### UC1 — Filtro directo
 
-El siguiente diagrama muestra el sistema completo con todos los pipelines activos en paralelo. El flujo base es siempre el mismo: el cliente envía datos al **Gateway** por TCP/IP; el Gateway los distribuye a los nodos de procesamiento a través del broker de mensajería (RabbitMQ); los resultados parciales convergen en el **Join**, que los devuelve al cliente.
+![](../diagrams/11dag-diagram-uc1.png){width=50%}
 
-El Filter centraliza todas las decisiones de ruteo, lo que lo convierte en un potencial cuello de botella. Una alternativa considerada fue encadenar filtros especializados en serie: un primer nodo filtraría por USD y luego distribuiría a múltiples filtros, uno por caso de uso. Sin embargo, este diseño no eliminaba la duplicación de datos — una misma transacción puede satisfacer varios casos de uso simultáneamente, por lo que inevitablemente debe enviarse a múltiples nodos downstream independientemente del diseño elegido. El problema concreto de la alternativa encadenada era otro: los datos recorrerían la red un salto extra antes de llegar a destino, incrementando innecesariamente el tráfico. La solución adoptada centraliza el ruteo en un único Filter que decide en O(1) por línea y por batch a qué canales corresponde cada mensaje, enviando los datos directamente a sus destinos finales sin pasos intermedios. El riesgo de cuello de botella se mitiga escalando el Filter horizontalmente. No obstante, este escalado introduce una complejidad adicional: cada instancia necesita mantener conexiones con múltiples nodos downstream que también pueden escalar (GroupBys, filtros posteriores), generando una topología many-to-many de conexiones que debe gestionarse correctamente a nivel de colas y exchanges del broker.
+UC1 establece el patrón base del sistema. El Gateway entrega el registro completo (origin, destination, amount, format) y el Filter aplica dos condiciones simultáneas: moneda USD y monto menor a \$50. Los registros que las satisfacen salen como (origin, destination, amount) hacia el Join. El campo `format` se descarta en esta etapa porque no aporta información al resultado.
 
-Previo a enviarse al Join, los mensajes se routean por ID de cliente. Dado que el Join puede escalar horizontalmente, este sharding garantiza que todos los resultados parciales de un mismo cliente lleguen siempre a la misma instancia del Join, que es la única que puede ensamblar la respuesta final completa.
+Cada transacción se evalúa de forma completamente independiente de las demás. No hay computación entre filas, por lo que el pipeline puede procesar los registros en cualquier orden y en paralelo sin afectar la correctitud del resultado.
 
-![](../diagrams/02robustness-diagram.png){width=90%}
+### UC2 — Máximo por banco
 
-Cada uno de los cinco casos de uso corresponde a un pipeline independiente. A continuación se describe cada uno en detalle, comenzando por el más simple para ir incorporando los conceptos progresivamente.
+![](../diagrams/11dag-diagram-uc2.png){width=55%}
 
-#### UC1 — Filtro directo
+UC2 introduce dos conceptos nuevos respecto de UC1: múltiples fuentes de datos y agregación en dos etapas. El nodo Route client data distribuye dos streams simultáneamente: registros de transacciones (bank_id, origin, amount) hacia el pipeline de filtrado, y registros de cuentas (bank_id, bank_name) hacia un GroupBy de resolución de nombres.
 
-![](../diagrams/02robustness-diagram-uc1.png){width=90%}
+El pipeline de transacciones filtra por USD y luego el GroupBy calcula el máximo de `amount` por `bank_id` dentro de cada partición. El Aggregate consolida esos máximos parciales en el máximo global definitivo por banco.
 
-UC1 establece el patrón base del sistema. Las transacciones llegan al **Filter**, que aplica la regla de negocio (moneda USD y monto menor a $50) y envía los resultados directamente al **Join**. Esta cadena de tres etapas — Gateway → Filter → Join — es el esqueleto sobre el que se construyen todos los demás casos de uso. El Filter puede tener múltiples instancias corriendo en paralelo (indicado por el símbolo apilado en el diagrama), lo que permite escalar horizontalmente el procesamiento de datos.
+En paralelo, el pipeline de cuentas construye el mapeo bank_id → bank_name mediante el GroupBy bank_id On bank_name. Ambas pipelines convergen en el Merge On bank_id, que enriquece cada máximo con el nombre legible del banco y produce (bank_name, origin, max_amount) para el Join.
 
-Dado que los datos se particionan en batches que pueden ser procesados por distintas instancias del Filter en paralelo, el manejo correcto de los mensajes EOF es crítico: una instancia solo puede propagar el EOF al Join cuando haya terminado de procesar todos los batches del cliente correspondiente, evitando así errores de desincronización en la consolidación de la respuesta final.
+La separación es deliberada: el dataset de transacciones solo contiene `bank_id`, no el nombre del banco. Resolver el mapeo dentro del Filter introduciría dependencia de estado global en el componente de mayor throughput del sistema; correr el enriquecimiento como pipeline paralelo independiente y unir al final evita ese problema.
 
-#### UC2 — Máximo por banco
+### UC3 — Comparación entre períodos
 
-![](../diagrams/02robustness-diagram-uc2.png){width=90%}
+![](../diagrams/11dag-diagram-uc3.png){width=55%}
 
-UC2 extiende el patrón de UC1 incorporando una etapa de agregación distribuida. Luego de filtrar por moneda USD, es necesario calcular el monto máximo por banco sobre el conjunto completo de datos, lo que no puede resolverse con un único Filter que vea solo una partición. Para esto se introduce el par **GroupBy + Aggregate**: el GroupBy calcula máximos locales dentro de cada partición, y el Aggregate consolida esos resultados parciales en el valor global definitivo.
+UC3 requiere comparar transacciones de dos períodos distintos: el umbral (amount < promedio_de_formato / 100) no es un valor fijo sino que depende del promedio global de cada formato en el período A, que solo se conoce una vez que se procesaron todos los datos de ese período.
 
-El GroupBy recibe los datos ya filtrados en batches y calcula un máximo local por banco dentro de cada uno. A continuación, los resultados se shardean por banco para distribuir la carga entre las distintas instancias del Aggregate — ya que este también puede escalar horizontalmente. Shardear por banco en esta segunda etapa garantiza que cada instancia del Aggregate concentre todos los datos de un mismo banco, asegurando que el máximo calculado sea globalmente correcto. Además, la variedad de bancos en el dataset es lo suficientemente alta como para ser una clave de distribución eficaz, evitando hotspots. Con ambas etapas escalando horizontalmente de forma independiente, el sistema distribuye la carga de manera consistente sin comprometer la correctitud del resultado.
+El nodo Route client data envía el stream a dos Filters en paralelo: uno selecciona USD y período A, el otro selecciona USD y período B.
 
-#### UC3 — Comparación entre períodos
+El pipeline del período A materializa los promedios por formato: el GroupBy format Sum amount Count acumula suma y conteo por formato en cada partición, y el Aggregate computa el promedio real (sum/count). La salida es (format, average).
 
-![](../diagrams/02robustness-diagram-uc3.png){width=90%}
+El pipeline del período B produce el stream crudo de transacciones candidatas: (origin, amount, format).
 
-> **[UC3 — Pendiente Fede]** *Describir el diseño de este caso de uso.*
+El Merge combina ambas salidas usando el formato como clave, de modo que cada transacción del período B queda asociada con el promedio de su formato en el período A. Un Filter final aplica la condición amount < average/100 y produce (origin, amount) para el Join.
 
-#### UC4 — Patrón scatter-gather
+La estructura de dos etapas, primero materializar promedios y luego filtrar el período B, es consecuencia directa de la dependencia lógica: ninguna transacción del período B puede evaluarse hasta que el promedio de su formato en el período A sea conocido.
 
-![](../diagrams/02robustness-diagram-uc4.png){width=90%}
+### UC4 — Patrón scatter-gather
 
-> **[UC4 — Pendiente Alejo]** *Describir el diseño de este caso de uso.*
+![](../diagrams/11dag-diagram-uc4.png){width=55%}
 
-#### UC5 — Conversión de moneda con servicio externo
+UC4 requiere detectar el patrón scatter-gather en el grafo de transacciones: una cuenta origen dispersa fondos hacia múltiples intermediarios, que los concentran en una cuenta destino. Esta detección no puede hacerse registro a registro.
 
-![](../diagrams/02robustness-diagram-uc5.png){width=90%}
+Después del filtro inicial (USD y período A), el GroupBy origin/destination Compute graph construye la representación del grafo: para cada nodo acumula el conjunto de predecesores y sucesores observados. La salida es (node, predecessors, successors).
 
-UC5 introduce una dependencia externa al sistema. Las transacciones de interés pueden estar expresadas en cualquier moneda, por lo que antes de aplicar el umbral de $1 USD es necesario convertirlas. Esta conversión se delega a un **USD Converter API** externo: el nodo `to_USD and Filter` consulta ese servicio por la tasa de cambio correspondiente, convierte el monto y luego aplica el filtro.
+El GroupBy one length paths Count toma esa representación y cuenta las rutas de un salto para cada par (origin, destination): la cantidad de cuentas que sirven como intermediario directo entre ese origen y ese destino. Este conteo corresponde directamente al número de cuentas intermediarias en el patrón scatter-gather.
 
-La etapa de conversión a USD se implementa como un worker separado del Filter general por una razón de rendimiento: realizar una request a una API externa introduce una latencia variable que bloquearía el procesamiento del resto de los filtros si se ejecutara en el mismo nodo. Al separarlo en un worker posterior dedicado, el Filter general continúa procesando a su velocidad natural mientras el ConverterNode maneja la comunicación externa de forma aislada. La conversión se realiza por batch: se emite una única request a la API por lote de transacciones, asumiendo que el tipo de cambio es invariante dentro del intervalo de tiempo que tarda en procesarse un batch. Esta suposición es razonable dado el volumen de datos y la escala temporal de las transacciones analizadas.
+El Aggregate one length paths consolida los conteos parciales de las distintas instancias del GroupBy, produciendo el conteo global definitivo por par. El resultado (origin, destination, count) llega al Join.
+
+### UC5 — Conteo con conversión de moneda
+
+![](../diagrams/11dag-diagram-uc5.png){width=50%}
+
+UC5 cuenta cuántas transacciones de formato Wire o ACH en el período A tienen un monto menor a \$1 USD. Los montos pueden estar expresados en cualquier moneda, por lo que la comparación con el umbral solo es válida después de convertir.
+
+El Filter inicial aplica formato (Wire o ACH) y período A para reducir el dataset antes de la etapa de conversión. Filtrar primero es intencional: cuantos menos registros lleguen al conversor, menos llamadas al servicio externo son necesarias.
+
+El nodo Convert amount into USD traduce cada monto a su equivalente en dólares, asumiendo tipo de cambio estable dentro del batch. El Filter siguiente aplica el umbral de \$1. Las transacciones que lo superan llegan al GroupBy * Count, donde el `*` indica que no hay clave de agrupación: todos los registros se colapsan en un único contador global. Ese conteo es el resultado final de UC5.
 
 \newpage
 
-### Despliegue
+## Robustez
 
-Una vez establecidos los componentes lógicos de cada pipeline, el diagrama de despliegue muestra cómo estos se agrupan en nodos físicos y qué protocolos de comunicación los vinculan:
+El diagrama de robustez muestra cómo se despliegan físicamente los pipelines: qué componentes concretos existen, qué colas los conectan, cuántas instancias corren en paralelo y qué estrategia de ruteo usa cada etapa.
+
+### UC1
+
+![](../diagrams/12robustness-diagram-uc1.png){width=80%}
+
+El Filter puede correr con múltiples instancias en paralelo (indicado por el símbolo apilado), cada una procesando una partición del stream. Dado que el Join también escala horizontalmente, todos los resultados de un mismo cliente deben llegar siempre a la misma instancia del Join, que es la única que mantiene su conexión TCP/IP. Esto se implementa como shardeo por `client_id` en la cola de salida del Filter.
+
+La cola de Responses desacopla el Join del Gateway: el Join deposita los resultados en la cola y el Gateway los consume para cerrar la conexión correspondiente. Múltiples clientes pueden operar simultáneamente sin interferir entre sí.
+
+### UC2
+
+![](../diagrams/12robustness-diagram-uc2.png){width=75%}
+
+El Gateway publica en dos colas distintas: `Transactions` para el stream de transacciones y `Accounts` para el dataset de cuentas.
+
+El pipeline de transacciones usa shardeo por `bank_id` en cada etapa: el GroupBy bank Max amount recibe registros del mismo banco en la misma instancia, y el Aggregate max amounts mantiene ese shardeo para consolidar los parciales correctamente.
+
+El pipeline de cuentas corre en paralelo: el GroupBy bank_id On bank_name extrae asociaciones (bank_id, bank_name) de cada partición y el Aggregate bank names las consolida. El resultado se distribuye al Merge también con shardeo por `bank_id`.
+
+El Merge On bank_id recibe máximos con `bank_id` como clave desde el pipeline de transacciones y nombres de banco desde el pipeline de cuentas. El shardeo consistente por `bank_id` a lo largo de ambas pipelines garantiza que cada instancia del Merge reciba todos los datos del mismo banco de ambas fuentes, condición necesaria para que el join sea correcto.
+
+### UC3
+
+![](../diagrams/12robustness-diagram-uc3.png){width=80%}
+
+El Filter produce dos colas de salida distintas: `Filtered by USD and period A` y `Filtered by USD and period B`. Además de evaluar el predicado de moneda, rutea cada transacción al pipeline correspondiente según su fecha. Una transacción no puede pertenecer a ambos períodos, por lo que el ruteo es mutuamente exclusivo.
+
+El pipeline del período A usa shardeo por `format` entre el GroupBy y el Aggregate para que todos los registros del mismo formato lleguen a la misma instancia.
+
+Los promedios resultantes se distribuyen al Merge mediante fan-out: cada resultado del Aggregate se replica a todas las instancias del Merge. Cualquier instancia del Merge puede recibir transacciones del período B de cualquier formato y necesita los promedios de todos los formatos para evaluar la condición; el shardeo enviaría cada promedio a una sola instancia, mientras que el fan-out garantiza que todas tengan el contexto completo. Por la naturaleza del problema asumimos que los disitntos tipos de formato no son muchos, por lo que no es un problema grave que cada isntancia reciba el mapeo completo.
+
+Después del Merge, un segundo Filter aplica la condición amount < average/100 y produce la cola final hacia el Join.
+
+### UC4
+
+![](../diagrams/12robustness-diagram-uc4.png){width=75%}
+
+El GroupBy Compute graph genera para cada nodo la lista de predecesores y sucesores. Para que esta computación sea correcta, todas las aristas incidentes a un mismo nodo deben llegar a la misma instancia, lo que se logra con shardeo por `node`.
+
+El GroupBy one length paths Count cuenta los intermediarios por par (origin, destination). Para consolidar correctamente, todos los datos del mismo par deben llegar a la misma instancia, lo que se logra con shardeo por (predecessor, successor).
+
+Un Filter final descarta los pares cuyo conteo de intermediarios es inferior a 5, produciendo la cola "Nodes that match scatter gather pattern w/ at least 5 intermediate nodes" que llega al Join. Este filtro es un componente separado del Aggregate porque la condición de umbral ($\geq$ 5) es lógica de negocio: mantenerla separada del pipeline de conteo facilita modificarla sin alterar el resto.
+
+### UC5
+
+![](../diagrams/12robustness-diagram-uc5.png){width=80%}
+
+El nodo Convert amount into USD puede escalar horizontalmente de forma independiente del Filter. Cada instancia emite una sola request al USD conversion external service API por batch, amortizando la latencia de red sobre el conjunto del lote.
+
+El GroupBy * Count produce conteos parciales, uno por instancia. Estos se shardean por `client_id` hacia el Join correcto.
+
+### Sistema completo
+
+![](../diagrams/12robustness-diagram.png){width=90%}
+
+El Filter es el nodo con mayor abanico de conexiones: recibe el stream completo de transacciones y produce múltiples colas clasificadas por período, formato y moneda. Su escalado horizontal genera una topología many-to-many con los nodos downstream que debe gestionarse a nivel de exchanges y colas del broker.
+
+Dos estrategias de distribución coexisten en el sistema. El shardeo por clave (`bank_id`, `node`, `format`, `client_id`) es la estrategia predeterminada en todas las etapas de agregación y merge: garantiza que todos los registros de un mismo grupo lleguen a la misma instancia. El fan-out se usa en UC3 para los promedios del período A: cuando el resultado de una etapa es contexto global que todas las instancias downstream necesitan completo, el shardeo no alcanza y es necesario replicar.
+
+El Join está siempre shardeado por `client_id`, garantizando que todos los resultados parciales de un cliente, provenientes de cualquiera de las cinco pipelines, converjan en la instancia para poder construir la respuesta final.
+
+Los nodos Merge (UC2, UC3) son los únicos puntos donde se cruzan pipelines que provienen de fuentes distintas. Fuera de esos dos casos, cada pipeline corre de extremo a extremo sin interacción con las demás.
+
+\newpage
+
+## Despliegue
 
 ![](../diagrams/04deployment-diagram.png){width=90%}
 
-El sistema se compone de seis tipos de nodos:
-
-- **GatewayNode**: punto de entrada TCP/IP para los clientes. Traduce las peticiones al protocolo interno y las publica en el broker.
-- **BrokerNode**: instancia de RabbitMQ que actúa como intermediario de mensajes entre todos los nodos de procesamiento mediante AMQP 0-9-1.
-- **FilterNode**: aplica las reglas de filtrado y ruteo (`filter_and_route.py`, `average_amount_and_filter.py`, `to_usd_and_filter.py`). Para UC5 se comunica con el ConverterNode mediante la API de conversión USD.
-- **MapperNode**: realiza transformaciones y agrupaciones locales (`group_by_bank_max_amount.py`, `group_by_format_count.py`, `compute_transaction_graph.py`, `count_one_length_paths.py`).
-- **AggregationNode**: consolida los resultados parciales de los MapperNodes (`aggregate_bank_amount.py`, `aggregate_format_sum_count.py`, `aggregate_one_length_paths_count.py`).
-- **ConverterNode**: encapsula la lógica de conversión de moneda, expuesta como API hacia el FilterNode.
-
 \newpage
 
-## Vista de procesos
-
-La vista de procesos describe el comportamiento dinámico del sistema: cómo fluyen los datos a través de los componentes y en qué orden ocurren las interacciones entre ellos.
-
-### DAG de procesamiento
-
-El conjunto de pipelines puede modelarse como un **DAG** (*Directed Acyclic Graph*): un grafo dirigido sin ciclos donde cada nodo representa un componente de procesamiento y cada arista representa el flujo de datos entre ellos. La ausencia de ciclos garantiza que el procesamiento siempre converge y permite razonar sobre dependencias entre etapas: un nodo solo puede comenzar a procesar cuando todos sus predecesores han producido su salida.
-
-![](../diagrams/03dag-diagram.png){width=90%}
-
-El DAG muestra con claridad cómo los cinco pipelines comparten los nodos iniciales (Gateway y la etapa de filtrado primario) y luego se bifurcan según las necesidades de cada caso de uso. Esta bifurcación es lo que habilita la ejecución concurrente.
-
-### Actividades
-
-El diagrama de actividades general muestra el flujo desde la perspectiva del cliente: este envía una única petición y espera cinco respuestas independientes. Internamente, los cinco pipelines se activan en paralelo (fork) y el cliente solo recibe respuesta cuando todos han finalizado (join):
-
-![](../diagrams/05activity-diagram.png){width=90%}
-
-A continuación se detalla el flujo de actividades y las interacciones entre componentes para cada caso de uso por separado.
-
-### Secuencia y actividades por caso de uso
-
-Para cada caso de uso se presentan en conjunto el diagrama de actividades — que describe la lógica de decisión y el procesamiento — y el diagrama de secuencia — que muestra los mensajes intercambiados entre los componentes a lo largo del tiempo. Ambas vistas son complementarias: la primera responde *qué* se hace, la segunda responde *quién le habla a quién*.
-
-#### UC1
-
-El caso más simple: un único Filter evalúa dos condiciones sobre cada transacción y el resultado va directo al Join.
-
-![](../diagrams/05activity-diagram-uc1.png){width=70%}
-
-![](../diagrams/06secuence-diagram-case-1.png){width=90%}
-
-El flujo de mensajes es lineal: el cliente envía las transacciones al Gateway, el Gateway las enruta al Filter, el Filter devuelve el subconjunto filtrado al Join, y el Join responde al cliente. Este es el camino más corto posible dentro de la arquitectura.
-
-#### UC2
-
-![](../diagrams/05activity-diagram-uc2.png){width=70%}
-
-![](../diagrams/06secuence-diagram-case-2.png){width=90%}
-
-Se suman dos participantes respecto de UC1: el GroupBy Bank y el Aggregator, que introducen el patrón de agregación distribuida en dos etapas. El Filter entrega las transacciones USD al GroupBy, que calcula el máximo local por banco. El Aggregator combina todos los máximos locales para obtener el máximo global definitivo, que luego el Join devuelve al cliente.
-
-#### UC3
-
-![](../diagrams/05activity-diagram-uc3.png){width=70%}
-
-![](../diagrams/06secuence-diagram-case-3.png){width=90%}
-
-> **[UC3 — Pendiente Fede]** *Describir el flujo de este caso de uso.*
-
-#### UC4
-
-![](../diagrams/05activity-diagram-uc4.png){width=70%}
-
-![](../diagrams/06secuence-diagram-case-4.png){width=90%}
-
-> **[UC4 — Pendiente Alejo]** *Describir el flujo de este caso de uso.*
-
-#### UC5
-
-El caso de uso que introduce una dependencia externa: antes de poder evaluar el umbral de monto, el sistema debe convertir cada transacción a USD consultando un servicio externo.
-
-![](../diagrams/05activity-diagram-uc5.png){width=70%}
-
-![](../diagrams/06secuence-diagram-case-5.png){width=90%}
-
-El Filter inicial selecciona las transacciones del período A con formato Wire o ACH. Para cada batch, el nodo `Ask external service` consulta al External Service la tasa de conversión correspondiente, convierte los montos a USD y aplica el filtro de monto menor a $1. El resultado va al Join, que responde al cliente.
-
-\newpage
-
-## Vista de desarrollo
-
-La vista de desarrollo describe cómo está organizado el código fuente y qué abstracciones de comunicación utiliza la implementación.
-
-### Paquetes
+## Paquetes
 
 ![](../diagrams/07packages-diagram.png){width=70%}
 
-El código fuente se organiza bajo el paquete raíz `src` en siete módulos principales: `filter`, `group_by`, `aggregation`, `mapper`, `gateway`, `comms` y `rabbitmq`. La separación entre módulos refleja directamente la separación de responsabilidades identificada en la vista física: cada tipo de nodo tiene su propio módulo con la lógica de negocio correspondiente, mientras que `comms` y `rabbitmq` encapsulan la infraestructura de comunicación compartida por todos.
-
-### Mensajes
-
-La comunicación entre nodos se realiza a través de mensajes serializados que viajan por el broker. La clase abstracta `Message` define la interfaz común de serialización y deserialización, de la que heredan los tipos concretos de mensajes del sistema:
-
 ![](../diagrams/09message-class-diagram-draft.png){width=60%}
-
-El tipo `EOF` es un mensaje especial que señaliza el fin de un stream de datos, permitiendo que cada nodo downstream sepa cuándo recibió la totalidad de los datos de su upstream y puede proceder a emitir sus propios resultados.
-
-### Middleware de comunicación
-
-El acceso a RabbitMQ está abstraído por la interfaz `Middleware`, con dos implementaciones concretas:
 
 ![](../diagrams/10middleware-class-diagram-draft.png){width=60%}
 
-- **QueueMiddleware**: para comunicación punto-a-punto entre un productor y un consumidor.
-- **ExchangeMiddleware**: para distribución de mensajes a múltiples consumidores, utilizado cuando los datos deben ser procesados en paralelo por varias instancias del mismo nodo (por ejemplo, múltiples instancias del Filter).
+\newpage
 
-Esta abstracción permite que la lógica de negocio de cada nodo sea independiente del mecanismo de transporte subyacente, facilitando tanto el testing como futuros cambios de broker.
+## Actividades
+
+![](../diagrams/05activity-diagram.png){width=90%}
+
+### UC1
+
+![](../diagrams/05activity-diagram-uc1.png){width=70%}
+
+### UC2
+
+![](../diagrams/05activity-diagram-uc2.png){width=70%}
+
+### UC3
+
+![](../diagrams/05activity-diagram-uc3.png){width=70%}
+
+### UC4
+
+![](../diagrams/05activity-diagram-uc4.png){width=70%}
+
+### UC5
+
+![](../diagrams/05activity-diagram-uc5.png){width=70%}
+
+## Secuencia
+
+### UC1
+
+![](../diagrams/13sequence-diagram-uc1.png){width=90%}
+
+### UC2
+
+![](../diagrams/13sequence-diagram-uc2.png){width=90%}
+
+### UC3
+
+![](../diagrams/13sequence-diagram-uc3.png){width=90%}
+
+### UC4
+
+![](../diagrams/13sequence-diagram-uc4.png){width=90%}
+
+### UC5
+
+![](../diagrams/13sequence-diagram-uc5.png){width=90%}
 
 \newpage
 
