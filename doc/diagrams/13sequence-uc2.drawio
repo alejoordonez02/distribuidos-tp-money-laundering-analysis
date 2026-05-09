@@ -1,35 +1,35 @@
-<mxfile host="Electron">
+<mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.6.1 Chrome/142.0.7444.265 Electron/39.5.2 Safari/537.36" version="29.6.1">
   <diagram id="uc2-sequence" name="UC2">
-    <mxGraphModel dx="693" dy="784" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="520" math="0" shadow="0">
+    <mxGraphModel dx="861" dy="587" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="520" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
         <mxCell id="p1" parent="1" style="ellipse;shape=umlControl;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" value="&lt;b&gt;Client&lt;/b&gt;" vertex="1">
-          <mxGeometry height="80" width="80" x="30" y="15" as="geometry" />
+          <mxGeometry height="80" width="70" x="36" y="15" as="geometry" />
         </mxCell>
         <mxCell id="p2" parent="1" style="ellipse;shape=umlControl;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;" value="&lt;b&gt;Gateway&lt;/b&gt;" vertex="1">
-          <mxGeometry height="80" width="80" x="140" y="15" as="geometry" />
+          <mxGeometry height="80" width="70" x="146" y="15" as="geometry" />
         </mxCell>
         <mxCell id="p3" parent="1" style="ellipse;shape=umlControl;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" value="&lt;b&gt;Filter&lt;/b&gt;" vertex="1">
-          <mxGeometry height="80" width="80" x="250" y="15" as="geometry" />
+          <mxGeometry height="80" width="70" x="256" y="15" as="geometry" />
         </mxCell>
         <mxCell id="p4" parent="1" style="ellipse;shape=umlControl;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" value="&lt;b&gt;GroupBy&lt;/b&gt;&lt;div&gt;bank&lt;/div&gt;&lt;div&gt;&lt;b&gt;Max&lt;/b&gt;&lt;/div&gt;&lt;div&gt;amount&lt;/div&gt;" vertex="1">
-          <mxGeometry height="80" width="80" x="365" y="15" as="geometry" />
+          <mxGeometry height="80" width="70" x="371" y="15" as="geometry" />
         </mxCell>
         <mxCell id="p5" parent="1" style="ellipse;shape=umlControl;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" value="&lt;b&gt;Aggregate&lt;/b&gt;&lt;div&gt;max&lt;/div&gt;&lt;div&gt;amounts&lt;/div&gt;" vertex="1">
-          <mxGeometry height="80" width="80" x="485" y="15" as="geometry" />
+          <mxGeometry height="80" width="70" x="491" y="15" as="geometry" />
         </mxCell>
         <mxCell id="p6" parent="1" style="ellipse;shape=umlControl;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" value="&lt;b&gt;GroupBy&lt;/b&gt;&lt;div&gt;bank_id&lt;/div&gt;&lt;div&gt;&lt;b&gt;On&lt;/b&gt;&lt;/div&gt;&lt;div&gt;bank_name&lt;/div&gt;" vertex="1">
-          <mxGeometry height="80" width="80" x="605" y="15" as="geometry" />
+          <mxGeometry height="80" width="70" x="611" y="15" as="geometry" />
         </mxCell>
         <mxCell id="p7" parent="1" style="ellipse;shape=umlControl;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" value="&lt;b&gt;Aggregate&lt;/b&gt;&lt;div&gt;bank&lt;/div&gt;&lt;div&gt;names&lt;/div&gt;" vertex="1">
-          <mxGeometry height="80" width="80" x="725" y="15" as="geometry" />
+          <mxGeometry height="80" width="70" x="731" y="15" as="geometry" />
         </mxCell>
         <mxCell id="p8" parent="1" style="ellipse;shape=umlControl;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;fontColor=#333333;" value="&lt;b&gt;Merge&lt;/b&gt;&lt;div&gt;&lt;b&gt;On&lt;/b&gt;&lt;/div&gt;&lt;div&gt;bank_id&lt;/div&gt;" vertex="1">
-          <mxGeometry height="80" width="80" x="845" y="15" as="geometry" />
+          <mxGeometry height="80" width="70" x="851" y="15" as="geometry" />
         </mxCell>
         <mxCell id="p9" parent="1" style="ellipse;shape=umlControl;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" value="&lt;b&gt;Join&lt;/b&gt;&lt;div&gt;results&lt;/div&gt;&lt;div&gt;&lt;b&gt;By&lt;/b&gt;&lt;/div&gt;&lt;div&gt;client&lt;/div&gt;" vertex="1">
-          <mxGeometry height="80" width="80" x="965" y="15" as="geometry" />
+          <mxGeometry height="80" width="70" x="971" y="15" as="geometry" />
         </mxCell>
         <mxCell id="l1" edge="1" parent="1" style="endArrow=none;html=1;dashed=1;strokeColor=#BBBBBB;strokeWidth=1;">
           <mxGeometry relative="1" as="geometry">
@@ -133,7 +133,7 @@
             <mxPoint x="885" y="350" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="m9" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=10;verticalAlign=bottom;fontFamily=Helvetica;" value="bank_name, origin,&lt;div&gt;max_amount&lt;/div&gt;">
+        <mxCell id="m9" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=10;verticalAlign=bottom;fontFamily=Helvetica;" value="max amounts by&lt;div&gt;bank w/ bank names&lt;/div&gt;">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="885" y="385" as="sourcePoint" />
             <mxPoint x="1005" y="385" as="targetPoint" />
