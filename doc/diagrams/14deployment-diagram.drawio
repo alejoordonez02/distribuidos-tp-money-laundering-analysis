@@ -1,0 +1,558 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.6.1 Chrome/142.0.7444.265 Electron/39.5.2 Safari/537.36" version="29.6.1">
+  <diagram name="Page-1" id="k64kg8Ucn2jLboi3W1iF">
+    <mxGraphModel dx="1609" dy="1564" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-1" connectable="0" parent="1" style="group" value="" vertex="1">
+          <mxGeometry height="220" width="840" x="630" y="1390" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-2" parent="xsicGtn7vrXV-fT_VWEn-1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;dashed=1;dashPattern=8 8;" value="" vertex="1">
+          <mxGeometry height="220" width="840" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-3" connectable="0" parent="xsicGtn7vrXV-fT_VWEn-1" style="group" value="" vertex="1">
+          <mxGeometry height="140" width="234" x="560" y="38.5" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-4" parent="xsicGtn7vrXV-fT_VWEn-3" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="" vertex="1">
+          <mxGeometry height="120" width="216" x="18" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-5" parent="xsicGtn7vrXV-fT_VWEn-3" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="ConvertionCounterNode" vertex="1">
+          <mxGeometry height="120" width="216" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-6" parent="xsicGtn7vrXV-fT_VWEn-3" style="html=1;dropTarget=0;whiteSpace=wrap;" value="«artifact»&lt;br&gt;&lt;b&gt;&lt;u&gt;group_by.py&lt;/u&gt;&lt;/b&gt;" vertex="1">
+          <mxGeometry height="62" width="124" x="41.5" y="58" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-7" parent="xsicGtn7vrXV-fT_VWEn-6" style="shape=module;jettyWidth=8;jettyHeight=4;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="" vertex="1">
+          <mxGeometry height="20" relative="1" width="20" x="1" as="geometry">
+            <mxPoint x="-27" y="7" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-8" connectable="0" parent="xsicGtn7vrXV-fT_VWEn-1" style="group" value="" vertex="1">
+          <mxGeometry height="140" width="234" x="40" y="38.5" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-9" parent="xsicGtn7vrXV-fT_VWEn-8" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="" vertex="1">
+          <mxGeometry height="120" width="216" x="18" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-10" parent="xsicGtn7vrXV-fT_VWEn-8" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="ConvertionNode" vertex="1">
+          <mxGeometry height="120" width="216" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-11" parent="xsicGtn7vrXV-fT_VWEn-8" style="html=1;dropTarget=0;whiteSpace=wrap;" value="«artifact»&lt;br&gt;&lt;b&gt;&lt;u&gt;usd_converter.py&lt;/u&gt;&lt;/b&gt;" vertex="1">
+          <mxGeometry height="62" width="124" x="41.5" y="58" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-12" parent="xsicGtn7vrXV-fT_VWEn-11" style="shape=module;jettyWidth=8;jettyHeight=4;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="" vertex="1">
+          <mxGeometry height="20" relative="1" width="20" x="1" as="geometry">
+            <mxPoint x="-27" y="7" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-13" connectable="0" parent="xsicGtn7vrXV-fT_VWEn-1" style="group" value="" vertex="1">
+          <mxGeometry height="140" width="234" x="298" y="38" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-14" parent="xsicGtn7vrXV-fT_VWEn-13" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="" vertex="1">
+          <mxGeometry height="120" width="216" x="18" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-15" parent="xsicGtn7vrXV-fT_VWEn-13" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="ConvertionFilterNode" vertex="1">
+          <mxGeometry height="120" width="216" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-16" parent="xsicGtn7vrXV-fT_VWEn-13" style="html=1;dropTarget=0;whiteSpace=wrap;" value="«artifact»&lt;br&gt;&lt;b&gt;&lt;u&gt;filter.py&lt;/u&gt;&lt;/b&gt;" vertex="1">
+          <mxGeometry height="62" width="124" x="41.5" y="58" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-17" parent="xsicGtn7vrXV-fT_VWEn-16" style="shape=module;jettyWidth=8;jettyHeight=4;fillColor=#d5e8d4;strokeColor=#82b366;" value="" vertex="1">
+          <mxGeometry height="20" relative="1" width="20" x="1" as="geometry">
+            <mxPoint x="-27" y="7" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-130" parent="xsicGtn7vrXV-fT_VWEn-1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;i&gt;UC5&lt;/i&gt;" vertex="1">
+          <mxGeometry height="30" width="60" x="780" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-18" connectable="0" parent="1" style="group" value="" vertex="1">
+          <mxGeometry height="220" width="1100" x="290" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-19" parent="xsicGtn7vrXV-fT_VWEn-18" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;dashed=1;dashPattern=8 8;" value="" vertex="1">
+          <mxGeometry height="220" width="1100" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-20" connectable="0" parent="xsicGtn7vrXV-fT_VWEn-18" style="group" value="" vertex="1">
+          <mxGeometry height="140" width="234" x="560" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-21" parent="xsicGtn7vrXV-fT_VWEn-20" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="" vertex="1">
+          <mxGeometry height="120" width="216" x="18" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-22" parent="xsicGtn7vrXV-fT_VWEn-20" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="FormatMergeNode" vertex="1">
+          <mxGeometry height="120" width="216" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-23" parent="xsicGtn7vrXV-fT_VWEn-20" style="html=1;dropTarget=0;whiteSpace=wrap;" value="«artifact»&lt;br&gt;&lt;b&gt;&lt;u&gt;merge.py&lt;/u&gt;&lt;/b&gt;" vertex="1">
+          <mxGeometry height="62" width="124" x="41.5" y="58" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-24" parent="xsicGtn7vrXV-fT_VWEn-23" style="shape=module;jettyWidth=8;jettyHeight=4;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" value="" vertex="1">
+          <mxGeometry height="20" relative="1" width="20" x="1" as="geometry">
+            <mxPoint x="-27" y="7" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-25" connectable="0" parent="xsicGtn7vrXV-fT_VWEn-18" style="group" value="" vertex="1">
+          <mxGeometry height="140" width="234" x="40" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-26" parent="xsicGtn7vrXV-fT_VWEn-25" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="" vertex="1">
+          <mxGeometry height="120" width="216" x="18" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-27" parent="xsicGtn7vrXV-fT_VWEn-25" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="FormatCountSumGroupByNode" vertex="1">
+          <mxGeometry height="120" width="216" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-28" parent="xsicGtn7vrXV-fT_VWEn-25" style="html=1;dropTarget=0;whiteSpace=wrap;" value="«artifact»&lt;br&gt;&lt;b&gt;&lt;u&gt;group_by.py&lt;/u&gt;&lt;/b&gt;" vertex="1">
+          <mxGeometry height="62" width="124" x="41.5" y="58" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-29" parent="xsicGtn7vrXV-fT_VWEn-28" style="shape=module;jettyWidth=8;jettyHeight=4;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="" vertex="1">
+          <mxGeometry height="20" relative="1" width="20" x="1" as="geometry">
+            <mxPoint x="-27" y="7" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-30" connectable="0" parent="xsicGtn7vrXV-fT_VWEn-18" style="group" value="" vertex="1">
+          <mxGeometry height="140" width="234" x="820" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-31" parent="xsicGtn7vrXV-fT_VWEn-30" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="" vertex="1">
+          <mxGeometry height="120" width="216" x="18" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-32" parent="xsicGtn7vrXV-fT_VWEn-30" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="FormatAverageTransactionFilterNode" vertex="1">
+          <mxGeometry height="120" width="216" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-33" parent="xsicGtn7vrXV-fT_VWEn-30" style="html=1;dropTarget=0;whiteSpace=wrap;" value="«artifact»&lt;br&gt;&lt;b&gt;&lt;u&gt;filter.py&lt;/u&gt;&lt;/b&gt;" vertex="1">
+          <mxGeometry height="62" width="124" x="41.5" y="58" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-34" parent="xsicGtn7vrXV-fT_VWEn-33" style="shape=module;jettyWidth=8;jettyHeight=4;fillColor=#d5e8d4;strokeColor=#82b366;" value="" vertex="1">
+          <mxGeometry height="20" relative="1" width="20" x="1" as="geometry">
+            <mxPoint x="-27" y="7" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-35" connectable="0" parent="xsicGtn7vrXV-fT_VWEn-18" style="group" value="" vertex="1">
+          <mxGeometry height="140" width="234" x="300" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-36" parent="xsicGtn7vrXV-fT_VWEn-35" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="" vertex="1">
+          <mxGeometry height="120" width="216" x="18" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-37" parent="xsicGtn7vrXV-fT_VWEn-35" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="AmountAverageAggregatorNode" vertex="1">
+          <mxGeometry height="120" width="216" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-38" parent="xsicGtn7vrXV-fT_VWEn-35" style="html=1;dropTarget=0;whiteSpace=wrap;" value="«artifact»&lt;br&gt;&lt;b&gt;&lt;u&gt;aggregate.py&lt;/u&gt;&lt;/b&gt;" vertex="1">
+          <mxGeometry height="62" width="124" x="41.5" y="58" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-39" parent="xsicGtn7vrXV-fT_VWEn-38" style="shape=module;jettyWidth=8;jettyHeight=4;fillColor=#f8cecc;strokeColor=#b85450;" value="" vertex="1">
+          <mxGeometry height="20" relative="1" width="20" x="1" as="geometry">
+            <mxPoint x="-27" y="7" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-132" parent="xsicGtn7vrXV-fT_VWEn-18" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;i&gt;UC3&lt;/i&gt;" vertex="1">
+          <mxGeometry height="30" width="60" x="1040" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-40" connectable="0" parent="1" style="group" value="" vertex="1">
+          <mxGeometry height="140" width="234" x="330" y="563" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-41" parent="xsicGtn7vrXV-fT_VWEn-40" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="" vertex="1">
+          <mxGeometry height="120" width="216" x="18" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-42" parent="xsicGtn7vrXV-fT_VWEn-40" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="TransactionFilterNode" vertex="1">
+          <mxGeometry height="120" width="216" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-43" parent="xsicGtn7vrXV-fT_VWEn-40" style="html=1;dropTarget=0;whiteSpace=wrap;" value="«artifact»&lt;br&gt;&lt;b&gt;&lt;u&gt;filter.py&lt;/u&gt;&lt;/b&gt;" vertex="1">
+          <mxGeometry height="62" width="124" x="41.5" y="58" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-44" parent="xsicGtn7vrXV-fT_VWEn-43" style="shape=module;jettyWidth=8;jettyHeight=4;fillColor=#d5e8d4;strokeColor=#82b366;" value="" vertex="1">
+          <mxGeometry height="20" relative="1" width="20" x="1" as="geometry">
+            <mxPoint x="-27" y="7" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-45" connectable="0" parent="1" style="group" value=" " vertex="1">
+          <mxGeometry height="69" width="159" x="760.5" y="855.5" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-46" parent="xsicGtn7vrXV-fT_VWEn-45" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="RabbitMqMiddlewareNode" vertex="1">
+          <mxGeometry height="69" width="159" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-47" connectable="0" parent="1" style="group" value="" vertex="1">
+          <mxGeometry height="123" width="205.59" x="344.1999999999998" y="422.5" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-48" parent="xsicGtn7vrXV-fT_VWEn-47" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="GatewayNode" vertex="1">
+          <mxGeometry height="105.42857142857143" width="189.7753846153846" y="17.57142857142857" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-49" parent="xsicGtn7vrXV-fT_VWEn-47" style="html=1;dropTarget=0;whiteSpace=wrap;" value="«artifact»&lt;br&gt;&lt;b&gt;&lt;u&gt;gateway.py&lt;/u&gt;&lt;/b&gt;" vertex="1">
+          <mxGeometry height="54.47142857142857" width="108.94512820512821" x="36.46147435897436" y="50.957142857142856" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-50" parent="xsicGtn7vrXV-fT_VWEn-49" style="shape=module;jettyWidth=8;jettyHeight=4;fillColor=#ffe6cc;strokeColor=#d79b00;" value="" vertex="1">
+          <mxGeometry height="20" relative="1" width="20" x="1" as="geometry">
+            <mxPoint x="-27" y="7" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-51" connectable="0" parent="1" style="group" value="" vertex="1">
+          <mxGeometry height="140" width="234" x="330" y="722.2800000000002" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-52" parent="xsicGtn7vrXV-fT_VWEn-51" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="" vertex="1">
+          <mxGeometry height="120" width="216" x="18" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-53" parent="xsicGtn7vrXV-fT_VWEn-51" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="ClientResultsJoinNode" vertex="1">
+          <mxGeometry height="120" width="216" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-54" parent="xsicGtn7vrXV-fT_VWEn-51" style="html=1;dropTarget=0;whiteSpace=wrap;" value="«artifact»&lt;br&gt;&lt;b&gt;&lt;u&gt;join.py&lt;/u&gt;&lt;/b&gt;" vertex="1">
+          <mxGeometry height="62" width="124" x="41.5" y="58" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-55" parent="xsicGtn7vrXV-fT_VWEn-54" style="shape=module;jettyWidth=8;jettyHeight=4;fillColor=#e1d5e7;strokeColor=#9673a6;" value="" vertex="1">
+          <mxGeometry height="20" relative="1" width="20" x="1" as="geometry">
+            <mxPoint x="-27" y="7" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-56" connectable="0" parent="1" style="group" value="" vertex="1">
+          <mxGeometry height="951" width="320" x="1150" y="429" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-57" parent="xsicGtn7vrXV-fT_VWEn-56" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;dashed=1;dashPattern=8 8;" value="" vertex="1">
+          <mxGeometry height="360" width="300" x="10" y="11" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-58" parent="xsicGtn7vrXV-fT_VWEn-56" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;dashed=1;dashPattern=8 8;" value="" vertex="1">
+          <mxGeometry height="360" width="300" x="10" y="381" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-59" parent="xsicGtn7vrXV-fT_VWEn-56" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;dashed=1;dashPattern=8 8;" value="" vertex="1">
+          <mxGeometry height="951" width="320" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-60" connectable="0" parent="xsicGtn7vrXV-fT_VWEn-56" style="group" value="" vertex="1">
+          <mxGeometry height="140" width="234" x="40" y="771" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-61" parent="xsicGtn7vrXV-fT_VWEn-60" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="" vertex="1">
+          <mxGeometry height="120" width="216" x="18" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-62" parent="xsicGtn7vrXV-fT_VWEn-60" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="BankIDMergeNode" vertex="1">
+          <mxGeometry height="120" width="216" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-63" parent="xsicGtn7vrXV-fT_VWEn-60" style="html=1;dropTarget=0;whiteSpace=wrap;" value="«artifact»&lt;br&gt;&lt;b&gt;&lt;u&gt;merge.py&lt;/u&gt;&lt;/b&gt;" vertex="1">
+          <mxGeometry height="62" width="124" x="41.5" y="58" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-64" parent="xsicGtn7vrXV-fT_VWEn-63" style="shape=module;jettyWidth=8;jettyHeight=4;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" value="" vertex="1">
+          <mxGeometry height="20" relative="1" width="20" x="1" as="geometry">
+            <mxPoint x="-27" y="7" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-65" connectable="0" parent="xsicGtn7vrXV-fT_VWEn-56" style="group" value="" vertex="1">
+          <mxGeometry height="260" width="234" x="40" y="412" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-66" parent="xsicGtn7vrXV-fT_VWEn-65" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="" vertex="1">
+          <mxGeometry height="120" width="216" x="18" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-67" parent="xsicGtn7vrXV-fT_VWEn-65" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="BankMaxAmountGroupByNode" vertex="1">
+          <mxGeometry height="120" width="216" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-68" parent="xsicGtn7vrXV-fT_VWEn-65" style="html=1;dropTarget=0;whiteSpace=wrap;" value="«artifact»&lt;br&gt;&lt;b&gt;&lt;u&gt;group_by.py&lt;/u&gt;&lt;/b&gt;" vertex="1">
+          <mxGeometry height="62" width="124" x="41.5" y="58" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-69" parent="xsicGtn7vrXV-fT_VWEn-68" style="shape=module;jettyWidth=8;jettyHeight=4;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="" vertex="1">
+          <mxGeometry height="20" relative="1" width="20" x="1" as="geometry">
+            <mxPoint x="-27" y="7" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-70" connectable="0" parent="xsicGtn7vrXV-fT_VWEn-56" style="group" value="" vertex="1">
+          <mxGeometry height="140" width="234" x="39" y="38.4699999999998" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-71" parent="xsicGtn7vrXV-fT_VWEn-70" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="" vertex="1">
+          <mxGeometry height="120" width="216" x="18" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-72" parent="xsicGtn7vrXV-fT_VWEn-70" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="BankIdBankNameGroupByNode" vertex="1">
+          <mxGeometry height="120" width="216" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-73" parent="xsicGtn7vrXV-fT_VWEn-70" style="html=1;dropTarget=0;whiteSpace=wrap;" value="«artifact»&lt;br&gt;&lt;b&gt;&lt;u&gt;group_by.py&lt;/u&gt;&lt;/b&gt;" vertex="1">
+          <mxGeometry height="62" width="124" x="41.5" y="58" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-74" parent="xsicGtn7vrXV-fT_VWEn-73" style="shape=module;jettyWidth=8;jettyHeight=4;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="" vertex="1">
+          <mxGeometry height="20" relative="1" width="20" x="1" as="geometry">
+            <mxPoint x="-27" y="7" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-75" connectable="0" parent="xsicGtn7vrXV-fT_VWEn-56" style="group" value="" vertex="1">
+          <mxGeometry height="140" width="234" x="40" y="570.5" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-76" parent="xsicGtn7vrXV-fT_VWEn-75" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="" vertex="1">
+          <mxGeometry height="120" width="216" x="18" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-77" parent="xsicGtn7vrXV-fT_VWEn-75" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="BankMaxAmountAggregatorNode" vertex="1">
+          <mxGeometry height="120" width="216" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-78" parent="xsicGtn7vrXV-fT_VWEn-75" style="html=1;dropTarget=0;whiteSpace=wrap;" value="«artifact»&lt;br&gt;&lt;b&gt;&lt;u&gt;aggregate.py&lt;/u&gt;&lt;/b&gt;" vertex="1">
+          <mxGeometry height="62" width="124" x="41.5" y="58" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-79" parent="xsicGtn7vrXV-fT_VWEn-78" style="shape=module;jettyWidth=8;jettyHeight=4;fillColor=#f8cecc;strokeColor=#b85450;" value="" vertex="1">
+          <mxGeometry height="20" relative="1" width="20" x="1" as="geometry">
+            <mxPoint x="-27" y="7" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-80" parent="xsicGtn7vrXV-fT_VWEn-56" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="" vertex="1">
+          <mxGeometry height="120" width="216" x="57" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-81" parent="xsicGtn7vrXV-fT_VWEn-56" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="BankNameAggregatorNode" vertex="1">
+          <mxGeometry height="120" width="216" x="39" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-82" parent="xsicGtn7vrXV-fT_VWEn-56" style="html=1;dropTarget=0;whiteSpace=wrap;" value="«artifact»&lt;br&gt;&lt;b&gt;&lt;u&gt;aggregate.py&lt;/u&gt;&lt;/b&gt;" vertex="1">
+          <mxGeometry height="62" width="124" x="80.5" y="258" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-83" parent="xsicGtn7vrXV-fT_VWEn-82" style="shape=module;jettyWidth=8;jettyHeight=4;fillColor=#f8cecc;strokeColor=#b85450;" value="" vertex="1">
+          <mxGeometry height="20" relative="1" width="20" x="1" as="geometry">
+            <mxPoint x="-27" y="7" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-129" parent="xsicGtn7vrXV-fT_VWEn-56" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;i&gt;UC2&lt;/i&gt;" vertex="1">
+          <mxGeometry height="30" width="60" x="260" y="921" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-84" connectable="0" parent="1" style="group" value="" vertex="1">
+          <mxGeometry height="700" width="320" x="290" y="910" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-85" parent="xsicGtn7vrXV-fT_VWEn-84" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;dashed=1;dashPattern=8 8;" value="" vertex="1">
+          <mxGeometry height="700" width="320" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-86" connectable="0" parent="xsicGtn7vrXV-fT_VWEn-84" style="group" value="" vertex="1">
+          <mxGeometry height="640" width="260" x="40" y="39" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-87" parent="xsicGtn7vrXV-fT_VWEn-86" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="" vertex="1">
+          <mxGeometry height="120" width="216" x="18" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-88" parent="xsicGtn7vrXV-fT_VWEn-86" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="OriginDestinationGroupByNode" vertex="1">
+          <mxGeometry height="120" width="216" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-89" parent="xsicGtn7vrXV-fT_VWEn-86" style="html=1;dropTarget=0;whiteSpace=wrap;" value="«artifact»&lt;br&gt;&lt;b&gt;&lt;u&gt;group_by.py&lt;/u&gt;&lt;/b&gt;" vertex="1">
+          <mxGeometry height="62" width="124" x="41.5" y="58" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-90" parent="xsicGtn7vrXV-fT_VWEn-89" style="shape=module;jettyWidth=8;jettyHeight=4;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="" vertex="1">
+          <mxGeometry height="20" relative="1" width="20" x="1" as="geometry">
+            <mxPoint x="-27" y="7" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-91" connectable="0" parent="xsicGtn7vrXV-fT_VWEn-84" style="group" value="" vertex="1">
+          <mxGeometry height="140" width="234" x="40" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-92" parent="xsicGtn7vrXV-fT_VWEn-91" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="" vertex="1">
+          <mxGeometry height="120" width="216" x="18" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-93" parent="xsicGtn7vrXV-fT_VWEn-91" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="OneLengthPathsCountGroupByNode" vertex="1">
+          <mxGeometry height="120" width="216" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-94" parent="xsicGtn7vrXV-fT_VWEn-91" style="html=1;dropTarget=0;whiteSpace=wrap;" value="«artifact»&lt;br&gt;&lt;b&gt;&lt;u&gt;group_by.py&lt;/u&gt;&lt;/b&gt;" vertex="1">
+          <mxGeometry height="62" width="124" x="41.5" y="58" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-95" parent="xsicGtn7vrXV-fT_VWEn-94" style="shape=module;jettyWidth=8;jettyHeight=4;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="" vertex="1">
+          <mxGeometry height="20" relative="1" width="20" x="1" as="geometry">
+            <mxPoint x="-27" y="7" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-96" connectable="0" parent="xsicGtn7vrXV-fT_VWEn-84" style="group" value="" vertex="1">
+          <mxGeometry height="140" width="234" x="40" y="519" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-97" parent="xsicGtn7vrXV-fT_VWEn-96" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="" vertex="1">
+          <mxGeometry height="120" width="216" x="18" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-98" parent="xsicGtn7vrXV-fT_VWEn-96" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="OneLengthPathCountFilterNode" vertex="1">
+          <mxGeometry height="120" width="216" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-99" parent="xsicGtn7vrXV-fT_VWEn-96" style="html=1;dropTarget=0;whiteSpace=wrap;" value="«artifact»&lt;br&gt;&lt;b&gt;&lt;u&gt;filter.py&lt;/u&gt;&lt;/b&gt;" vertex="1">
+          <mxGeometry height="62" width="124" x="41.5" y="58" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-100" parent="xsicGtn7vrXV-fT_VWEn-99" style="shape=module;jettyWidth=8;jettyHeight=4;fillColor=#d5e8d4;strokeColor=#82b366;" value="" vertex="1">
+          <mxGeometry height="20" relative="1" width="20" x="1" as="geometry">
+            <mxPoint x="-27" y="7" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-101" connectable="0" parent="xsicGtn7vrXV-fT_VWEn-84" style="group" value="" vertex="1">
+          <mxGeometry height="140" width="234" x="40" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-102" parent="xsicGtn7vrXV-fT_VWEn-101" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="" vertex="1">
+          <mxGeometry height="120" width="216" x="18" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-103" parent="xsicGtn7vrXV-fT_VWEn-101" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="OneLengthPathAggregatorNode" vertex="1">
+          <mxGeometry height="120" width="216" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-104" parent="xsicGtn7vrXV-fT_VWEn-101" style="html=1;dropTarget=0;whiteSpace=wrap;" value="«artifact»&lt;br&gt;&lt;b&gt;&lt;u&gt;aggregate.py&lt;/u&gt;&lt;/b&gt;" vertex="1">
+          <mxGeometry height="62" width="124" x="41.5" y="58" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-105" parent="xsicGtn7vrXV-fT_VWEn-104" style="shape=module;jettyWidth=8;jettyHeight=4;fillColor=#f8cecc;strokeColor=#b85450;" value="" vertex="1">
+          <mxGeometry height="20" relative="1" width="20" x="1" as="geometry">
+            <mxPoint x="-27" y="7" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-131" parent="xsicGtn7vrXV-fT_VWEn-84" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;i&gt;UC4&lt;/i&gt;" vertex="1">
+          <mxGeometry height="30" width="60" x="260" y="670" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-106" edge="1" parent="1" source="xsicGtn7vrXV-fT_VWEn-27" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;endFill=0;edgeStyle=orthogonalEdgeStyle;" target="xsicGtn7vrXV-fT_VWEn-46">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="438" y="400" />
+              <mxPoint x="680" y="400" />
+              <mxPoint x="680" y="500" />
+              <mxPoint x="800" y="500" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-107" edge="1" parent="1" source="xsicGtn7vrXV-fT_VWEn-37" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;endFill=0;edgeStyle=orthogonalEdgeStyle;" target="xsicGtn7vrXV-fT_VWEn-46">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="700" y="480" />
+              <mxPoint x="820" y="480" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-108" edge="1" parent="1" source="xsicGtn7vrXV-fT_VWEn-22" style="edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=none;endFill=0;" target="xsicGtn7vrXV-fT_VWEn-46">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="958" y="480" />
+              <mxPoint x="840" y="480" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-109" edge="1" parent="1" source="xsicGtn7vrXV-fT_VWEn-32" style="edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=none;endFill=0;" target="xsicGtn7vrXV-fT_VWEn-46">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1218" y="400" />
+              <mxPoint x="980" y="400" />
+              <mxPoint x="980" y="500" />
+              <mxPoint x="860" y="500" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-110" edge="1" parent="1" source="xsicGtn7vrXV-fT_VWEn-72" style="edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=none;endFill=0;" target="xsicGtn7vrXV-fT_VWEn-46">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1160" y="548" />
+              <mxPoint x="1160" y="690" />
+              <mxPoint x="1050" y="690" />
+              <mxPoint x="1050" y="870" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-111" edge="1" parent="1" source="xsicGtn7vrXV-fT_VWEn-81" style="edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=none;endFill=0;" target="xsicGtn7vrXV-fT_VWEn-46">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1070" y="709" />
+              <mxPoint x="1070" y="880" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-112" edge="1" parent="1" source="xsicGtn7vrXV-fT_VWEn-67" style="edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=none;endFill=0;" target="xsicGtn7vrXV-fT_VWEn-46">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1070" y="921" />
+              <mxPoint x="1070" y="890" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-113" edge="1" parent="1" source="xsicGtn7vrXV-fT_VWEn-77" style="edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=none;endFill=0;" target="xsicGtn7vrXV-fT_VWEn-46">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1160" y="1080" />
+              <mxPoint x="1160" y="940" />
+              <mxPoint x="1050" y="940" />
+              <mxPoint x="1050" y="900" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-114" edge="1" parent="1" source="xsicGtn7vrXV-fT_VWEn-62" style="edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=none;endFill=0;" target="xsicGtn7vrXV-fT_VWEn-46">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1140" y="1280" />
+              <mxPoint x="1140" y="960" />
+              <mxPoint x="1030" y="960" />
+              <mxPoint x="1030" y="910" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-115" edge="1" parent="1" source="xsicGtn7vrXV-fT_VWEn-5" style="edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=none;endFill=0;" target="xsicGtn7vrXV-fT_VWEn-46">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1298" y="1380" />
+              <mxPoint x="870" y="1380" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-116" edge="1" parent="1" source="xsicGtn7vrXV-fT_VWEn-15" style="edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=none;endFill=0;" target="xsicGtn7vrXV-fT_VWEn-46">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1036" y="1400" />
+              <mxPoint x="850" y="1400" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-117" edge="1" parent="1" source="xsicGtn7vrXV-fT_VWEn-10" style="edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=none;endFill=0;" target="xsicGtn7vrXV-fT_VWEn-46">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="778" y="1400" />
+              <mxPoint x="830" y="1400" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-118" edge="1" parent="1" source="xsicGtn7vrXV-fT_VWEn-98" style="edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=none;endFill=0;" target="xsicGtn7vrXV-fT_VWEn-46">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="590" y="1509" />
+              <mxPoint x="590" y="1380" />
+              <mxPoint x="810" y="1380" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-119" edge="1" parent="1" source="xsicGtn7vrXV-fT_VWEn-103" style="edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=none;endFill=0;" target="xsicGtn7vrXV-fT_VWEn-46">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="610" y="1350" />
+              <mxPoint x="610" y="1070" />
+              <mxPoint x="710" y="1070" />
+              <mxPoint x="710" y="920" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-120" edge="1" parent="1" source="xsicGtn7vrXV-fT_VWEn-93" style="edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=none;endFill=0;" target="xsicGtn7vrXV-fT_VWEn-46">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="590" y="1190" />
+              <mxPoint x="590" y="1050" />
+              <mxPoint x="690" y="1050" />
+              <mxPoint x="690" y="910" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-121" edge="1" parent="1" source="xsicGtn7vrXV-fT_VWEn-88" style="edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=none;endFill=0;" target="xsicGtn7vrXV-fT_VWEn-46">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="670" y="1029" />
+              <mxPoint x="670" y="900" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-122" edge="1" parent="1" source="xsicGtn7vrXV-fT_VWEn-53" style="edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=none;endFill=0;" target="xsicGtn7vrXV-fT_VWEn-46">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="670" y="802" />
+              <mxPoint x="670" y="890" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-123" edge="1" parent="1" source="xsicGtn7vrXV-fT_VWEn-42" style="edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=none;endFill=0;" target="xsicGtn7vrXV-fT_VWEn-46">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="590" y="643" />
+              <mxPoint x="590" y="780" />
+              <mxPoint x="690" y="780" />
+              <mxPoint x="690" y="880" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-124" edge="1" parent="1" source="xsicGtn7vrXV-fT_VWEn-48" style="edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=none;endFill=0;" target="xsicGtn7vrXV-fT_VWEn-46">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="610" y="493" />
+              <mxPoint x="610" y="760" />
+              <mxPoint x="710" y="760" />
+              <mxPoint x="710" y="870" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-125" connectable="0" parent="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="&amp;lt;&amp;lt;AMQP 0-9-1&amp;gt;&amp;gt;" vertex="1">
+          <mxGeometry x="840" y="972.5" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-126" connectable="0" parent="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="&amp;lt;&amp;lt;AMQP 0-9-1&amp;gt;&amp;gt;" vertex="1">
+          <mxGeometry x="970" y="892.5" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-127" connectable="0" parent="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="&amp;lt;&amp;lt;AMQP 0-9-1&amp;gt;&amp;gt;" vertex="1">
+          <mxGeometry x="830" y="822" as="geometry" />
+        </mxCell>
+        <mxCell id="xsicGtn7vrXV-fT_VWEn-128" connectable="0" parent="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="&amp;lt;&amp;lt;AMQP 0-9-1&amp;gt;&amp;gt;" vertex="1">
+          <mxGeometry x="710" y="896.25" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
