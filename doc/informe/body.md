@@ -161,8 +161,39 @@ Dicho esto, en el siguiente diagrama, se muestra cómo podrían desplegarse los 
 
 ## Vista de Desarrollo
 ### Paquetes
+Para la distribución de archivos fuente, se optó por mantener un directorio para cada *tipo* de controlador en `controllers/`, con su archivo proceso fuente, su correspondiente Dockerfile y sus dependencias específicas.  
+También se centralizaron las dependencias comunes en `common/`, en particular, `net/` y `data/`, que corresponden a la comunicación por red y al modelo de datos con los que interactúan los controladores, respectivamente.
 
-![](../diagrams/07packages-diagram.png){width=70% .center}
+![](../diagrams/15packages-diagram.png){width=70% .center}
+
+La razón por la cuál se pueden generalizar los controladores es el patrón de implementación por el que se optó. Un archivo fuente para levantar el proceso del controlador, que puede ser configurado para filtrar según la implementación de la interfaz que corresponda.  
+
+![](../diagrams/15packages-diagram-filter.png){width=70% .center}
+
+Por ejemplo, el código fuente para un Filter consta  
+del controlador
+```py
+class Filter:
+    def __init__(self,filter_fn: FilterFn):
+        # ...
+```
+
+de la interfaz para la función de filtro
+```py
+class FilterFn:
+    @abstractmethod
+    def filter(self, list[Data]) -> list[Data]:
+        pass
+```
+
+y de la implementación particular del filtro que se quiera correr
+```py
+class FilterByCurrecyUSD:
+    def filter(self, list[Transaction]) -> list[Transaction]:
+        # ...
+```
+
+En este ejemplo también se puede observar el uso de la interfaz `Data` y una implementación `Transaction` para la misma.
 
 \newpage
 
