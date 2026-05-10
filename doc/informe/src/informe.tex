@@ -1,0 +1,541 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{graphicx}
+\usepackage[margin=1in]{geometry}
+\usepackage{lipsum}
+\usepackage{float}
+\usepackage{minted}
+\usepackage{subcaption}
+
+\title{\textbf{Money Laundering Analysis}}
+\date{\today}
+
+\begin{document}
+
+\begin{titlepage}
+  \centering
+  \vspace*{5cm}
+
+  \includegraphics[width=0.4\textwidth]{img/logo-fiuba.png}\\[1cm]
+
+  {\Huge \textbf{Money Laundering Analysis}}\\[0.2cm]
+
+  {
+    \large \textbf{Sistemas Distribuidos}\\[0.2cm]
+    \begin{tabular}{l l}
+      108397 & Ordoñez Alejo\\
+      107863 & Minervino Lorenzo\\
+      106010 & Valsagna Federico\\
+    \end{tabular}
+  }
+
+  \vfill
+
+  {\large 1c2026}
+\end{titlepage}
+
+\tableofcontents
+
+\newpage
+\section{Arquitectura del sistema}
+El sistema recibe un conjunto de datos de transacciones bancarias
+desde uno o más clientes simultáneamente y devuelve los resultados de
+cinco análisis distintos. La diversidad de los requerimientos, que
+abarcan desde un filtro simple hasta la detección de patrones en
+grafos y la consulta a servicios externos, motivó el diseño de una
+arquitectura de procesamiento distribuido en pipeline, donde cada
+caso de uso recorre una cadena de nodos especializados de forma
+concurrente con los demás.
+
+\section{Casos de uso}
+Una petición del cliente hace que el sistema procese los 5 casos de uso:
+
+\begin{itemize}
+  \item \textbf{UC1} Transacciones en USD con monto menor a \$50
+  \item \textbf{UC2} Monto de la máxima transacción en USD para cada banco.
+  \item \textbf{UC3} Transacciones en USD en el período 2022-09-06 al
+    2022-09-15 (período B), cuyo monto sea menor a un centésimo del
+    promedio de monto para su formato en el período 2022-09-01 al
+    2022-09-05 (período A).
+  \item \textbf{UC4} Cuentas que cumplan con el patrón \textit{scatter-gather}
+    con una cuenta
+    de separación y una cantidad mínima de cuentas intermedias igual
+    a 5; en el período A.
+  \item \textbf{UC5} Cantidad de transacciones con formato de pago
+    \textit{Wire} o \textit{ACH} en
+    el período A, cuyo monto en USD sea menor a 1.
+\end{itemize}
+
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=0.6\textwidth]{../diagrams/08use-cases-diagram.png}\\[1cm]
+  \caption{Diagrama de casos de uso}
+\end{figure}
+
+Los cinco casos de uso presentan niveles crecientes de complejidad:
+desde un filtro directo (UC1) hasta la detección de estructuras en un
+grafo de transacciones (UC4) o la normalización de moneda contra un
+servicio externo (UC5). Esta escalera de complejidad da forma a la
+arquitectura del sistema y se verá reflejada en cada una de las
+vistas que siguen.
+
+\newpage
+\section{DAG de procesamiento}
+
+El conjunto de pipelines puede modelarse como un DAG (\textit{Directed
+Acyclic Graph}). La ausencia de ciclos garantiza que el procesamiento
+siempre converge y que las dependencias entre etapas son explícitas:
+un nodo solo puede procesar datos cuando sus predecesores ya los produjeron.
+
+\subsection{\textbf{UC1} — Filtro directo}
+UC1 establece el patrón base del sistema. El \textbf{Gateway} entrega el
+registro completo \texttt{(origin, destination, amount, format)} y el
+\textbf{Filter} aplica dos condiciones simultáneas: moneda USD y monto
+menor a \$50. Los registros que las satisfacen salen como \texttt{(origin,
+destination, amount)} hacia el \textbf{Join}. El campo \texttt{format} se
+descarta en esta etapa porque no aporta información al resultado.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.4\textwidth]{../diagrams/11dag-diagram-uc1.png}\\[1cm]
+  \caption{Diagrama DAG UC1}
+\end{figure}
+
+Cada transacción se evalúa de forma completamente independiente de
+las demás. No hay computación entre filas, por lo que el pipeline
+puede procesar los registros en cualquier orden y en paralelo sin
+afectar la correctitud del resultado.
+
+\subsection{\textbf{UC2} — Máximo por banco}
+UC2 introduce dos conceptos nuevos respecto de UC1: múltiples fuentes
+de datos y agregación en dos etapas. Primero se distribuyen dos
+streams simultáneamente: registros de transacciones \texttt{(bank\_id,
+origin, amount)} hacia el pipeline de filtrado, y registros de
+cuentas \texttt{(bank\_id, bank\_name)} hacia un \textbf{GroupBy} de
+resolución de
+nombres que elimina registros que duplican la información con el
+nombre del banco.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.4\textwidth]{../diagrams/11dag-diagram-uc2.png}\\[1cm]
+  \caption{Diagrama DAG UC2}
+\end{figure}
+
+El pipeline de transacciones filtra por USD y luego el GroupBy
+calcula el máximo de \texttt{amount} por \texttt{bank\_id} dentro de
+cada partición.
+El \textbf{Aggregate} consolida esos máximos parciales en el máximo global
+definitivo por banco.
+
+\subsection{\textbf{UC3} — Comparación entre períodos}
+UC3 requiere comparar transacciones de dos períodos distintos: el
+umbral \texttt{(amount < promedio\_de\_formato / 100)} no es un valor fijo
+sino que depende del promedio global de cada formato en el período A,
+que solo se conoce una vez que se procesaron todos los datos de ese período.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.4\textwidth]{../diagrams/11dag-diagram-uc3.png}\\[1cm]
+  \caption{Diagrama DAG UC3}
+\end{figure}
+
+Primero se divide el stream de datos en dos bifurcaciones a ser
+procesadas en paralelo: una con currency USD y período A y la otra
+con currency USD y período B.
+El pipeline del período A materializa los promedios por formato: el
+GroupBy format Sum amount Count acumula suma y conteo por formato en
+cada partición, y el Aggregate computa el promedio real
+(\texttt{sum/count}). La salida es \texttt{(format, average)}.
+El pipeline del período B produce el stream crudo de transacciones
+candidatas: \texttt{(origin, amount, format)}.
+El Merge combina ambas salidas usando el formato como clave, de modo
+que cada transacción del período B queda asociada con el promedio de
+su formato en el período A.
+Un Filter final aplica la condición \texttt{amount < average/100} y produce
+\texttt{(origin, amount)} para el Join.
+
+\subsection{\textbf{UC4} — Patrón scatter-gather}
+UC4 requiere detectar el patrón \textit{scatter-gather} en el grafo de
+transacciones: una cuenta origen dispersa fondos hacia múltiples
+intermediarios, que los concentran en una cuenta destino. Esta
+detección no puede hacerse registro a registro.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.4\textwidth]{../diagrams/11dag-diagram-uc4.png}\\[1cm]
+  \caption{Diagrama DAG UC4}
+\end{figure}
+
+Después del filtro inicial (currency USD y período A), el GroupBy
+construye la representación del grafo: para cada nodo acumula el
+conjunto de predecesores y sucesores observados. La salida es \texttt{(node,
+predecessors, successors)}.
+El próximo GroupBy toma esa representación y cuenta las rutas de un
+salto para cada par \texttt{(origin, destination)}: la cantidad de cuentas
+que sirven como intermediario directo entre ese origen y ese destino.
+Este conteo corresponde directamente al número de cuentas
+intermediarias en el patrón scatter-gather.
+Por último, el Aggregate consolida los conteos parciales de las
+distintas instancias del GroupBy, produciendo el conteo global
+definitivo por par, que es luego filtrado según la cantidad mínima de
+cuentas intermediarias del patrón.
+El resultado \texttt{(origin, destination)} llega al Join.
+
+\subsection{\textbf{UC5} — Conteo con conversión de moneda}
+UC5 cuenta cuántas transacciones de formato Wire o ACH en el período
+A tienen un monto menor a \$1 USD. Los montos pueden estar expresados
+en cualquier moneda, por lo que la comparación con el umbral solo es
+válida después de convertir.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.4\textwidth]{../diagrams/11dag-diagram-uc5.png}\\[1cm]
+  \caption{Diagrama DAG UC5}
+\end{figure}
+
+El Filter inicial aplica formato (Wire o ACH) y período A para
+reducir el dataset antes de la etapa de conversión.
+El paso de conversión traduce cada monto a su equivalente en dólares.
+El Filter siguiente aplica el umbral de \$1. Las transacciones que lo
+superan llegan al GroupBy * Count, donde el \texttt{*} indica que no hay
+clave de agrupación: todos los registros se colapsan en un único
+contador global.
+Ese conteo es el resultado final de UC5.
+
+\section{Vista física}
+\subsection{Robustez}
+El diagrama de robustez muestra cómo se ejecutan los controladores en
+los pipelines: qué componentes concretos existen, qué colas los
+conectan, cuántas instancias corren en paralelo y qué estrategia de
+ruteo usa cada etapa.
+
+\subsubsection{UC1}
+El Filter puede correr con múltiples instancias en paralelo, cada una
+procesando una partición del stream. Dado que el Join también escala
+horizontalmente, todos los resultados de un mismo cliente deben
+llegar siempre a la misma instancia del Join. Esto se implementa
+mediante sharding por \texttt{client\_id} en la cola de salida del Filter.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.4\textwidth]{../diagrams/12robustness-diagram-uc1.png}\\[1cm]
+  \caption{Diagrama de Robustez UC1}
+\end{figure}
+
+La cola de Responses desacopla el Join del Gateway: el Join deposita
+los resultados en la cola y el Gateway los consume para cerrar la
+conexión correspondiente.
+
+\subsubsection{UC2}
+El Gateway publica en dos colas distintas: \texttt{Transactions} para el
+stream de transacciones y \texttt{Accounts} para el dataset de cuentas.
+Los pipelines para agregar el nombrel de banco y para obtener su
+monto máximo; corren en paralelo: el \texttt{GroupBy bank\_id On bank\_name}
+extrae asociaciones \texttt{(bank\_id, bank\_name)} de cada partición y el
+\texttt{Aggregate bank names} las consolida. El resultado se distribuye al
+Merge con sharding por texttt{bank\_id}.
+El \texttt{Merge On bank\_id} recibe máximos con texttt{bank\_id}
+como clave desde
+el pipeline de transacciones y nombres de banco desde el pipeline de cuentas.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.4\textwidth]{../diagrams/12robustness-diagram-uc2.png}\\[1cm]
+  \caption{Diagrama de Robustez UC2}
+\end{figure}
+
+\subsubsection{UC3}
+El Filter produce dos colas de salida distintas: \texttt{Filtered by USD and
+period A} y \texttt{Filtered by USD and period B}. Además de filtrar por
+currency, rutea cada transacción al pipeline correspondiente según su
+fecha. Una transacción no puede pertenecer a ambos períodos, por lo
+que el ruteo es mutuamente exclusivo.
+El pipeline del período A usa shardeo por \texttt{format} entre el GroupBy y
+el Aggregate para que todos los registros del mismo formato lleguen a
+la misma instancia.
+Los promedios resultantes se distribuyen al Merge mediante *fan-out*:
+cada resultado del Aggregate se replica a todas las instancias del
+Merge. Cualquier instancia del Merge puede recibir transacciones del
+período B de cualquier formato y necesita los promedios de todos los
+formatos para evaluar la condición; el shardeo enviaría cada promedio
+a una sola instancia, mientras que el fan-out garantiza que todas
+tengan el contexto completo.
+El fan-out es aceptable dado que por la naturaleza de los datos del
+problema no puede haber demasiados formatos de pago; en particular,
+hay 7 formatos en el dataset de ejemplo entero.
+
+Después del Merge, un segundo Filter aplica la condición \texttt{amount <
+average/100} y produce la cola final hacia el Join.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.4\textwidth]{../diagrams/12robustness-diagram-uc3.png}\\[1cm]
+  \caption{Diagrama de Robustez UC3}
+\end{figure}
+
+\subsubsection{UC4}
+El \texttt{GroupBy origin/destination Compute graph} genera para cada nodo
+la lista de predecesores y sucesores; para luego rutear por \texttt{node} la
+información resultante de los grafos a \texttt{GroupBy one length paths
+Count}, cuenta los intermediarios por par \texttt{(origin, destination)}.
+Un Filter final descarta los pares cuyo conteo de intermediarios es
+inferior a 5 y los envía a la cola de resultados del caso de uso, que
+llega al Join.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.4\textwidth]{../diagrams/12robustness-diagram-uc4.png}\\[1cm]
+  \caption{Diagrama de Robustez UC4}
+\end{figure}
+
+\subsubsection{UC5}
+El controlador \texttt{Convert amount into USD} puede escalar
+horizontalmente de forma independiente del Filter. Se optó por
+permitir este escalamiento para más libertad en el despliegue del
+sistema, pero la operación que se realiza en esta instancia es
+puramente I/O intensive, y por tanto no requiere mayor poder de
+cómputo. Se emite una sola request al servicio externo de conversión
+por batch, amortizando la latencia de red sobre el conjunto del lote.
+El GroupBy produce conteos parciales, uno por instancia, que se
+terminan shardeando por \texttt{client\_id} hacia el Join.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.4\textwidth]{../diagrams/12robustness-diagram-uc5.png}\\[1cm]
+  \caption{Diagrama de Robustez UC5}
+\end{figure}
+
+\subsubsection{Overview del sistema completo}
+
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=0.9\textwidth]{../diagrams/12robustness-diagram.png}\\[1cm]
+  \caption{Diagrama de Robustez del sistema completo}
+\end{figure}
+
+El Filter es el nodo con una mayor cantidad de conexiones: recibe el
+stream completo de transacciones y produce múltiples colas
+clasificadas por período, formato y moneda. Su escalado horizontal
+genera una topología \textit{many-to-many} con los nodos downstream que debe
+gestionarse a nivel de exchanges y colas del broker.
+Esto se modeló así porque las alternativas que surgieron son:
+
+\begin{itemize}
+  \item Segregar el filtrado en distintas instancias de filter y
+    encadenarlas (por ejemplo filtrar primero por currency USD y después
+    por amount menor a \$50 en el primer caso de uso).
+  \item Segregar \textit{los filtros} en distintas instancias según el
+    filtro a aplicar.
+\end{itemize}
+
+El problema con estas alternativas es que por la naturaleza de los
+casos de uso, las cantidad de conexiones sería igual de grande, dado
+que la mayoría requieren primero filtrar por currency USD. Por otro
+lado, separar el filtrado en múltiples instancias hace que sea
+necesario recorrer los batches varias veces en vez de sólo una y
+rutear los registros en los batches de manera acorde. Además, la
+segunda alternativa es equivalente en robustez a escalar
+horizontalmente el único controlador Filter por el se terminó optando.
+
+Los ruteos por clave que se realizan hacia algunos de los
+controladores aggregate o Merge son necesarios para garantizar que
+todos los registros de un mismo grupo se aggreguen correctamente.
+Además se realizan en instancias del pipeline en las que se asegura
+que la cantidad de variantes por las que se hace es tan grande como
+para seguir aprovechando la estrategia \textit{multi-computing}.
+
+El último controlador Join está siempre shardeado por \texttt{client\_id},
+garantizando que todos los resultados parciales de un cliente,
+provenientes de cualquiera de las cinco pipelines, converjan en la
+instancia para poder construir la respuesta final.
+Este ruteo no se puede escapar, dado que necesariamente deben
+agruparse los resultados para cada cliente en algún momento. Pero
+podría parametrizarse la cantidad de instancias de Join según la
+cantidad de clientes distintos que se esperan.
+
+Los nodos Merge (UC2, UC3) son los únicos puntos donde se cruzan
+pipelines que provienen de fuentes distintas. Fuera de esos dos
+casos, cada pipeline corre de extremo a extremo sin interacción con las demás.
+
+\newpage
+\subsection{Despliegue}
+Para el despliegue del sistema se intentó desacoplar el mismo por
+completo de la \textit{vista lógica}: el hecho de que dos controladores
+realicen un filtrado, no debería impactar en la decisión de en qué
+nodos desplegarlos.
+Dicho esto, en el siguiente diagrama, se muestra cómo podrían
+desplegarse los procesos del pipeline de la manera más distribuida posible.
+\textit{Es posible que este despliegue se modifique en próximas iteraciones
+  del trabajo, de acuerdo a la relación de robustez que terminen
+teniendo los controladores en el pipeline.}
+
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=0.9\textwidth]{../diagrams/14deployment-diagram.png}\\[1cm]
+  \caption{Diagrama de despliegue}
+\end{figure}
+
+\section{Vista de desarrollo}
+\subsection{Paquetes}
+Para la distribución de archivos fuente, se optó por mantener un
+directorio para cada \textit{tipo} de controlador en
+\texttt{controllers/}, con su
+archivo proceso fuente, su correspondiente Dockerfile y sus
+dependencias específicas.
+También se centralizaron las dependencias comunes en \texttt{common/}, en
+particular, \texttt{net/} y \texttt{data/}, que corresponden a la
+comunicación por
+red y al modelo de datos con los que interactúan los controladores,
+respectivamente.
+
+\begin{figure}[!h]
+  \captionsetup[subfigure]{labelformat=empty}
+  \begin{subfigure}[b]{0.4\textwidth}
+    \includegraphics[width=\textwidth]{../diagrams/15packages-diagram.png}\\[1cm]
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[b]{0.4\textwidth}
+    \includegraphics[width=\textwidth]{../diagrams/15packages-diagram-filter.png}\\[1cm]
+    \caption{Diagrama de paquetes — \texttt{filter/}}
+  \end{subfigure}
+  \caption{Diagrama de paquetes}
+\end{figure}
+
+La razón por la cuál se pueden generalizar los controladores es el
+patrón de implementación por el que se optó. Un archivo fuente para
+levantar el proceso del controlador, que puede ser configurado para
+filtrar según la implementación de la interfaz que corresponda.
+
+Por ejemplo, el código fuente para un Filter consta
+del controlador
+\begin{minted}{python}
+class Filter:
+    def __init__(self,filter_fn: FilterFn):
+        # ...
+\end{minted}
+
+de la interfaz para la función de filtro
+\begin{minted}{python}
+class FilterFn:
+    @abstractmethod
+    def filter(self, list[Data]) -> list[Data]:
+        pass
+\end{minted}
+
+y de la implementación particular del filtro que se quiera correr
+\begin{minted}{python}
+class FilterByCurrecyUSD:
+    def filter(self, list[Transaction]) -> list[Transaction]:
+        # ...
+\end{minted}
+
+En este ejemplo también se puede observar el uso de la interfaz
+\texttt{Data} y una implementación \texttt{Transaction} para la misma.
+
+\newpage
+\section{Vista de procesos}
+\subsection{Actividades}
+\subsubsection{UC1}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth]{../diagrams/16activity-diagram-uc1.png}\\[1cm]
+  \caption{Diagrama de actividades — UC1}
+\end{figure}
+
+\subsubsection{UC2}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{../diagrams/16activity-diagram-uc2.png}\\[1cm]
+  \caption{Diagrama de actividades — UC2}
+\end{figure}
+
+\subsubsection{UC3}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{../diagrams/16activity-diagram-uc3.png}\\[1cm]
+  \caption{Diagrama de actividades — UC3}
+\end{figure}
+
+\subsubsection{UC4}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{../diagrams/16activity-diagram-uc4.png}\\[1cm]
+  \caption{Diagrama de actividades — UC4}
+\end{figure}
+
+\subsubsection{UC5}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{../diagrams/16activity-diagram-uc5.png}\\[1cm]
+  \caption{Diagrama de actividades — UC5}
+\end{figure}
+
+\subsection{Secuencia}
+\subsubsection{UC1}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.4\textwidth]{../diagrams/13sequence-diagram-uc1.png}\\[1cm]
+  \caption{Diagrama de secuencia — UC1}
+\end{figure}
+
+\subsubsection{UC2}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth]{../diagrams/13sequence-diagram-uc2.png}\\[1cm]
+  \caption{Diagrama de secuencia — UC2}
+\end{figure}
+
+\subsubsection{UC3}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth]{../diagrams/13sequence-diagram-uc3.png}\\[1cm]
+  \caption{Diagrama de secuencia — UC3}
+\end{figure}
+
+\subsubsection{UC4}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth]{../diagrams/13sequence-diagram-uc4.png}\\[1cm]
+  \caption{Diagrama de secuencia — UC4}
+\end{figure}
+
+\subsubsection{UC5}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth]{../diagrams/13sequence-diagram-uc5.png}\\[1cm]
+  \caption{Diagrama de secuencia — UC5}
+\end{figure}
+
+\newpage
+\section{Desarrollo}
+\subsection{Tareas a realizar}
+Para el desarrollo del trabajo, se decidió que cada uno de los
+integrantes realice la implementación de uno o más casos de uso de
+punta a punta; con el objetivo de que todos podamos tener un
+seguimiento del total funcionamiento del sistema, pero sin la
+necesidad de entrar de lleno en los detalles específicos de cada caso de uso.
+
+\subsection{Asignación}
+Aquellas tareas de las que dependan todas los casos, serán
+desarrolladas en una primera implementación por todos los miembros
+del equipo, y serán modificadas como se requiera por quien lo
+necesite a lo largo de la continuación del trabajo.
+El primer caso de uso será desarrollado en gran medida con la
+dinámica de *ping-pong pair-programming*; con el objetivo de usar el
+caso más simple para la interiorización de la implementación del
+trabajo para todos los miembros del equipo en paralelo.
+El resto de ítems quedan divididos de la siguiente manera:
+
+\begin{itemize}
+  \item UC1: Todos
+  \item UC2: Lorenzo Minervino
+  \item UC3: Valsagna Federico.
+  \item UC4: Ordoñez Alejo.
+  \item UC5: Lorenzo Minervino.
+\end{itemize}
+
+\end{document}

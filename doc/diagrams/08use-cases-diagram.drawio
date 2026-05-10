@@ -1,0 +1,94 @@
+<mxfile host="Electron">
+  <diagram name="Página-1" id="Mu_GaAytfO-CS8hw44fI">
+    <mxGraphModel dx="1645" dy="784" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="actor-client" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;strokeColor=default;strokeWidth=1;align=center;fontFamily=Helvetica;fontSize=12;fontColor=default;fillColor=default;" value="Client" vertex="1">
+          <mxGeometry height="60" width="30" x="120" y="525" as="geometry" />
+        </mxCell>
+        <mxCell id="uc-main" parent="1" style="ellipse;whiteSpace=wrap;html=1;" value="Analyze transaction data" vertex="1">
+          <mxGeometry height="90" width="150" x="300" y="510" as="geometry" />
+        </mxCell>
+        <mxCell id="uc1" parent="1" style="ellipse;whiteSpace=wrap;html=1;" value="UC1 -&lt;div&gt;Filter low-value USD transactions&lt;/div&gt;" vertex="1">
+          <mxGeometry height="90" width="170" x="570" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="uc2" parent="1" style="ellipse;whiteSpace=wrap;html=1;" value="UC2 -&lt;div&gt;Find maximum transaction amount by bank&lt;/div&gt;" vertex="1">
+          <mxGeometry height="90" width="170" x="570" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="uc3" parent="1" style="ellipse;whiteSpace=wrap;html=1;" value="UC3 -&lt;div&gt;Detect transactions below format average threshold&lt;/div&gt;" vertex="1">
+          <mxGeometry height="110" width="170" x="570" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="uc4" parent="1" style="ellipse;whiteSpace=wrap;html=1;" value="UC4 -&lt;div&gt;Detect scatter-gather patterns&lt;/div&gt;" vertex="1">
+          <mxGeometry height="90" width="170" x="570" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="uc5" parent="1" style="ellipse;whiteSpace=wrap;html=1;" value="UC5 -&lt;div&gt;Count low-value Wire or ACH transactions in USD&lt;/div&gt;" vertex="1">
+          <mxGeometry height="90" width="170" x="570" y="740" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-actor-main" edge="1" parent="1" source="actor-client" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;" target="uc-main">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-main-uc1" edge="1" parent="1" source="uc-main" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;dashed=1;" target="uc1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="500" y="555" />
+              <mxPoint x="500" y="275" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label-uc1" connectable="0" parent="edge-main-uc1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;" vertex="1">
+          <mxGeometry relative="1" x="-0.15" y="-1" as="geometry">
+            <mxPoint x="-5" y="-8" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-main-uc2" edge="1" parent="1" source="uc-main" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;dashed=1;" target="uc2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="500" y="555" />
+              <mxPoint x="500" y="395" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label-uc2" connectable="0" parent="edge-main-uc2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;" vertex="1">
+          <mxGeometry relative="1" x="-0.1" y="-1" as="geometry">
+            <mxPoint x="-5" y="-8" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-main-uc3" edge="1" parent="1" source="uc-main" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;dashed=1;" target="uc3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="label-uc3" connectable="0" parent="edge-main-uc3" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;" vertex="1">
+          <mxGeometry relative="1" x="-0.05" y="-1" as="geometry">
+            <mxPoint x="-5" y="-8" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-main-uc4" edge="1" parent="1" source="uc-main" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;dashed=1;" target="uc4">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="500" y="555" />
+              <mxPoint x="500" y="665" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label-uc4" connectable="0" parent="edge-main-uc4" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;" vertex="1">
+          <mxGeometry relative="1" x="-0.1" y="-1" as="geometry">
+            <mxPoint x="-5" y="-8" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-main-uc5" edge="1" parent="1" source="uc-main" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;dashed=1;" target="uc5">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="500" y="555" />
+              <mxPoint x="500" y="785" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label-uc5" connectable="0" parent="edge-main-uc5" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;" vertex="1">
+          <mxGeometry relative="1" x="-0.15" y="-1" as="geometry">
+            <mxPoint x="-5" y="-8" as="offset" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

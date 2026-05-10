@@ -1,0 +1,136 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.6.1 Chrome/142.0.7444.265 Electron/39.5.2 Safari/537.36" version="29.6.1">
+  <diagram id="uc4-sequence" name="UC4">
+    <mxGraphModel dx="861" dy="587" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="520" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="p1" parent="1" style="ellipse;shape=umlControl;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" value="&lt;b&gt;Client&lt;/b&gt;" vertex="1">
+          <mxGeometry height="80" width="70" x="35" y="15" as="geometry" />
+        </mxCell>
+        <mxCell id="p2" parent="1" style="ellipse;shape=umlControl;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;" value="&lt;b&gt;Gateway&lt;/b&gt;" vertex="1">
+          <mxGeometry height="80" width="70" x="145" y="15" as="geometry" />
+        </mxCell>
+        <mxCell id="p3" parent="1" style="ellipse;shape=umlControl;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" value="&lt;b&gt;Filter&lt;/b&gt;" vertex="1">
+          <mxGeometry height="80" width="70" x="255" y="15" as="geometry" />
+        </mxCell>
+        <mxCell id="p4" parent="1" style="ellipse;shape=umlControl;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" value="&lt;b&gt;GroupBy&lt;/b&gt;&lt;div&gt;origin / destination&lt;/div&gt;&lt;div&gt;&lt;b&gt;Compute&lt;/b&gt;&lt;/div&gt;&lt;div&gt;graph&lt;/div&gt;" vertex="1">
+          <mxGeometry height="80" width="70" x="370" y="15" as="geometry" />
+        </mxCell>
+        <mxCell id="p5" parent="1" style="ellipse;shape=umlControl;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" value="&lt;b&gt;GroupBy&lt;/b&gt;&lt;div&gt;one length&lt;/div&gt;&lt;div&gt;paths&lt;/div&gt;&lt;div&gt;&lt;b&gt;Count&lt;/b&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="80" width="70" x="510" y="15" as="geometry" />
+        </mxCell>
+        <mxCell id="p6" parent="1" style="ellipse;shape=umlControl;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" value="&lt;b&gt;Aggregate&lt;/b&gt;&lt;div&gt;one length&lt;/div&gt;&lt;div&gt;paths&lt;/div&gt;" vertex="1">
+          <mxGeometry height="80" width="70" x="650" y="15" as="geometry" />
+        </mxCell>
+        <mxCell id="p7" parent="1" style="ellipse;shape=umlControl;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" value="&lt;b&gt;Filter&lt;/b&gt;&lt;div&gt;scatter gather&lt;/div&gt;&lt;div&gt;&lt;b&gt;By&lt;/b&gt;&lt;/div&gt;&lt;div&gt;minimum paths&lt;/div&gt;" vertex="1">
+          <mxGeometry height="80" width="70" x="795" y="15" as="geometry" />
+        </mxCell>
+        <mxCell id="p8" parent="1" style="ellipse;shape=umlControl;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" value="&lt;b&gt;Join&lt;/b&gt;&lt;div&gt;results&lt;/div&gt;&lt;div&gt;&lt;b&gt;By&lt;/b&gt;&lt;/div&gt;&lt;div&gt;client&lt;/div&gt;" vertex="1">
+          <mxGeometry height="80" width="70" x="970" y="15" as="geometry" />
+        </mxCell>
+        <mxCell id="l1" edge="1" parent="1" style="endArrow=none;html=1;dashed=1;strokeColor=#BBBBBB;strokeWidth=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="70" y="95" as="sourcePoint" />
+            <mxPoint x="70" y="430" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l2" edge="1" parent="1" style="endArrow=none;html=1;dashed=1;strokeColor=#BBBBBB;strokeWidth=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="180" y="95" as="sourcePoint" />
+            <mxPoint x="180" y="430" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l3" edge="1" parent="1" style="endArrow=none;html=1;dashed=1;strokeColor=#BBBBBB;strokeWidth=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="290" y="95" as="sourcePoint" />
+            <mxPoint x="290" y="430" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l4" edge="1" parent="1" style="endArrow=none;html=1;dashed=1;strokeColor=#BBBBBB;strokeWidth=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="405" y="95" as="sourcePoint" />
+            <mxPoint x="405" y="430" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l5" edge="1" parent="1" style="endArrow=none;html=1;dashed=1;strokeColor=#BBBBBB;strokeWidth=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="545" y="95" as="sourcePoint" />
+            <mxPoint x="545" y="430" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l6" edge="1" parent="1" style="endArrow=none;html=1;dashed=1;strokeColor=#BBBBBB;strokeWidth=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="685" y="95" as="sourcePoint" />
+            <mxPoint x="685" y="430" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l7" edge="1" parent="1" style="endArrow=none;html=1;dashed=1;strokeColor=#BBBBBB;strokeWidth=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="830" y="95" as="sourcePoint" />
+            <mxPoint x="830" y="430" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l8" edge="1" parent="1" style="endArrow=none;html=1;dashed=1;strokeColor=#BBBBBB;strokeWidth=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1005" y="95" as="sourcePoint" />
+            <mxPoint x="1005" y="430" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m1" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=10;verticalAlign=bottom;fontFamily=Helvetica;" value="transactions">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="70" y="120" as="sourcePoint" />
+            <mxPoint x="180" y="120" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m2" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=10;verticalAlign=bottom;fontFamily=Helvetica;" value="transactions">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="180" y="150" as="sourcePoint" />
+            <mxPoint x="290" y="150" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m3" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=10;verticalAlign=bottom;fontFamily=Helvetica;" value="filtered transactions&lt;div&gt;USD and period A&lt;/div&gt;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="290" y="190" as="sourcePoint" />
+            <mxPoint x="405" y="190" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m4" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=10;verticalAlign=bottom;fontFamily=Helvetica;" value="graph structure&lt;div&gt;with account connections&lt;/div&gt;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="405" y="235" as="sourcePoint" />
+            <mxPoint x="545" y="235" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m5" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=10;verticalAlign=bottom;fontFamily=Helvetica;" value="partial one length paths">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="545" y="280" as="sourcePoint" />
+            <mxPoint x="685" y="280" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m6" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=10;verticalAlign=bottom;fontFamily=Helvetica;" value="consolidated path counts">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="685" y="325" as="sourcePoint" />
+            <mxPoint x="830" y="325" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m7" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=10;verticalAlign=bottom;fontFamily=Helvetica;" value="scatter gather matches">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="830" y="385" as="sourcePoint" />
+            <mxPoint x="1005" y="385" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m8" edge="1" parent="1" style="endArrow=open;endFill=0;html=1;fontSize=10;verticalAlign=bottom;fontFamily=Helvetica;dashed=1;dashPattern=6 3;" value="responses">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1005" y="415" as="sourcePoint" />
+            <mxPoint x="180" y="415" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m9" edge="1" parent="1" style="endArrow=open;endFill=0;html=1;fontSize=10;verticalAlign=bottom;fontFamily=Helvetica;dashed=1;dashPattern=6 3;" value="responses">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="180" y="445" as="sourcePoint" />
+            <mxPoint x="70" y="445" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
