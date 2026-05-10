@@ -1,0 +1,3 @@
+#!/usr/bin/env zsh
+cd doc/informe && ./make_report
+cd ../..

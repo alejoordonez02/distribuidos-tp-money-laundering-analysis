@@ -1,0 +1,2 @@
+#!/usr/bin/env zsh
+pdflatex ./src/informe.tex --o informe.pdf

@@ -1,2 +1,0 @@
-#!/usr/bin/env zsh
-pandoc header.md body.md --o informe.pdf
