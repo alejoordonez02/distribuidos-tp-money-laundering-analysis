@@ -1,0 +1,11 @@
+# data
+.data/
+
+# drawio
+**.bkp
+
+# latex
+**.aux
+**.log
+**.toc
+**/_minted/
