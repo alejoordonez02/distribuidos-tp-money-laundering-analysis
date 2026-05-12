@@ -51,6 +51,8 @@ class Gateway:
         Starts listening for new client requests and server responses.
         """
         self._keep_running = True
+        self.listener.listen()
+
         self._run()
 
     def _handle_server_responses(self, bytes2: bytes, ack: Callable, nack: Callable):
