@@ -30,6 +30,6 @@ class EOF(Message):
 
     @classmethod
     def _from_fields(cls, fields: list[Any]) -> Self:
-        client_id = fields
+        client_id = fields[0]
         client_id = UUID(client_id)  # type: ignore
         return cls(client_id)
