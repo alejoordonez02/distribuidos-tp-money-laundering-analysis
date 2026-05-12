@@ -1,7 +1,11 @@
 from socket import socket
 
-from common.comms.messages import Message
-from common.comms.messages.eof import EOF
+from common.comms.messages import (
+    EOF,
+    Message,
+    MessageType,
+    deserialize_message,
+)
 from common.comms.middleware import MessageMiddlewareQueue
 
 BUF_SIZE = 1024
@@ -28,9 +32,9 @@ class ClientHandler:
     def _run(self):
         # recv transactions
         while True:
-            msg = Message.deserialize(self.skt.recv(BUF_SIZE))
+            msg = deserialize_message(self.skt.recv(BUF_SIZE))
             # TODO: check msg integrity
-            if msg.type() == EOF:
+            if msg.type() == MessageType.EOF:
                 break
 
             self.transactions_tx.send(msg.serialize())

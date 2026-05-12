@@ -4,8 +4,7 @@ from socket import AF_INET, SOCK_STREAM, socket
 from common.comms.middleware import (
     QueueRabbitMQ,
 )
-
-from .gateway import Gateway
+from gateway import Gateway
 
 GATEWAY_HOST = os.environ["GATEWAY_HOST"]
 GATEWAY_PORT = os.environ["GATEWAY_PORT"]
