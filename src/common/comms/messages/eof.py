@@ -1,7 +1,8 @@
 from typing import Any, Self
 from uuid import UUID
 
-from .message import Message, MessageType
+from .message import Message
+from .message_types import MessageType
 
 
 # este eof me lo robé de mi tp de coordinación.
