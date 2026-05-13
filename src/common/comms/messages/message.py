@@ -1,11 +1,10 @@
 import json
 from abc import abstractmethod
-from enum import Enum
 from typing import Any
 from uuid import UUID
 
-from .eof import EOF
-from .errors import UnexpectedMessageError, UnknownMessageError
+from .errors import UnexpectedMessageError
+from .message_types import MessageType
 
 
 # this is used for serializing uuids, otherwise the defult json encoder is used
@@ -14,10 +13,6 @@ class UUIDEncoder(json.JSONEncoder):
         if isinstance(o, UUID):
             return str(o)
         return json.JSONEncoder.default(self, o)
-
-
-class MessageType(Enum):
-    EOF = 0
 
 
 class Message:
@@ -40,12 +35,14 @@ class Message:
         return json.dumps(self._fields(), cls=UUIDEncoder).encode("utf-8")
 
     @classmethod
+    @abstractmethod
     def deserialize(cls, bytes2: bytes) -> "Message":
         """
-        Deserializes `bytes` into a `Message`.
+        Deserializes `bytes` into a `Message` variant.
 
-        This method can be used for deserializing bytes into an expected type
-        of message instance if called directly from the specific subclass.
+        This method is useful so that matching the message type after
+        deserializing is not necessary when there there is only one
+        expected variant.
 
         # Args
         * `bytes2` - the `bytes` of the serialized message.
@@ -53,19 +50,16 @@ class Message:
         # Returns
         A new `Message` instance.
 
+        # Example
+        ```python
+        eof: EOF = EOF.deserialize(bytes2)
+        ```
+
         # Errors
-        * `UnknownMessageError` if the type field is unknown.
-        * `UnexpectedMessageError` if the method is called into a specific
-          subclass and the type field does not match the expected one.
+        * `UnexpectedMessageError` if the the type field does not match
+          the expected one.
         """
-        fields = json.loads(bytes2.decode("utf-8"))
-        match fields[0]:
-            case MessageType.EOF.value:
-                return EOF.deserialize(bytes2)
-            case _:
-                raise UnknownMessageError(
-                    f"unknown message type {fields[0]} with contents {fields[1:]}"
-                )
+        pass
 
     @classmethod
     def _deserialize(cls, bytes2: bytes):
