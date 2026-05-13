@@ -3,4 +3,5 @@ from enum import Enum
 
 class MessageType(Enum):
     EOF = 0
-    HEALTHCHECK = 1
+    TRANSACTION = 1
+    ACCOUNT = 2

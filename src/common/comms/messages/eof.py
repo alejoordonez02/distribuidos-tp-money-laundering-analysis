@@ -1,6 +1,6 @@
 from typing import Any, Self
-from uuid import UUID
 
+# from uuid import UUID
 from .message import Message
 from .message_types import MessageType
 
@@ -11,9 +11,6 @@ from .message_types import MessageType
 # este tiene un pasito extra que es instanciar el `UUID` en
 # `_from_fields`
 class EOF(Message):
-    def __init__(self, client_id: UUID):
-        self.client_id = client_id
-
     def type(self) -> MessageType:
         return MessageType.EOF
 
@@ -26,10 +23,8 @@ class EOF(Message):
         return MessageType.EOF
 
     def _fields(self) -> list[Any]:
-        return [MessageType.EOF.value, self.client_id]
+        return [MessageType.EOF.value]
 
     @classmethod
     def _from_fields(cls, fields: list[Any]) -> Self:
-        client_id = fields[0]
-        client_id = UUID(client_id)  # type: ignore
-        return cls(client_id)
+        return cls()
