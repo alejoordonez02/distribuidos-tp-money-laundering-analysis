@@ -4,6 +4,7 @@ from typing import Callable
 
 from client_handler import ClientHandler
 
+from common.comms.connection import Connection
 from common.comms.messages import (
     Message,
 )
@@ -81,10 +82,11 @@ class Gateway:
         while self._keep_running:
             # accept new connections
             skt, _ = self.listener.accept()
+            conn = Connection(skt)
 
             # handle those connections
             client = ClientHandler(
-                skt, self.transactions_tx, self.accounts_tx
+                conn, self.transactions_tx, self.accounts_tx
             )  # TODO: concurrency - ~tasks
             self.clients.append(client)
             client.start()

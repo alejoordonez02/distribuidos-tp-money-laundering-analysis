@@ -1,24 +1,22 @@
-from socket import socket
+import logging
 
+from common.comms.connection import Connection
 from common.comms.messages import (
-    EOF,
     Message,
     MessageType,
     deserialize_message,
 )
 from common.comms.middleware import MessageMiddlewareQueue
 
-BUF_SIZE = 1024
-
 
 class ClientHandler:
     def __init__(
         self,
-        skt: socket,
+        conn: Connection,
         transactions_tx: MessageMiddlewareQueue,
         accounts_tx: MessageMiddlewareQueue,
     ):
-        self.skt = skt
+        self.conn = conn
         self.server_tx = transactions_tx
         self.transactions_tx = transactions_tx
         self.accounts_tx = accounts_tx
@@ -27,23 +25,25 @@ class ClientHandler:
         self._run()
 
     def send(self, msg: Message):
-        self.skt.send(msg.serialize())
+        self.conn.send(msg.serialize())
 
     def _run(self):
         # recv transactions
         while True:
-            msg = deserialize_message(self.skt.recv(BUF_SIZE))
+            msg = deserialize_message(self.conn.recv())
             # TODO: check msg integrity
-            if msg.type() == MessageType.EOF:
+            if msg.type().value == MessageType.EOF.value:
                 break
 
             self.transactions_tx.send(msg.serialize())
 
         # recv accounts
         while True:
-            msg = Message.deserialize(self.skt.recv(BUF_SIZE))
-            if msg.type() == EOF:
+            msg = deserialize_message(self.conn.recv())
+            if msg.type().value == MessageType.EOF.value:
                 break
 
             # TODO: check msg integrity
             self.accounts_tx.send(msg.serialize())
+
+        logging.error("received all data from client")
