@@ -1,5 +1,6 @@
 import json
 from abc import abstractmethod
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -7,10 +8,11 @@ from .errors import UnexpectedMessageError
 from .message_types import MessageType
 
 
-# this is used for serializing uuids, otherwise the defult json encoder is used
-class UUIDEncoder(json.JSONEncoder):
+class MessageJSONEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, UUID):
+            return str(o)
+        elif isinstance(o, datetime):
             return str(o)
         return json.JSONEncoder.default(self, o)
 
@@ -32,7 +34,7 @@ class Message:
         # Returns
         The `bytes` of the serialized message.
         """
-        return json.dumps(self._fields(), cls=UUIDEncoder).encode("utf-8")
+        return json.dumps(self._fields(), cls=MessageJSONEncoder).encode("utf-8")
 
     @classmethod
     @abstractmethod
