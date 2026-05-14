@@ -28,7 +28,7 @@ services:
       - GATEWAY_PORT=12345
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
-      - SERVER_QUEUE_RX=server_queue_rx
+      - SERVER_QUEUE_RX=server_responses
       - TRANSACTIONS_TX=transactions
       - ACCOUNTS_TX=accounts_tx
   filter:
@@ -43,7 +43,20 @@ services:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
       - TRANSACTIONS_RX=transactions
-      - FILTERED_TX=filtered
+      - FILTERED_TX=filtered_transactions
+  join:
+    build:
+      context: ./src/
+      dockerfile: join/Dockerfile
+    container_name: join
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - CLIENT_RESPONSES_RX=filtered_transactions
+      - CLIENT_RESPONSES_TX=server_responses
   client:
     build:
       context: ./src/
@@ -59,4 +72,4 @@ services:
       - GATEWAY_PORT=12345
     volumes:
       - ./datasets:/datasets
-      - ./output:/output
+      - ./responses:/responses

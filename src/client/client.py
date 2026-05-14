@@ -5,15 +5,8 @@ from enum import Enum
 from parser import Parser
 
 from common.comms.connection import Connection
-from common.comms.messages import EOF, Account, Transaction
-
-
-class ResponseType(Enum):
-    FIN = 0
-
-
-def get_response_type(response: bytes):
-    return response[0]
+from common.comms.messages import EOF, Account, MessageType, Transaction
+from common.comms.messages.deserialize_message import deserialize_message
 
 
 class Client:
@@ -35,7 +28,7 @@ class Client:
 
     def start(self):
         # TODO: esto lo dejo acá porque me trabé haciendo q se ejecute bien el script de healthcheck
-        time.sleep(1)
+        time.sleep(5)
         self._run()
 
     def _run(self):
@@ -111,10 +104,12 @@ class Client:
         responses = []
 
         while True:
-            response = self.conn.recv()
-            responses.append(response.decode())
-            if get_response_type(response) == ResponseType.FIN.value:
+            response_raw = self.conn.recv()
+            response = deserialize_message(response_raw)
+            if response.type().value == MessageType.FIN.value:
                 break
+
+            responses.append(response_raw.decode())
 
         return responses
 
