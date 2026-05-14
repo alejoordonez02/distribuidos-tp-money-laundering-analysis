@@ -1,3 +1,4 @@
+import logging
 import os
 from socket import AF_INET, SOCK_STREAM, socket
 
@@ -12,8 +13,12 @@ RESPONSES_PATH = os.environ["RESPONSES_PATH"]
 GATEWAY_HOST = os.environ["GATEWAY_HOST"]
 GATEWAY_PORT = os.environ["GATEWAY_PORT"]
 
+LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "DEBUG")
+
 
 def main():
+    logging.basicConfig(level=LOGGING_LEVEL)
+
     skt = socket(AF_INET, SOCK_STREAM)
     skt.connect((GATEWAY_HOST, int(GATEWAY_PORT)))
     conn = Connection(skt)
