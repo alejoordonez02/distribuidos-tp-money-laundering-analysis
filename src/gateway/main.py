@@ -1,3 +1,4 @@
+import logging
 import os
 from socket import AF_INET, SOCK_STREAM, socket
 
@@ -13,8 +14,12 @@ SERVER_QUEUE_RX = os.environ["SERVER_QUEUE_RX"]
 TRANSACTIONS_TX = os.environ["TRANSACTIONS_TX"]
 ACCOUNTS_TX = os.environ["ACCOUNTS_TX"]
 
+LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
+
 
 def main():
+    logging.basicConfig(level=LOGGING_LEVEL)
+
     listener = socket(AF_INET, SOCK_STREAM)
     addr = (GATEWAY_HOST, int(GATEWAY_PORT))
     server_rx = QueueRabbitMQ(MOM_HOST, SERVER_QUEUE_RX)

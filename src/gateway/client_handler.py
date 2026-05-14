@@ -17,7 +17,6 @@ class ClientHandler:
         accounts_tx: MessageMiddlewareQueue,
     ):
         self.conn = conn
-        self.server_tx = transactions_tx
         self.transactions_tx = transactions_tx
         self.accounts_tx = accounts_tx
 
@@ -28,22 +27,23 @@ class ClientHandler:
         self.conn.send(msg.serialize())
 
     def _run(self):
+        # TODO: check msg integrity (correct variants)
         # recv transactions
         while True:
             msg = deserialize_message(self.conn.recv())
-            # TODO: check msg integrity
-            if msg.type().value == MessageType.EOF.value:
-                break
 
             self.transactions_tx.send(msg.serialize())
+
+            if msg.type().value == MessageType.EOF.value:
+                break
 
         # recv accounts
         while True:
             msg = deserialize_message(self.conn.recv())
+
+            self.accounts_tx.send(msg.serialize())
+
             if msg.type().value == MessageType.EOF.value:
                 break
 
-            # TODO: check msg integrity
             self.accounts_tx.send(msg.serialize())
-
-        logging.error("received all data from client")

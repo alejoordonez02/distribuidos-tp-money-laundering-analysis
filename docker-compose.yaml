@@ -29,8 +29,21 @@ services:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
       - SERVER_QUEUE_RX=server_queue_rx
-      - TRANSACTIONS_TX=transactions_rx
+      - TRANSACTIONS_TX=transactions
       - ACCOUNTS_TX=accounts_tx
+  filter:
+    build:
+      context: ./src/
+      dockerfile: filter/Dockerfile
+    container_name: filter
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - TRANSACTIONS_RX=transactions
+      - FILTERED_TX=filtered
   client:
     build:
       context: ./src/

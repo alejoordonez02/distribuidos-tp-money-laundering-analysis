@@ -1,5 +1,8 @@
+import logging
 import time
 from enum import Enum
+
+from parser import Parser
 
 from common.comms.connection import Connection
 from common.comms.messages import EOF, Account, Transaction
@@ -20,11 +23,15 @@ class Client:
         transactions_path: str,
         accounts_path: str,
         responses_path: str,
+        transaction_parser: Parser,
+        account_parser: Parser,
     ):
         self.conn = conn
         self.transactions_path = transactions_path
         self.accounts_path = accounts_path
         self.responses_path = responses_path
+        self.transaction_parser = transaction_parser
+        self.account_parser = account_parser
 
     def start(self):
         # TODO: esto lo dejo acá porque me trabé haciendo q se ejecute bien el script de healthcheck
@@ -39,12 +46,21 @@ class Client:
         # send data
         self._send_transactions(transactions)
         self._send_eof()
+
+        logging.info("sent transactions eof to server")
+
         self._send_accounts(accounts)
         self._send_eof()
 
+        logging.info("sent accounts eof to server")
+
         # receive and write responses
+        logging.info("waiting for server responses")
+
         responses = self._receive_responses()
         self._write_responses(responses)
+
+        logging.info("received server responses. Bye")
 
         self.conn.close()
 
@@ -56,9 +72,7 @@ class Client:
             transactions.readline()  # ignore header
 
             while line := transactions.readline():
-                fields = line.rstrip("\n").split(",")[:-1]  # last col is label
-                # TODO: convert to actual attribute types
-                transaction = Transaction(*fields)  # type: ignore
+                transaction = self.transaction_parser.parse(line)
                 transactions_batch.append(transaction)
 
         return transactions_batch
@@ -71,9 +85,7 @@ class Client:
             accounts.readline()  # ignore header
 
             while line := accounts.readline():
-                fields = line.rstrip("\n").split(",")[1:]  # first col is row idx
-                # TODO: convert to actual attribute types
-                account = Account(*fields)
+                account = self.account_parser.parse(line)
                 accounts_batch.append(account)
 
         return accounts_batch
