@@ -3,7 +3,7 @@ from typing import Callable
 
 from filter_fns import FilterFn
 
-from common.comms.messages import deserialize_message
+from common.comms.messages import MessageType, deserialize_message
 from common.comms.middleware import MessageMiddlewareExchange, MessageMiddlewareQueue
 
 
@@ -21,12 +21,15 @@ class Filter:
 
     def _handle_message(self, bytes2: bytes, ack: Callable, nack: Callable):
         msg = deserialize_message(bytes2)
-        logging.error(f"received msg: {msg.__dict__}")
 
         # TODO: qué pasa si se cae el filter en el medio? o sea después de
         #       haber redireccionado hacia un par de nodos
         for destination, filter_fn in self.routes:
             if filter_fn.filter(msg):
-                destination.send(msg.serialize())
+                logging.debug(f"filtered: {msg.__dict__}")
+                continue
+
+            logging.debug(f"passed: {msg.__dict__}")
+            destination.send(msg.serialize())
 
         ack()
