@@ -4,14 +4,14 @@ from typing import Callable
 from filter_fns import FilterFn
 
 from common.comms.messages import EOF, MessageType, deserialize_message
-from common.comms.middleware import MessageMiddlewareExchange, MessageMiddlewareQueue
+from common.comms.middleware import MessageMiddlewareQueue
 
 
 class Filter:
     def __init__(
         self,
         messages_rx: MessageMiddlewareQueue,
-        routes: list[tuple[MessageMiddlewareExchange, FilterFn]],
+        routes: list[tuple[MessageMiddlewareQueue, FilterFn]],
     ):
         self.messages_rx = messages_rx
         self.routes = routes

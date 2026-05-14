@@ -4,7 +4,7 @@ import os
 from filter2 import Filter
 from filter_fns import UC1Filter
 
-from common.comms.middleware import ExchangeRabbitMQ, QueueRabbitMQ
+from common.comms.middleware import QueueRabbitMQ
 
 MOM_HOST = os.environ["MOM_HOST"]
 TRANSACTIONS_RX = os.environ["TRANSACTIONS_RX"]
@@ -17,7 +17,7 @@ def main():
     logging.basicConfig(level=LOGGING_LEVEL)
 
     transactions_rx = QueueRabbitMQ(MOM_HOST, TRANSACTIONS_RX)
-    transactions_tx = ExchangeRabbitMQ(MOM_HOST, FILTERED_TX, [""])
+    transactions_tx = QueueRabbitMQ(MOM_HOST, FILTERED_TX)
 
     filter_fn = UC1Filter()
     filter2 = Filter(transactions_rx, [(transactions_tx, filter_fn)])

@@ -1,3 +1,4 @@
+import logging
 from socket import socket
 from threading import Thread
 from typing import Callable
@@ -5,10 +6,7 @@ from typing import Callable
 from client_handler import ClientHandler
 
 from common.comms.connection import Connection
-from common.comms.messages import (
-    Message,
-)
-from common.comms.messages.errors import UnknownMessageError
+from common.comms.messages import UnknownMessageError, deserialize_message
 from common.comms.middleware import (
     MessageMiddlewareQueue,
 )
@@ -56,28 +54,28 @@ class Gateway:
 
         self._run()
 
-    def _handle_server_responses(self, bytes2: bytes, ack: Callable, nack: Callable):
+    def _handle_server_response(self, bytes2: bytes, ack: Callable, nack: Callable):
         try:
-            msg = Message.deserialize(bytes2)
+            msg = deserialize_message(bytes2)
         except UnknownMessageError:
-            print(f"received unknown {msg} from server")
+            logging.error(f"received unknown from server: {bytes2}")
             return
-            # TODO
+        # TODO
 
         match msg.type():  # type: ignore
             case _:
-                print("received (msg) from server")
+                logging.info(f"received {msg} from server")
                 # TODO
 
         # send it to client
         # TODO: we are only handling one client
         self.clients[0].send(msg)
-        pass
 
     def _run(self):
         self.server_handle = Thread(
-            target=self.server_rx.start_consuming, args=[self._handle_server_responses]
+            target=self.server_rx.start_consuming, args=[self._handle_server_response]
         )
+        self.server_handle.start()
 
         while self._keep_running:
             # accept new connections
