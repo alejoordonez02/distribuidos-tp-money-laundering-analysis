@@ -54,13 +54,17 @@ concurrente con los demás.
 Una petición del cliente hace que el sistema procese los 5 casos de uso:
 
 \begin{itemize}
-  \item \textbf{UC1} Transacciones en USD con monto menor a \$50
-  \item \textbf{UC2} Monto de la máxima transacción en USD para cada banco.
-  \item \textbf{UC3} Transacciones en USD en el período 2022-09-06 al
+  \item \textbf{UC1} Cuenta de origen, cuenta de destino y monto para
+    transacciones USD con monto menor a \$50.
+  \item \textbf{UC2} Nombre de banco, cuenta de origen y monto de la
+    máxima transacción en USD para cada banco.
+  \item \textbf{UC3} Cuenta de origen y monto de transacciones USD en
+    el período 2022-09-06 al
     2022-09-15 (período B), cuyo monto sea menor a un centésimo del
     promedio de monto para su formato en el período 2022-09-01 al
     2022-09-05 (período A).
-  \item \textbf{UC4} Cuentas que cumplan con el patrón \textit{scatter-gather}
+  \item \textbf{UC4} Pares de cuentas que cumplan con el patrón
+    \textit{scatter-gather}
     con una cuenta
     de separación y una cantidad mínima de cuentas intermedias igual
     a 5; en el período A.
