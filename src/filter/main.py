@@ -10,7 +10,7 @@ MOM_HOST = os.environ["MOM_HOST"]
 TRANSACTIONS_RX = os.environ["TRANSACTIONS_RX"]
 FILTERED_TX = os.environ["FILTERED_TX"]
 
-LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "DEBUG")
+LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
 
 
 def main():

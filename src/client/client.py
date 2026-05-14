@@ -1,3 +1,4 @@
+import logging
 import time
 from enum import Enum
 
@@ -45,12 +46,21 @@ class Client:
         # send data
         self._send_transactions(transactions)
         self._send_eof()
+
+        logging.info("sent transactions eof to server")
+
         self._send_accounts(accounts)
         self._send_eof()
 
+        logging.info("sent accounts eof to server")
+
         # receive and write responses
+        logging.info("waiting for server responses")
+
         responses = self._receive_responses()
         self._write_responses(responses)
+
+        logging.info("received server responses. Bye")
 
         self.conn.close()
 

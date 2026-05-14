@@ -13,7 +13,7 @@ RESPONSES_PATH = os.environ["RESPONSES_PATH"]
 GATEWAY_HOST = os.environ["GATEWAY_HOST"]
 GATEWAY_PORT = os.environ["GATEWAY_PORT"]
 
-LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "DEBUG")
+LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
 
 
 def main():
