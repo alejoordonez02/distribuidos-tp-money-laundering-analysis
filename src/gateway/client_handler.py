@@ -17,7 +17,6 @@ class ClientHandler:
         accounts_tx: MessageMiddlewareQueue,
     ):
         self.conn = conn
-        self.server_tx = transactions_tx
         self.transactions_tx = transactions_tx
         self.accounts_tx = accounts_tx
 
@@ -42,7 +41,7 @@ class ClientHandler:
         while True:
             msg = deserialize_message(self.conn.recv())
 
-            self.transactions_tx.send(msg.serialize())
+            self.accounts_tx.send(msg.serialize())
 
             if msg.type().value == MessageType.EOF.value:
                 break
