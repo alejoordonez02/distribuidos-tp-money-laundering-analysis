@@ -27,4 +27,5 @@ class Response(Message):
     @classmethod
     def _from_fields(cls, fields: list[Any]) -> Self:
         client_id, body = fields
+        client_id = UUID(client_id)
         return cls(client_id, body)
