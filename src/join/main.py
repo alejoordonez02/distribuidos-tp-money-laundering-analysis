@@ -13,6 +13,7 @@ LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
 
 def main():
     logging.basicConfig(level=LOGGING_LEVEL)
+    logging.getLogger("pika").setLevel(logging.WARNING)
 
     client_responses_rx = QueueRabbitMQ(MOM_HOST, CLIENT_RESPONSES_RX)
     client_responses_tx = QueueRabbitMQ(MOM_HOST, CLIENT_RESPONSES_TX)

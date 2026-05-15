@@ -1,11 +1,12 @@
 import logging
 from typing import Callable
+from uuid import UUID
+
+from join_fns import JoinFn
 
 from common.comms.messages import (
     EOF,
-    FIN,
     MessageType,
-    Transaction,
     deserialize_message,
 )
 from common.comms.middleware import MessageMiddlewareQueue
@@ -14,37 +15,35 @@ from common.comms.middleware import MessageMiddlewareQueue
 class Join:
     def __init__(
         self,
-        client_responses_rx: MessageMiddlewareQueue,
+        routes_rx: list[tuple[MessageMiddlewareQueue, JoinFn]],
         client_responses_tx: MessageMiddlewareQueue,
     ):
-        self.client_responses_rx = client_responses_rx
+        self.routes_rx = routes_rx
         self.client_responses_tx = client_responses_tx
 
-        self.client_responses: list[Transaction] = []
-
     def start(self):
-        self.client_responses_rx.start_consuming(self._handle_message)
+        for route, join_fn in self.routes_rx:
+            route.start_consuming(
+                lambda bytes2, ack, nack: self._handle_message(
+                    join_fn, bytes2, ack, nack
+                )
+            )
 
-    def _handle_eof(self, eof: EOF):
-        logging.info(f"received eof: {eof.__dict__}")
-        logging.info(
-            f"sending client results: {[r.__dict__ for r in self.client_responses]}"
-        )
-        for t in self.client_responses:
-            # TODO: this should be an actual response message type, containing all
-            #       the data the client is expecting for each specific use case.
-            self.client_responses_tx.send(t.serialize())
+    def _handle_eof(self, join_fn: JoinFn, eof: EOF):
+        response = join_fn.get_response(eof.client_id)
+        self.client_responses_tx.send(response.serialize())
 
-        self.client_responses_tx.send(FIN().serialize())
-
-    def _handle_message(self, bytes2: bytes, ack: Callable, nack: Callable):
+    def _handle_message(
+        self, join_fn: JoinFn, bytes2: bytes, ack: Callable, nack: Callable
+    ):
         msg = deserialize_message(bytes2)
-        match msg.type().value:
-            case MessageType.TRANSACTION.value:
-                self.client_responses.append(msg)  # type: ignore
-            case MessageType.EOF.value:
-                self._handle_eof(msg)  # type: ignore
-            case _:
-                raise RuntimeError(f"unexpected message {msg.__dict__}")
+        logging.debug(f"received message {msg.__dict__}")
+
+        if msg.type().value == MessageType.EOF.value:
+            logging.info(f"received eof {msg.__dict__}")
+            self._handle_eof(join_fn, msg)  # type: ignore
+            return
+
+        join_fn.join(msg)
 
         ack()
