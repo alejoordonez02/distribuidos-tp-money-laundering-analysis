@@ -2,13 +2,12 @@ import logging
 from socket import socket
 from threading import Thread
 from typing import Callable
-from uuid import UUID
 
 from client_handler import ClientHandler
+from client_monitor import ClientMonitor
 
 from common.comms.connection import Connection
 from common.comms.messages import (
-    MessageType,
     Response,
     UnknownMessageError,
 )
@@ -49,7 +48,7 @@ class Gateway:
         self.accounts_tx = accounts_tx
 
         self.server_handle: Thread
-        self.clients: dict[UUID, ClientHandler] = {}
+        self.clients = ClientMonitor()
 
     def start(self):
         """
@@ -70,7 +69,7 @@ class Gateway:
             logging.error(f"received unknown from server: {bytes2}")
             return
 
-        self.clients[response.client_id].send(response)
+        self.clients.get(response.client_id).send(response)
         ack()
 
     def _run(self):
@@ -80,16 +79,15 @@ class Gateway:
         self.server_handle.start()
 
         while self._keep_running:
-            # accept new connections
             skt, _ = self.listener.accept()
             conn = Connection(skt)
 
-            # handle those connections
-            client = ClientHandler(
-                conn, self.transactions_tx, self.accounts_tx
-            )  # TODO: concurrency - ~tasks
+            client = ClientHandler(conn, self.transactions_tx, self.accounts_tx)
             client.start()
-            self.clients[client.id] = client
+
+            self.clients.add(client)
+
+        self.server_handle.join()
 
     def stop(self):
         self._keep_running = False
