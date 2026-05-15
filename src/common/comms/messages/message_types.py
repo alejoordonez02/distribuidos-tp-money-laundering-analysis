@@ -6,3 +6,4 @@ class MessageType(Enum):
     TRANSACTION = 1
     ACCOUNT = 2
     FIN = 3
+    RESPONSE = 4

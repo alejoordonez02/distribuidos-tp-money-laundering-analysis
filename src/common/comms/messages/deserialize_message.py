@@ -6,6 +6,7 @@ from .errors import UnknownMessageError
 from .fin import FIN
 from .message import Message
 from .message_types import MessageType
+from .response import Response
 from .transaction import Transaction
 
 
@@ -32,6 +33,8 @@ def deserialize_message(bytes2: bytes) -> Message:
             return Account.deserialize(bytes2)
         case MessageType.FIN.value:
             return FIN.deserialize(bytes2)
+        case MessageType.RESPONSE.value:
+            return Response.deserialize(bytes2)
         case _:
             raise UnknownMessageError(
                 f"unknown message type {fields[0]} with contents {fields[1:]}"
