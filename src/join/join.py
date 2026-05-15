@@ -1,6 +1,5 @@
 import logging
 from typing import Callable
-from uuid import UUID
 
 from join_fns import JoinFn
 
@@ -15,15 +14,15 @@ from common.comms.middleware import MessageMiddlewareQueue
 class Join:
     def __init__(
         self,
-        routes_rx: list[tuple[MessageMiddlewareQueue, JoinFn]],
-        client_responses_tx: MessageMiddlewareQueue,
+        partial_res_handlers: list[tuple[MessageMiddlewareQueue, JoinFn]],
+        responses_tx: MessageMiddlewareQueue,
     ):
-        self.routes_rx = routes_rx
-        self.client_responses_tx = client_responses_tx
+        self.partial_res_handlers = partial_res_handlers
+        self.client_responses_tx = responses_tx
 
     def start(self):
-        for route, join_fn in self.routes_rx:
-            route.start_consuming(
+        for mom, join_fn in self.partial_res_handlers:
+            mom.start_consuming(
                 lambda bytes2, ack, nack: self._handle_message(
                     join_fn, bytes2, ack, nack
                 )
@@ -41,7 +40,7 @@ class Join:
 
         if msg.type().value == MessageType.EOF.value:
             logging.info(f"received eof {msg.__dict__}")
-            self._handle_eof(join_fn, msg)  # type: ignore
+            self._handle_eof(join_fn, msg)  # type: ignore[reportArgumentType]
             return
 
         join_fn.join(msg)
