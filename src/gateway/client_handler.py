@@ -34,6 +34,7 @@ class ClientHandler:
         the next controller, the thread is joined.
         """
         self.handle = Thread(target=self._run)
+        self.handle.start()
         self.handle.join()
 
     def send(self, msg: Message):
