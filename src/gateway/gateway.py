@@ -16,8 +16,6 @@ from common.comms.middleware import (
     MessageMiddlewareQueue,
 )
 
-BUF_SIZE = 1024
-
 
 class Gateway:
     def __init__(
@@ -25,8 +23,8 @@ class Gateway:
         listener: socket,
         addr: tuple[str, int],
         server_rx: MessageMiddlewareQueue,
-        transactions_tx: MessageMiddlewareQueue,
-        accounts_tx: MessageMiddlewareQueue,
+        trans_tx_factory: Callable[[], MessageMiddlewareQueue],
+        accs_tx_factory: Callable[[], MessageMiddlewareQueue],
     ):
         """
         Create a new `Gateway`.
@@ -44,8 +42,8 @@ class Gateway:
         self.listener = listener
         self.listener.bind(addr)
         self.server_rx = server_rx
-        self.transactions_tx = transactions_tx
-        self.accounts_tx = accounts_tx
+        self.trans_tx_factory = trans_tx_factory
+        self.accs_tx_factory = accs_tx_factory
 
         self.server_handle: Thread
         self.clients = ClientMonitor()
@@ -82,7 +80,7 @@ class Gateway:
             skt, _ = self.listener.accept()
             conn = Connection(skt)
 
-            client = ClientHandler(conn, self.transactions_tx, self.accounts_tx)
+            client = ClientHandler(conn, self.trans_tx_factory, self.accs_tx_factory)
             client.start()
 
             self.clients.add(client)

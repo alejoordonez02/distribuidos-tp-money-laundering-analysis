@@ -1,5 +1,6 @@
 import logging
 from threading import Thread
+from typing import Callable
 from uuid import uuid4
 
 from common.comms.connection import Connection
@@ -17,13 +18,13 @@ class ClientHandler:
     def __init__(
         self,
         conn: Connection,
-        transactions_tx: MessageMiddlewareQueue,
-        accounts_tx: MessageMiddlewareQueue,
+        trans_tx_factory: Callable[[], MessageMiddlewareQueue],
+        accs_tx_factory: Callable[[], MessageMiddlewareQueue],
     ):
         self.id = UUID()
         self.conn = conn
-        self.transactions_tx = transactions_tx
-        self.accounts_tx = accounts_tx
+        self.trans_tx_factory = trans_tx_factory
+        self.accs_tx_factory = accs_tx_factory
         self.handle: Thread
 
     def start(self):
@@ -39,23 +40,26 @@ class ClientHandler:
         self.conn.send(msg.serialize())
 
     def _run(self):
-        # TODO: check msg integrity (correct variants)
         # recv transactions
+        transactions_tx = self.trans_tx_factory()
         while True:
             msg = deserialize_message(self.conn.recv())
-
-            self.transactions_tx.send(msg.serialize())
+            logging.debug(f"received message from client: {msg.__dict__}")
+            # TODO: check msg integrity (correct variants)
+            transactions_tx.send(msg.serialize())
 
             if msg.type().value == MessageType.EOF.value:
                 break
 
         # recv accounts
+        accounts_tx = self.accs_tx_factory()
         while True:
             msg = deserialize_message(self.conn.recv())
-
-            self.accounts_tx.send(msg.serialize())
+            logging.debug(f"received message from client: {msg.__dict__}")
+            # TODO: check msg integrity (correct variants)
+            accounts_tx.send(msg.serialize())
 
             if msg.type().value == MessageType.EOF.value:
                 break
 
-            self.accounts_tx.send(msg.serialize())
+        logging.info("finished sending all client's data")
