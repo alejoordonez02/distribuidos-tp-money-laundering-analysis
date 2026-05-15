@@ -1,4 +1,5 @@
 import logging
+from threading import Thread
 from uuid import uuid4
 
 from common.comms.connection import Connection
@@ -23,9 +24,16 @@ class ClientHandler:
         self.conn = conn
         self.transactions_tx = transactions_tx
         self.accounts_tx = accounts_tx
+        self.handle: Thread
 
     def start(self):
-        self._run()
+        """
+        Starts a thread for receiving and redirecting its client's
+        transactions and accounts datasets. Once all data is sent to
+        the next controller, the thread is joined.
+        """
+        self.handle = Thread(target=self._run)
+        self.handle.join()
 
     def send(self, msg: Message):
         self.conn.send(msg.serialize())
