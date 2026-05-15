@@ -19,6 +19,7 @@ LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
 
 def main():
     logging.basicConfig(level=LOGGING_LEVEL)
+    logging.getLogger("pika").setLevel(logging.WARNING)
 
     listener = socket(AF_INET, SOCK_STREAM)
     addr = (GATEWAY_HOST, int(GATEWAY_PORT))

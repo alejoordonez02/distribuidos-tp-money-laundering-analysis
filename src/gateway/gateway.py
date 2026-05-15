@@ -2,11 +2,17 @@ import logging
 from socket import socket
 from threading import Thread
 from typing import Callable
+from uuid import UUID
 
 from client_handler import ClientHandler
 
 from common.comms.connection import Connection
-from common.comms.messages import UnknownMessageError, deserialize_message
+from common.comms.messages import (
+    MessageType,
+    Response,
+    UnknownMessageError,
+)
+from common.comms.messages.errors import UnexpectedMessageError
 from common.comms.middleware import (
     MessageMiddlewareQueue,
 )
@@ -43,7 +49,7 @@ class Gateway:
         self.accounts_tx = accounts_tx
 
         self.server_handle: Thread
-        self.clients: list[ClientHandler] = []
+        self.clients: dict[UUID, ClientHandler] = {}
 
     def start(self):
         """
@@ -56,20 +62,16 @@ class Gateway:
 
     def _handle_server_response(self, bytes2: bytes, ack: Callable, nack: Callable):
         try:
-            msg = deserialize_message(bytes2)
+            response = Response.deserialize(bytes2)
+        except UnexpectedMessageError:
+            logging.error(f"received unexpected from server: {bytes2}")
+            return
         except UnknownMessageError:
             logging.error(f"received unknown from server: {bytes2}")
             return
-        # TODO
 
-        match msg.type():  # type: ignore
-            case _:
-                logging.info(f"received {msg} from server")
-                # TODO
-
-        # send it to client
-        # TODO: we are only handling one client
-        self.clients[0].send(msg)
+        self.clients[response.client_id].send(response)
+        ack()
 
     def _run(self):
         self.server_handle = Thread(
@@ -86,8 +88,8 @@ class Gateway:
             client = ClientHandler(
                 conn, self.transactions_tx, self.accounts_tx
             )  # TODO: concurrency - ~tasks
-            self.clients.append(client)
             client.start()
+            self.clients[client.id] = client
 
     def stop(self):
         self._keep_running = False

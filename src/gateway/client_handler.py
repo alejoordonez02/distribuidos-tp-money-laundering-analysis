@@ -1,4 +1,5 @@
 import logging
+from uuid import uuid4
 
 from common.comms.connection import Connection
 from common.comms.messages import (
@@ -8,6 +9,8 @@ from common.comms.messages import (
 )
 from common.comms.middleware import MessageMiddlewareQueue
 
+UUID = uuid4
+
 
 class ClientHandler:
     def __init__(
@@ -16,6 +19,7 @@ class ClientHandler:
         transactions_tx: MessageMiddlewareQueue,
         accounts_tx: MessageMiddlewareQueue,
     ):
+        self.id = UUID()
         self.conn = conn
         self.transactions_tx = transactions_tx
         self.accounts_tx = accounts_tx
