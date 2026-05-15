@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from common.comms.connection import Connection
 from common.comms.messages import (
+    EOF,
     Message,
     MessageType,
     deserialize_message,
@@ -30,27 +31,28 @@ class ClientHandler:
     def start(self):
         """
         Starts a thread for receiving and redirecting its client's
-        transactions and accounts datasets. Once all data is sent to
-        the next controller, the thread is joined.
+        transactions and accounts datasets.
         """
         self.handle = Thread(target=self._run)
         self.handle.start()
-        self.handle.join()
 
     def send(self, msg: Message):
         self.conn.send(msg.serialize())
 
     def _run(self):
+        # TODO: maybe have a different eof msg for the external protocol
         # recv transactions
         transactions_tx = self.trans_tx_factory()
         while True:
             msg = deserialize_message(self.conn.recv())
             logging.debug(f"received message from client: {msg.__dict__}")
             # TODO: check msg integrity (correct variants)
-            transactions_tx.send(msg.serialize())
-
             if msg.type().value == MessageType.EOF.value:
+                # msg.client_id = self.id  # type: ignore[reportAttributeAccessIssue]
+                transactions_tx.send(EOF(self.id).serialize())
                 break
+
+            transactions_tx.send(msg.serialize())
 
         # recv accounts
         accounts_tx = self.accs_tx_factory()
@@ -58,9 +60,11 @@ class ClientHandler:
             msg = deserialize_message(self.conn.recv())
             logging.debug(f"received message from client: {msg.__dict__}")
             # TODO: check msg integrity (correct variants)
-            accounts_tx.send(msg.serialize())
-
             if msg.type().value == MessageType.EOF.value:
+                # msg.client_id = self.id  # type: ignore[reportAttributeAccessIssue]
+                accounts_tx.send(EOF(self.id).serialize())
                 break
+
+            accounts_tx.send(msg.serialize())
 
         logging.info("finished sending all client's data")
