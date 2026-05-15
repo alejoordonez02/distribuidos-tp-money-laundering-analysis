@@ -1,12 +1,16 @@
 import logging
 import time
 from enum import Enum
+from uuid import uuid4
 
 from parser import Parser
 
 from common.comms.connection import Connection
 from common.comms.messages import EOF, Account, MessageType, Transaction
-from common.comms.messages.deserialize_message import deserialize_message
+from common.comms.messages.deserialize_message import Response
+
+# TODO: this should be dynamic (use some fin msg protocol)
+NRESPONSES = 1
 
 
 class Client:
@@ -28,7 +32,7 @@ class Client:
 
     def start(self):
         # TODO: esto lo dejo acá porque me trabé haciendo q se ejecute bien el script de healthcheck
-        time.sleep(5)
+        time.sleep(10)
         self._run()
 
     def _run(self):
@@ -98,18 +102,15 @@ class Client:
             self.conn.send(a.serialize())
 
     def _send_eof(self):
-        self.conn.send(EOF().serialize())
+        # TODO: no way this uuid can be here
+        self.conn.send(EOF(client_id=uuid4()).serialize())
 
     def _receive_responses(self):
         responses = []
 
-        while True:
-            response_raw = self.conn.recv()
-            response = deserialize_message(response_raw)
-            if response.type().value == MessageType.FIN.value:
-                break
-
-            responses.append(response_raw.decode())
+        for _ in range(NRESPONSES):
+            response = Response.deserialize(self.conn.recv())
+            responses.append(response.body)
 
         return responses
 
