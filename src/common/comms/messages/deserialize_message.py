@@ -25,15 +25,15 @@ def deserialize_message(bytes2: bytes) -> Message:
     """
     fields = json.loads(bytes2.decode("utf-8"))
     match fields[0]:
-        case MessageType.EOF.value:
+        case MessageType.EOF:
             return EOF.deserialize(bytes2)
-        case MessageType.TRANSACTION.value:
+        case MessageType.TRANSACTION:
             return Transaction.deserialize(bytes2)
-        case MessageType.ACCOUNT.value:
+        case MessageType.ACCOUNT:
             return Account.deserialize(bytes2)
-        case MessageType.FIN.value:
+        case MessageType.FIN:
             return FIN.deserialize(bytes2)
-        case MessageType.RESPONSE.value:
+        case MessageType.RESPONSE:
             return Response.deserialize(bytes2)
         case _:
             raise UnknownMessageError(

@@ -38,7 +38,7 @@ class Join:
         msg = deserialize_message(bytes2)
         logging.debug(f"received message {msg.__dict__}")
 
-        if msg.type().value == MessageType.EOF.value:
+        if msg.type() == MessageType.EOF:
             logging.info(f"received eof {msg.__dict__}")
             self._handle_eof(join_fn, msg)  # type: ignore[reportArgumentType]
             return

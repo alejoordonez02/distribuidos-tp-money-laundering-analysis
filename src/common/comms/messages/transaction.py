@@ -40,7 +40,7 @@ class Transaction(Message):
 
     def _fields(self) -> list[Any]:
         return [
-            MessageType.TRANSACTION.value,
+            MessageType.TRANSACTION,
             self.timestamp,
             self.from_bank,
             self.from_account,

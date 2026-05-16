@@ -66,9 +66,9 @@ class Message:
     @classmethod
     def _deserialize(cls, bytes2: bytes):
         fields = json.loads(bytes2.decode("utf-8"))
-        if fields[0] != cls._type().value:
+        if fields[0] != cls._type():
             raise UnexpectedMessageError(
-                f"wrong message type\n\texpected: {cls._type().value}\n\tgot: {fields[0]}"
+                f"wrong message type\n\texpected: {cls._type()}\n\tgot: {fields[0]}"
             )
 
         return cls._from_fields(fields[1:])

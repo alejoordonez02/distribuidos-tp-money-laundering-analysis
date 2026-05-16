@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import IntEnum
 
 
-class MessageType(Enum):
+class MessageType(IntEnum):
     EOF = 0
     TRANSACTION = 1
     ACCOUNT = 2

@@ -47,7 +47,7 @@ class ClientHandler:
             msg = deserialize_message(self.conn.recv())
             logging.debug(f"received message from client: {msg.__dict__}")
             # TODO: check msg integrity (correct variants)
-            if msg.type().value == MessageType.EOF.value:
+            if msg.type() == MessageType.EOF:
                 # msg.client_id = self.id  # type: ignore[reportAttributeAccessIssue]
                 transactions_tx.send(EOF(self.id).serialize())
                 break
@@ -60,7 +60,7 @@ class ClientHandler:
             msg = deserialize_message(self.conn.recv())
             logging.debug(f"received message from client: {msg.__dict__}")
             # TODO: check msg integrity (correct variants)
-            if msg.type().value == MessageType.EOF.value:
+            if msg.type() == MessageType.EOF:
                 # msg.client_id = self.id  # type: ignore[reportAttributeAccessIssue]
                 accounts_tx.send(EOF(self.id).serialize())
                 break

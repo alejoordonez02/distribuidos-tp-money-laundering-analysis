@@ -27,7 +27,7 @@ class Filter:
     def _handle_message(self, bytes2: bytes, ack: Callable, nack: Callable):
         msg = deserialize_message(bytes2)
 
-        if msg.type().value == MessageType.EOF.value:
+        if msg.type() == MessageType.EOF:
             self._handle_eof(msg)  # type: ignore
             return
 
