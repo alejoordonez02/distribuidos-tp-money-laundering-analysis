@@ -5,9 +5,6 @@ from .message_types import MessageType
 
 
 class FIN(Message):
-    def type(self) -> MessageType:
-        return MessageType.FIN
-
     @classmethod
     def deserialize(cls, bytes2: bytes) -> Self:
         return cls._deserialize(bytes2)  # type: ignore

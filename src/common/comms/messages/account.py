@@ -19,9 +19,6 @@ class Account(Message):
         self.entity_id = entity_id
         self.entity_name = entity_name
 
-    def type(self) -> MessageType:
-        return MessageType.ACCOUNT
-
     @classmethod
     def deserialize(cls, bytes2: bytes) -> Self:
         return cls._deserialize(bytes2)  # type: ignore

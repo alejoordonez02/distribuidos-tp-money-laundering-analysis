@@ -30,9 +30,6 @@ class Transaction(Message):
         self.payment_currency = payment_currency
         self.payment_format = payment_format
 
-    def type(self) -> MessageType:
-        return MessageType.TRANSACTION
-
     @classmethod
     def deserialize(cls, bytes2: bytes) -> Self:
         return cls._deserialize(bytes2)  # type: ignore

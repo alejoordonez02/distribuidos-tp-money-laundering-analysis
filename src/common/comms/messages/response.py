@@ -10,9 +10,6 @@ class Response(Message):
         self.client_id = client_id
         self.body = body
 
-    def type(self) -> MessageType:
-        return MessageType.RESPONSE
-
     @classmethod
     def deserialize(cls, bytes2: bytes) -> Self:
         return cls._deserialize(bytes2)  # type: ignore
