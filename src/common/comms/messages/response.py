@@ -15,7 +15,7 @@ class Response(Message):
         return MessageType.RESPONSE
 
     def _fields(self) -> list[Any]:
-        return [MessageType.RESPONSE, self.client_id, self.body]
+        return [self.client_id, self.body]
 
     @classmethod
     def _from_fields(cls, fields: list[Any]) -> Self:

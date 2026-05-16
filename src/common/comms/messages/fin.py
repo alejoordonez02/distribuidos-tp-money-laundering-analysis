@@ -10,7 +10,7 @@ class FIN(Message):
         return MessageType.FIN
 
     def _fields(self) -> list[Any]:
-        return [MessageType.FIN]
+        return []
 
     @classmethod
     def _from_fields(cls, fields: list[Any]) -> Self:

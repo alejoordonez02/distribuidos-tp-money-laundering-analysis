@@ -23,7 +23,7 @@ class Message:
         Get the type of a message instance.
 
         # Returns
-        A `MessageType` variant for the message.
+        The `MessageType` variant of the message.
         """
         return self._type()
 
@@ -34,7 +34,9 @@ class Message:
         # Returns
         The `bytes` of the serialized message.
         """
-        return json.dumps(self._fields(), cls=MessageJSONEncoder).encode("utf-8")
+        return json.dumps(
+            [self._type(), *self._fields()], cls=MessageJSONEncoder
+        ).encode("utf-8")
 
     @classmethod
     def deserialize(cls, bytes2: bytes) -> "Message":
@@ -75,9 +77,32 @@ class Message:
 
     @abstractmethod
     def _fields(self) -> list[Any]:
+        """
+        Returns the fields of the `Message`.
+
+        `Message` subclasses must return the fields that are to be
+        serialized/deserialized when sending/receiveing messages
+        corresponding their attributes.
+
+        # Returns
+        The list of *fields* for the `Message` instance.
+        """
         pass
 
     @classmethod
     @abstractmethod
     def _from_fields(cls, fields: list[Any]) -> "Message":
+        """
+        Create a `Message` instance from a field list.
+
+        These fields will match those returned in the `_fields()`
+        method.
+
+        # Args
+        * fields: the liest of fields for creating the `Message`
+          variant.
+
+        # Returns
+        A new `Message` instance.
+        """
         pass

@@ -14,7 +14,7 @@ class EOF(Message):
         return MessageType.EOF
 
     def _fields(self) -> list[Any]:
-        return [MessageType.EOF, self.client_id]
+        return [self.client_id]
 
     @classmethod
     def _from_fields(cls, fields: list[Any]) -> Self:

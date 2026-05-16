@@ -25,7 +25,6 @@ class Account(Message):
 
     def _fields(self) -> list[Any]:
         return [
-            MessageType.ACCOUNT,
             self.bank_name,
             self.bank_id,
             self.account_number,
