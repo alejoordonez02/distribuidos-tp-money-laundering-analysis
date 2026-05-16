@@ -37,10 +37,9 @@ class Message:
         return json.dumps(self._fields(), cls=MessageJSONEncoder).encode("utf-8")
 
     @classmethod
-    @abstractmethod
     def deserialize(cls, bytes2: bytes) -> "Message":
         """
-        Deserializes `bytes` into a `Message` variant.
+        Deserializes `bytes` into a specific `Message` variant.
 
         This method is useful so that matching the message type after
         deserializing is not necessary when there there is only one
@@ -61,10 +60,6 @@ class Message:
         * `UnexpectedMessageError` if the the type field does not match
           the expected one.
         """
-        pass
-
-    @classmethod
-    def _deserialize(cls, bytes2: bytes):
         fields = json.loads(bytes2.decode("utf-8"))
         if fields[0] != cls._type():
             raise UnexpectedMessageError(

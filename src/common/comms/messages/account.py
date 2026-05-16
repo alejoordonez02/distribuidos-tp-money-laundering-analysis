@@ -20,10 +20,6 @@ class Account(Message):
         self.entity_name = entity_name
 
     @classmethod
-    def deserialize(cls, bytes2: bytes) -> Self:
-        return cls._deserialize(bytes2)  # type: ignore
-
-    @classmethod
     def _type(cls):
         return MessageType.ACCOUNT
 

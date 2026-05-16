@@ -10,10 +10,6 @@ class EOF(Message):
         self.client_id = client_id
 
     @classmethod
-    def deserialize(cls, bytes2: bytes) -> Self:
-        return cls._deserialize(bytes2)  # type: ignore[reportArgumentType]
-
-    @classmethod
     def _type(cls):
         return MessageType.EOF
 

@@ -11,10 +11,6 @@ class Response(Message):
         self.body = body
 
     @classmethod
-    def deserialize(cls, bytes2: bytes) -> Self:
-        return cls._deserialize(bytes2)  # type: ignore
-
-    @classmethod
     def _type(cls):
         return MessageType.RESPONSE
 
