@@ -5,11 +5,11 @@ from uuid import uuid4
 
 from common.comms.connection import Connection
 from common.comms.messages import (
-    EOF,
     Message,
     MessageType,
     deserialize_message,
 )
+from common.comms.messages.errors import UnexpectedMessageError
 from common.comms.middleware import MessageMiddlewareQueue
 
 UUID = uuid4
@@ -40,31 +40,44 @@ class ClientHandler:
         self.conn.send(msg.serialize())
 
     def _run(self):
-        # TODO: maybe have a different eof msg for the external protocol
-        # recv transactions
+        self._handle_transactions()
+        self._handle_accounts()
+        logging.info("finished sending all client's data")
+
+    def _handle_transactions(self):
         transactions_tx = self.trans_tx_factory()
         while True:
             msg = deserialize_message(self.conn.recv())
             logging.debug(f"received message from client: {msg.__dict__}")
-            # TODO: check msg integrity (correct variants)
-            if msg.type() == MessageType.EOF:
-                # msg.client_id = self.id  # type: ignore[reportAttributeAccessIssue]
-                transactions_tx.send(EOF(self.id).serialize())
-                break
 
-            transactions_tx.send(msg.serialize())
+            match msg.type():
+                case MessageType.EOF:
+                    msg.client_id = self.id
+                    transactions_tx.send(msg.serialize())
+                    break
+                case MessageType.TRANSACTIONS:
+                    msg.client_id = self.id
+                    transactions_tx.send(msg.serialize())
+                case _:
+                    raise UnexpectedMessageError(
+                        "client handler received unexpected msg: {msg.__dict__}"
+                    )
 
-        # recv accounts
+    def _handle_accounts(self):
         accounts_tx = self.accs_tx_factory()
         while True:
             msg = deserialize_message(self.conn.recv())
             logging.debug(f"received message from client: {msg.__dict__}")
-            # TODO: check msg integrity (correct variants)
-            if msg.type() == MessageType.EOF:
-                # msg.client_id = self.id  # type: ignore[reportAttributeAccessIssue]
-                accounts_tx.send(EOF(self.id).serialize())
-                break
 
-            accounts_tx.send(msg.serialize())
-
-        logging.info("finished sending all client's data")
+            match msg.type():
+                case MessageType.EOF:
+                    msg.client_id = self.id
+                    accounts_tx.send(msg.serialize())
+                    break
+                case MessageType.ACCOUNTS:
+                    msg.client_id = self.id
+                    accounts_tx.send(msg.serialize())
+                case _:
+                    raise UnexpectedMessageError(
+                        "client handler received unexpected msg: {msg.__dict__}"
+                    )
