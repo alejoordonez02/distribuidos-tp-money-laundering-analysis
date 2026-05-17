@@ -13,4 +13,4 @@ class UC1Filter(FilterFn):
             if t.payment_currency == TARGET_CURRENCY or t.amount_paid <= MIN_AMOUNT:
                 filtered.append(t)
 
-        return Transactions(filtered)
+        return Transactions(el.client_id, filtered)
