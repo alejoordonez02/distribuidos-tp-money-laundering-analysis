@@ -18,6 +18,8 @@ class MessageJSONEncoder(json.JSONEncoder):
 
 
 class Message:
+    client_id: UUID
+
     def type(self) -> MessageType:
         """
         Get the type of a message instance.
