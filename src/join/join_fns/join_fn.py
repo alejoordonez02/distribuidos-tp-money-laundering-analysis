@@ -1,12 +1,12 @@
 from abc import abstractmethod
 from uuid import UUID
 
-from common.comms.messages import Response
+from common.comms.messages import Message, Response
 
 
-class JoinFn[El]:
+class JoinFn:
     @abstractmethod
-    def join(self, el: El):
+    def join(self, el: Message):
         pass
 
     @abstractmethod

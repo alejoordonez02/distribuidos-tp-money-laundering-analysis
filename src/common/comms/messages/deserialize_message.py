@@ -1,13 +1,13 @@
 import json
 
-from .account import Account
+from .accounts import Accounts
 from .eof import EOF
 from .errors import UnknownMessageError
 from .fin import FIN
 from .message import Message
 from .message_types import MessageType
 from .response import Response
-from .transaction import Transaction
+from .transactions import Transactions
 
 
 def deserialize_message(bytes2: bytes) -> Message:
@@ -27,10 +27,10 @@ def deserialize_message(bytes2: bytes) -> Message:
     match fields[0]:
         case MessageType.EOF:
             return EOF.deserialize(bytes2)
-        case MessageType.TRANSACTION:
-            return Transaction.deserialize(bytes2)
-        case MessageType.ACCOUNT:
-            return Account.deserialize(bytes2)
+        case MessageType.TRANSACTIONS:
+            return Transactions.deserialize(bytes2)
+        case MessageType.ACCOUNTS:
+            return Accounts.deserialize(bytes2)
         case MessageType.FIN:
             return FIN.deserialize(bytes2)
         case MessageType.RESPONSE:

@@ -1,19 +1,19 @@
 from uuid import UUID
 
-from common.comms.messages import Response, Transaction
+from common.comms.messages import Response, Transactions
 
 from .join_fn import JoinFn
 
 
-class DummyJoin(JoinFn[Transaction]):
+class DummyJoin(JoinFn):
     def __init__(self):
-        self.transactions: list[Transaction] = []
+        self.transactions: Transactions = Transactions([])
 
-    def join(self, el: Transaction):
-        self.transactions.append(el)
+    def join(self, el: Transactions):  # type: ignore[reportIncompatibleMethodOverride]
+        self.transactions.transactions.extend(el.transactions)
 
     def get_response(self, client_id: UUID) -> Response:
-        body = f"{[t.__dict__ for t in self.transactions]}"
+        body = f"{[t.__dict__ for t in self.transactions.transactions]}"
         response = Response(client_id, body)
 
         return response

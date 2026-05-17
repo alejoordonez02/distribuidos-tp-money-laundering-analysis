@@ -1,0 +1,59 @@
+from dataclasses import dataclass
+from datetime import datetime
+
+
+@dataclass
+class Transaction:
+    timestamp: datetime
+    from_bank: str
+    from_account: str
+    to_bank: str
+    to_account: str
+    amount_received: float
+    receiving_currency: str
+    amount_paid: float
+    payment_currency: str
+    payment_format: str
+
+
+# def _fields(self) -> list[Any]:
+#     return [
+#         self.timestamp,
+#         self.from_bank,
+#         self.from_account,
+#         self.to_bank,
+#         self.to_account,
+#         self.amount_received,
+#         self.receiving_currency,
+#         self.amount_paid,
+#         self.payment_currency,
+#         self.payment_format,
+#     ]
+
+# @classmethod
+# def _from_fields(cls, fields: list[Any]) -> Self:
+#     (
+#         timestamp,
+#         from_bank,
+#         from_account,
+#         to_bank,
+#         to_account,
+#         amount_received,
+#         receiving_currency,
+#         amount_paid,
+#         payment_currency,
+#         payment_format,
+#     ) = fields
+#
+#     return cls(
+#         timestamp,
+#         from_bank,
+#         from_account,
+#         to_bank,
+#         to_account,
+#         amount_received,
+#         receiving_currency,
+#         amount_paid,
+#         payment_currency,
+#         payment_format,
+#     )

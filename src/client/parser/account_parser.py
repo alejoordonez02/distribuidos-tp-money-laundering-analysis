@@ -1,4 +1,4 @@
-from common.comms.messages import Account
+from common.data import Account
 
 from .parser import Parser
 

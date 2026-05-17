@@ -1,12 +1,16 @@
 from abc import abstractmethod
 
+from common.comms.messages import Message
 
-class FilterFn[El]:
+
+# TODO: esto quizás quedó semánticamente un poco raro con los nuevos
+#       msjs de transaction*s* y account*s*.
+class FilterFn:
     @abstractmethod
-    def filter(self, el: El) -> bool:
+    def filter(self, el: Message) -> Message:
         """
         Filter an element.
 
-        Returns true if the element should be filtered (dropped).
+        Returns the filtered element.
         """
         pass

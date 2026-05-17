@@ -67,7 +67,7 @@ class Gateway:
             logging.error(f"received unknown from server: {bytes2}")
             return
 
-        self.clients.get(response.client_id).send(response)
+        self.clients.get(response.client_id).send(response)  # type: ignore[reportAttributeAccessIssue]
         ack()
 
     def _run(self):

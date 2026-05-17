@@ -1,13 +1,13 @@
 import logging
 import time
-from enum import Enum
 from uuid import uuid4
 
 from parser import Parser
 
 from common.comms.connection import Connection
-from common.comms.messages import EOF, Account, MessageType, Transaction
+from common.comms.messages import EOF, Accounts, Transactions
 from common.comms.messages.deserialize_message import Response
+from common.data import Account, Transaction
 
 # TODO: this should be dynamic (use some fin msg protocol)
 NRESPONSES = 1
@@ -91,15 +91,15 @@ class Client:
         """
         Send transaction batch to server.
         """
-        for t in transactions:
-            self.conn.send(t.serialize())
+        msg = Transactions(transactions)
+        self.conn.send(msg.serialize())
 
     def _send_accounts(self, accounts: list[Account]):
         """
         Send accounts batch to server.
         """
-        for a in accounts:
-            self.conn.send(a.serialize())
+        msg = Accounts(accounts)
+        self.conn.send(msg.serialize())
 
     def _send_eof(self):
         # TODO: no way this uuid can be here
@@ -110,7 +110,7 @@ class Client:
 
         for _ in range(NRESPONSES):
             response = Response.deserialize(self.conn.recv())
-            responses.append(response.body)
+            responses.append(response.body)  # type: ignore[reportAttributeAccessIssue]
 
         return responses
 

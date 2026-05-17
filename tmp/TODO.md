@@ -1,12 +1,10 @@
-### diseño y diagramas
-- Hablar de la necesidad de la *atomicidad* del primer Filter. El problema acá es que un Filter debería mandar ACK a la cola que tiene con el gateway una vez que mandó las transacciones correspondientes a todas las colas que tiene en frente. Si el Filter se cae después de haberle mandado a una o más colas, pero no a todas, no va a mandar el ACK al exchange que tiene atrás y por tanto éste va a reenviar a otra instancia de Filter, que por último va a mandar transacciones duplicadas a las colas a las que el Filter que murió ya había mandado.
-- Si vamos a hablar de cómo vamos a manejar los EOF para pasar de paso a paso en el pipeline, tendríamos que hacerlo en una sección aparte, y contando bien lo que charlamos del anillo, los atributos `total`, `global_processed` y `local_processed`, etc.
-- Justificar las afirmaciones del dataset con datos del dataset (xd), por ej: "Además, la variedad de bancos en el dataset es lo suficientemente alta como para ser una clave de distribución eficaz, evitando hotspots."
-- "El diagrama de actividades general muestra el flujo desde la perspectiva del cliente: este envía una única petición y espera cinco respuestas independientes. Internamente, los cinco pipelines se activan en paralelo (fork) y el cliente solo recibe respuesta cuando todos han finalizado (join)". Esto no es así, el cliente recibe las respuestas a medida que el servidor las envía, no cuando todos los pipelines finalizan.
-- Los paquetes creo que van a quedar mucho mejor organizados si tenemos uno por cada controller. Dejemos las generalizaciones lógicas para la implementación y la reutilización de código en el paquete `/common`, que ahora está como `/comms` porque es lo único que se me ocurrió que era común cuando hice el diagrama; pero eventualmente podrían haber más cosas.
-- Los **Mensajes** son parte de la vista lógica, no deberían estar en la vista de desarrollo y no sé siquiera si los incluiría en el informe aún. Mismo con **Middleware**.
+# TODOs
+#### msg FIN (?)
+Me di cuenta de un problema: qué pasa si el cliente no manda datos tales que sea posible mandarle las responses correspondientes a los cinco use cases?  
+Por ej si mandara todo un dataset de transacciones q no tiene ninguna transacción en USD el uc1 nunca le va a llegar.
 
-### redacción
-- Uniformizar los usos de terminología: si vamos a poner "$" para la plata, que esté siempre, usemos siempre "shard" o siempre "partición"; etc.
-- Suprimir aclaraciones obvias, por ej: "El Filter puede tener múltiples instancias corriendo en paralelo (indicado por el símbolo apilado en el diagrama), lo que permite escalar horizontalmente el procesamiento de datos."
-- "Esta bifurcación es lo que habilita la ejecución concurrente." "concurrente"?
+El tema es cómo hacemos que pare de esperar msjitos? O sea idealmente tendríamos un msg FIN que mandamos del server, pero el server tampoco va a poder saber a priori si todos los use cases le corresponden a cada cliente.
+
+##### solución ?
+Pensándolo mejor en realidad si un cliente te manda datos tales que no hay ninguna transacción en USD (en el ej. de uc1) entonces sí hay response: lista vacía. Bueno entonces vamos a tener que considerar eso para mandar mensajes entre controllers.  
+Yo creo que vamos a tener, más q un msj Transaction/Account, msjs Transaction**s**/Account**s**, que contengan las múltiples instancias de sus respectivos datos.
