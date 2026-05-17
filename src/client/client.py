@@ -11,6 +11,8 @@ from common.data import Account, Transaction
 
 # TODO: this should be dynamic (use some fin msg protocol)
 NRESPONSES = 1
+# TODO: no way this uuid can be here
+TMP_CLIENT_ID = uuid4()
 
 
 class Client:
@@ -91,19 +93,18 @@ class Client:
         """
         Send transaction batch to server.
         """
-        msg = Transactions(transactions)
+        msg = Transactions(TMP_CLIENT_ID, transactions)
         self.conn.send(msg.serialize())
 
     def _send_accounts(self, accounts: list[Account]):
         """
         Send accounts batch to server.
         """
-        msg = Accounts(accounts)
+        msg = Accounts(TMP_CLIENT_ID, accounts)
         self.conn.send(msg.serialize())
 
     def _send_eof(self):
-        # TODO: no way this uuid can be here
-        self.conn.send(EOF(client_id=uuid4()).serialize())
+        self.conn.send(EOF(TMP_CLIENT_ID).serialize())
 
     def _receive_responses(self):
         responses = []
