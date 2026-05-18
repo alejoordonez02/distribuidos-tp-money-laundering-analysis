@@ -10,7 +10,7 @@ class UC1Filter(FilterFn):
     def filter(self, el: Transactions) -> Transactions:  # type: ignore[reportIncompatibleMethodOverride]
         filtered = []
         for t in el.transactions:
-            if t.payment_currency == TARGET_CURRENCY or t.amount_paid <= MIN_AMOUNT:
+            if t.payment_currency == TARGET_CURRENCY and t.amount_paid < MIN_AMOUNT:
                 filtered.append(t)
 
         return Transactions(el.client_id, filtered)
