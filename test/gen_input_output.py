@@ -4,15 +4,15 @@
 # for each client.
 
 import pandas as pd  # pyright: ignore    no me toma pandas :(
-
-TRANSACTIONS_PATH = "datasets/transactions100.csv"
-ACCOUNTS_PATH = "datasets/accounts42.csv"
-TRANSACTIONS_SAMPLE_SIZE = 50
-ACCOUNTS_SAMPLE_SIZE = None  # whole dataset
-
-NCLIENTS = 1
-CLIENT_DATASETS_PATH = "test/datasets/"
-CLIENT_RESULTS_PATH = "test/expected_responses/"
+from cfg import (
+    ACCOUNTS_PATH,
+    ACCOUNTS_SAMPLE_SIZE,
+    CLIENT_DATASETS_PATH,
+    CLIENT_EXPECTED_RESPONSES_PATH,
+    NCLIENTS,
+    TRANSACTIONS_PATH,
+    TRANSACTIONS_SAMPLE_SIZE,
+)
 
 
 def main():
@@ -31,11 +31,11 @@ def main():
         gen_results(
             trans_df,
             accounts_df,
-            CLIENT_RESULTS_PATH + f"uc1_{n}.csv",
-            CLIENT_RESULTS_PATH + f"uc2_{n}.csv",
-            CLIENT_RESULTS_PATH + f"uc3_{n}.csv",
-            CLIENT_RESULTS_PATH + f"uc4_{n}.csv",
-            CLIENT_RESULTS_PATH + f"uc5_{n}.csv",
+            CLIENT_EXPECTED_RESPONSES_PATH + f"uc1_{n}.csv",
+            CLIENT_EXPECTED_RESPONSES_PATH + f"uc2_{n}.csv",
+            CLIENT_EXPECTED_RESPONSES_PATH + f"uc3_{n}.csv",
+            CLIENT_EXPECTED_RESPONSES_PATH + f"uc4_{n}.csv",
+            CLIENT_EXPECTED_RESPONSES_PATH + f"uc5_{n}.csv",
         )
 
 
