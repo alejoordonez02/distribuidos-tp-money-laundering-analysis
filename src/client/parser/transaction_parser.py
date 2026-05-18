@@ -10,6 +10,7 @@ DATETIME_FORMAT = "%Y/%m/%d %H:%M"
 class TransactionParser(Parser[Transaction]):
     def parse(self, line: str) -> Transaction:
         (
+            _,  # idx
             timestamp,
             from_bank,
             from_account,
