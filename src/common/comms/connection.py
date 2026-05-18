@@ -1,13 +1,15 @@
 from socket import SHUT_RDWR, socket
 
 LEN_SIZE = 2
+"""
+The amount of bytes for the length of the (byte) message.
+"""
 BYTE_ORDER = "big"
-BUF_SIZE = 1024
 
 
 class Connection:
     """
-    A socket wrapper for sending/receiveing single messages.
+    A socket wrapper for sending/receiveing *single* messages.
     """
 
     def __init__(self, skt: socket):

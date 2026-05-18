@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from common.comms.messages import Transaction
+from common.data import Transaction
 
 from .parser import Parser
 

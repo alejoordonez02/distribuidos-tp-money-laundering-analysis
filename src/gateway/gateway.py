@@ -4,14 +4,17 @@ from threading import Thread
 from typing import Callable
 
 from client_handler import ClientHandler
+from client_monitor import ClientMonitor
 
 from common.comms.connection import Connection
-from common.comms.messages import UnknownMessageError, deserialize_message
+from common.comms.messages import (
+    Response,
+    UnknownMessageError,
+)
+from common.comms.messages.errors import UnexpectedMessageError
 from common.comms.middleware import (
     MessageMiddlewareQueue,
 )
-
-BUF_SIZE = 1024
 
 
 class Gateway:
@@ -20,8 +23,8 @@ class Gateway:
         listener: socket,
         addr: tuple[str, int],
         server_rx: MessageMiddlewareQueue,
-        transactions_tx: MessageMiddlewareQueue,
-        accounts_tx: MessageMiddlewareQueue,
+        trans_tx_factory: Callable[[], MessageMiddlewareQueue],
+        accs_tx_factory: Callable[[], MessageMiddlewareQueue],
     ):
         """
         Create a new `Gateway`.
@@ -39,11 +42,11 @@ class Gateway:
         self.listener = listener
         self.listener.bind(addr)
         self.server_rx = server_rx
-        self.transactions_tx = transactions_tx
-        self.accounts_tx = accounts_tx
+        self.trans_tx_factory = trans_tx_factory
+        self.accs_tx_factory = accs_tx_factory
 
         self.server_handle: Thread
-        self.clients: list[ClientHandler] = []
+        self.clients = ClientMonitor()
 
     def start(self):
         """
@@ -56,20 +59,16 @@ class Gateway:
 
     def _handle_server_response(self, bytes2: bytes, ack: Callable, nack: Callable):
         try:
-            msg = deserialize_message(bytes2)
+            response = Response.deserialize(bytes2)
+        except UnexpectedMessageError:
+            logging.error(f"received unexpected from server: {bytes2}")
+            return
         except UnknownMessageError:
             logging.error(f"received unknown from server: {bytes2}")
             return
-        # TODO
 
-        match msg.type():  # type: ignore
-            case _:
-                logging.info(f"received {msg} from server")
-                # TODO
-
-        # send it to client
-        # TODO: we are only handling one client
-        self.clients[0].send(msg)
+        self.clients.get(response.client_id).send(response)  # type: ignore[reportAttributeAccessIssue]
+        ack()
 
     def _run(self):
         self.server_handle = Thread(
@@ -78,16 +77,15 @@ class Gateway:
         self.server_handle.start()
 
         while self._keep_running:
-            # accept new connections
             skt, _ = self.listener.accept()
             conn = Connection(skt)
 
-            # handle those connections
-            client = ClientHandler(
-                conn, self.transactions_tx, self.accounts_tx
-            )  # TODO: concurrency - ~tasks
-            self.clients.append(client)
+            client = ClientHandler(conn, self.trans_tx_factory, self.accs_tx_factory)
             client.start()
+
+            self.clients.add(client)
+
+        self.server_handle.join()
 
     def stop(self):
         self._keep_running = False

@@ -1,8 +1,8 @@
-from common.comms.messages import Transaction
+from common.comms.messages import Transactions
 
 from .filter_fn import FilterFn
 
 
-class Promiscuous(FilterFn[Transaction]):
-    def filter(self, el: Transaction) -> bool:
-        return False
+class Promiscuous(FilterFn):
+    def filter(self, el: Transactions) -> Transactions:  # type: ignore[reportIncompatibleMethodOverride]
+        return el

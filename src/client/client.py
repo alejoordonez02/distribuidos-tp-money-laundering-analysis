@@ -1,12 +1,18 @@
 import logging
 import time
-from enum import Enum
+from uuid import uuid4
 
 from parser import Parser
 
 from common.comms.connection import Connection
-from common.comms.messages import EOF, Account, MessageType, Transaction
-from common.comms.messages.deserialize_message import deserialize_message
+from common.comms.messages import EOF, Accounts, Transactions
+from common.comms.messages.deserialize_message import Response
+from common.data import Account, Transaction
+
+# TODO: this should be dynamic (use some fin msg protocol)
+NRESPONSES = 1
+# TODO: no way this uuid can be here
+TMP_CLIENT_ID = uuid4()
 
 
 class Client:
@@ -28,7 +34,7 @@ class Client:
 
     def start(self):
         # TODO: esto lo dejo acá porque me trabé haciendo q se ejecute bien el script de healthcheck
-        time.sleep(5)
+        time.sleep(10)
         self._run()
 
     def _run(self):
@@ -87,29 +93,25 @@ class Client:
         """
         Send transaction batch to server.
         """
-        for t in transactions:
-            self.conn.send(t.serialize())
+        msg = Transactions(TMP_CLIENT_ID, transactions)
+        self.conn.send(msg.serialize())
 
     def _send_accounts(self, accounts: list[Account]):
         """
         Send accounts batch to server.
         """
-        for a in accounts:
-            self.conn.send(a.serialize())
+        msg = Accounts(TMP_CLIENT_ID, accounts)
+        self.conn.send(msg.serialize())
 
     def _send_eof(self):
-        self.conn.send(EOF().serialize())
+        self.conn.send(EOF(TMP_CLIENT_ID).serialize())
 
     def _receive_responses(self):
         responses = []
 
-        while True:
-            response_raw = self.conn.recv()
-            response = deserialize_message(response_raw)
-            if response.type().value == MessageType.FIN.value:
-                break
-
-            responses.append(response_raw.decode())
+        for _ in range(NRESPONSES):
+            response = Response.deserialize(self.conn.recv())
+            responses.append(response.body)  # type: ignore[reportAttributeAccessIssue]
 
         return responses
 

@@ -18,6 +18,7 @@ LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
 
 def main():
     logging.basicConfig(level=LOGGING_LEVEL)
+    logging.getLogger("pika").setLevel(logging.WARNING)
 
     skt = socket(AF_INET, SOCK_STREAM)
     skt.connect((GATEWAY_HOST, int(GATEWAY_PORT)))
