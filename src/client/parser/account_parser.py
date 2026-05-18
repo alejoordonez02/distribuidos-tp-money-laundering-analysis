@@ -6,7 +6,9 @@ from .parser import Parser
 class AccountParser(Parser[Account]):
     def parse(self, line: str) -> Account:
         (
-            _,  # row idx
+            # _,  # row idx NOTE: se ve q cuando el dataset viene de un
+            #                     .to_csv(..) se guarda con idx pero los
+            #                     originales no lo tienen
             bank_name,
             bank_id,
             account_number,

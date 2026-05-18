@@ -1,7 +1,7 @@
 import logging
 import os
 
-from join_fns import DummyJoin
+from join_fns import UC1Join
 
 from common.comms.middleware import QueueRabbitMQ
 from join import Join
@@ -17,7 +17,7 @@ def main():
     logging.basicConfig(level=LOGGING_LEVEL)
     logging.getLogger("pika").setLevel(logging.WARNING)
 
-    partial_res_handlers = [(QueueRabbitMQ(MOM_HOST, CLIENT_RESPONSES_RX), DummyJoin())]
+    partial_res_handlers = [(QueueRabbitMQ(MOM_HOST, CLIENT_RESPONSES_RX), UC1Join())]
     responses_tx = QueueRabbitMQ(MOM_HOST, CLIENT_RESPONSES_TX)
 
     # NOTE: no sé por qué me tira error el linter acá...

@@ -1,6 +1,8 @@
 from socket import SHUT_RDWR, socket
 
-LEN_SIZE = 2
+# client_0  | OverflowError: int too big to convert...
+# TODO: bajar esto cuando el cliente ya esté mandando batches
+LEN_SIZE = 4
 """
 The amount of bytes for the length of the (byte) message.
 """

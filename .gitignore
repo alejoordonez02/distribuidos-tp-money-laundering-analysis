@@ -2,6 +2,10 @@
 datasets/
 responses/
 
+# tests input and expected output
+test/datasets
+test/expected_responses
+
 **__pycache__**
 
 # drawio
