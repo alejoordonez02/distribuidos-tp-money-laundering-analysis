@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 from uuid import uuid4
 
@@ -10,7 +11,7 @@ from common.comms.messages.deserialize_message import Response
 from common.data import Account, Transaction
 
 # TODO: this should be dynamic (use some fin msg protocol)
-NRESPONSES = 1
+NRESPONSES = int(os.getenv("NRESPONSES", "1"))
 # TODO: no way this uuid can be here
 TMP_CLIENT_ID = uuid4()
 
