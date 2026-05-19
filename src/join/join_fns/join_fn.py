@@ -10,5 +10,5 @@ class JoinFn:
         pass
 
     @abstractmethod
-    def get_response(self, client_id: UUID) -> Response:
+    def get_response(self, client_id: UUID) -> Response | None:
         pass
