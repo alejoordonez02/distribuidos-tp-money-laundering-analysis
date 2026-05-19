@@ -19,8 +19,8 @@ def main():
     """
     Generate the input and expected output for each client.
     """
-    # same accounts dataset for all clients
-    accounts_df = pd.read_csv(ACCOUNTS_PATH).sample(ACCOUNTS_SAMPLE_SIZE)
+    # same accounts dataset for all clients — read in full, no sampling
+    accounts_df = pd.read_csv(ACCOUNTS_PATH)
 
     for n in range(NCLIENTS):
         trans_df = gen_sampled_dataframe(
@@ -104,8 +104,11 @@ def gen_uc2_results(trans_df, accounts_df):
         "Amount Paid"
     ].idxmax()
     max_amount_trans_usd = trans_usd_df.loc[max_amount_trans_usd_idx]
+    # Each bank_id maps to exactly one bank_name; deduplicate before merging
+    # to avoid producing one row per account in the bank (many-to-many explosion)
+    bank_names = accounts_df.drop_duplicates("Bank ID")[["Bank ID", "Bank Name"]]
     max_amount_bank = max_amount_trans_usd.merge(
-        accounts_df, left_on="From Bank", right_on="Bank ID"
+        bank_names, left_on="From Bank", right_on="Bank ID"
     )
 
     return max_amount_bank[["From Bank", "Account", "Bank Name", "Amount Paid"]]
