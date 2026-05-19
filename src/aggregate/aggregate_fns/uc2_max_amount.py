@@ -6,7 +6,6 @@ from .aggregate_fn import AggregateFn
 
 
 class UC2MaxAmountAggregateFn(AggregateFn):
-    """Consolidates partial MaxByBank results, keeping the global max per bank."""
 
     def __init__(self):
         # client_id → {bank_id → (account, max_amount)}

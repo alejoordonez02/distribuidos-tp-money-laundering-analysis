@@ -6,7 +6,6 @@ from .aggregate_fn import AggregateFn
 
 
 class UC2BankNamesAggregateFn(AggregateFn):
-    """Consolidates partial BankNames results, merging all bank_id → bank_name mappings."""
 
     def __init__(self):
         # client_id → {bank_id → bank_name}
