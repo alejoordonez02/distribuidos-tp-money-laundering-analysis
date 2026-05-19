@@ -14,6 +14,18 @@ from .transactions import Transactions
 
 
 def deserialize_message(bytes2: bytes) -> Message:
+    """
+    Deserializes `bytes` into a `Message`.
+
+    # Args
+    * `bytes2` - the `bytes` of the serialized message.
+
+    # Returns
+    A new `Message` instance.
+
+    # Errors
+    * `UnknownMessageError` if the type field is unknown.
+    """
     fields = json.loads(bytes2.decode("utf-8"))
     match fields[0]:
         case MessageType.EOF:

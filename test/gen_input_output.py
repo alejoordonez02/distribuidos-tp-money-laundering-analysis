@@ -19,8 +19,10 @@ def main():
     """
     Generate the input and expected output for each client.
     """
-    # same accounts dataset for all clients — read in full, no sampling
+    # same accounts dataset for all clients
     accounts_df = pd.read_csv(ACCOUNTS_PATH)
+    if ACCOUNTS_SAMPLE_SIZE is not None:
+        accounts_df = accounts_df.sample(ACCOUNTS_SAMPLE_SIZE)
 
     for n in range(NCLIENTS):
         trans_df = gen_sampled_dataframe(

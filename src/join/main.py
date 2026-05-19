@@ -29,6 +29,7 @@ def main():
     partial_res_handlers = [(QueueRabbitMQ(MOM_HOST, CLIENT_RESPONSES_RX), join_fn)]
     responses_tx = QueueRabbitMQ(MOM_HOST, CLIENT_RESPONSES_TX)
 
+    # NOTE: no sé por qué me tira error el linter acá...
     join = Join(partial_res_handlers, responses_tx)  # type: ignore[reportArgumentType]
     join.start()
 
