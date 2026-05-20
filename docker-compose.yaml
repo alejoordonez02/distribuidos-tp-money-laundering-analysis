@@ -45,6 +45,7 @@ services:
       - TRANSACTIONS_RX=transactions
       - FILTERED_TX=filtered_transactions
       - UC2_TRANSACTIONS_TX=uc2_transactions
+      - UC4_TRANSACTIONS_TX=uc4_transactions
   join:
     build:
       context: ./src/
