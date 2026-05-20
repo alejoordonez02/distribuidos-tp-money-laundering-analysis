@@ -1,9 +1,12 @@
 import json
 
 from .accounts import Accounts
+from .bank_names import BankNames
 from .eof import EOF
 from .errors import UnknownMessageError
 from .fin import FIN
+from .max_by_bank import MaxByBank
+from .merged_bank_data import MergedBankData
 from .message import Message
 from .message_types import MessageType
 from .response import Response
@@ -35,6 +38,12 @@ def deserialize_message(bytes2: bytes) -> Message:
             return FIN.deserialize(bytes2)
         case MessageType.RESPONSE:
             return Response.deserialize(bytes2)
+        case MessageType.MAX_BY_BANK:
+            return MaxByBank.deserialize(bytes2)
+        case MessageType.BANK_NAMES:
+            return BankNames.deserialize(bytes2)
+        case MessageType.MERGED_BANK_DATA:
+            return MergedBankData.deserialize(bytes2)
         case _:
             raise UnknownMessageError(
                 f"unknown message type {fields[0]} with contents {fields[1:]}"

@@ -7,3 +7,6 @@ class MessageType(IntEnum):
     ACCOUNTS = 2
     FIN = 3
     RESPONSE = 4
+    MAX_BY_BANK = 5
+    BANK_NAMES = 6
+    MERGED_BANK_DATA = 7

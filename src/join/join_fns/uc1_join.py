@@ -24,5 +24,6 @@ class UC1Join(JoinFn):
 
             body += f"\norigin: {origin:<20} destination: {destination:<20} amount: {amount}"
 
+        body += "\n"
         response = Response(client_id, body)
         return response
