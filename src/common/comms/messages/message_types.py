@@ -10,3 +10,4 @@ class MessageType(IntEnum):
     MAX_BY_BANK = 5
     BANK_NAMES = 6
     MERGED_BANK_DATA = 7
+    COUNT = 8

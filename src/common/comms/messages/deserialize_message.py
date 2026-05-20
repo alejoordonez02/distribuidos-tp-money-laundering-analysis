@@ -2,6 +2,7 @@ import json
 
 from .accounts import Accounts
 from .bank_names import BankNames
+from .count import Count
 from .eof import EOF
 from .errors import UnknownMessageError
 from .fin import FIN
@@ -44,6 +45,8 @@ def deserialize_message(bytes2: bytes) -> Message:
             return BankNames.deserialize(bytes2)
         case MessageType.MERGED_BANK_DATA:
             return MergedBankData.deserialize(bytes2)
+        case MessageType.COUNT:
+            return Count.deserialize(bytes2)
         case _:
             raise UnknownMessageError(
                 f"unknown message type {fields[0]} with contents {fields[1:]}"
