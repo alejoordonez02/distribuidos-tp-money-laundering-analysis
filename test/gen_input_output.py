@@ -3,6 +3,9 @@
 # source was only modified so that it produces files with input and expected output
 # for each client.
 
+import json
+import urllib.request
+
 import pandas as pd  # pyright: ignore    no me toma pandas :(
 from cfg import (
     ACCOUNTS_PATH,
@@ -216,46 +219,74 @@ def gen_uc4_results(trans_df):
     return unique_accounts
 
 
+_CURRENCY_ISO = {
+    "Australian Dollar": "AUD",
+    "Brazil Real": "BRL",
+    "Canadian Dollar": "CAD",
+    "Euro": "EUR",
+    "Mexican Peso": "MXN",
+    "Rupee": "INR",
+    "Shekel": "ILS",
+    "Swiss Franc": "CHF",
+    "UK Pound": "GBP",
+    "US Dollar": "USD",
+    "Yen": "JPY",
+    "Yuan": "CNY",
+}
+
+_USD_FALLBACK = {
+    "Bitcoin": 78.33,
+    "Ruble": 0.01,
+    "Saudi Riyal": 0.27,
+}
+
+
+def _fetch_usd_rates(date_dash: str) -> dict[str, float]:
+    url = f"https://api.frankfurter.app/{date_dash}"
+    with urllib.request.urlopen(url, timeout=10) as resp:
+        data = json.loads(resp.read())
+    eur_rates = data["rates"]
+    usd_per_eur = eur_rates["USD"]
+    rates: dict[str, float] = {"US Dollar": 1.0, "Euro": usd_per_eur}
+    for name, iso in _CURRENCY_ISO.items():
+        if iso in ("USD", "EUR"):
+            continue
+        if iso in eur_rates:
+            rates[name] = usd_per_eur / eur_rates[iso]
+    rates.update(_USD_FALLBACK)
+    return rates
+
+
 def gen_uc5_results(trans_df) -> int:
     """
     Count of transactions of period [2022-09-01, 2022-09-05] with type Wire or ACH,
-    having converted amount for that day less than USD 1. Map everything to US
-    Dollars by a fixed table.
+    having converted amount in USD less than 1. Conversion rates fetched from
+    the Frankfurter API (api.frankfurter.app) for each transaction date.
 
     Returns an integer with the result.
     """
-    TO_US_DOLLARS = {
-        "Australian Dollar": 0.72,
-        "Bitcoin": 78.33,
-        "Brazil Real": 0.20,
-        "Canadian Dollar": 0.73,
-        "Euro": 1.17,
-        "Mexican Peso": 0.06,
-        "Ruble": 0.01,
-        "Rupee": 0.01,
-        "Saudi Riyal": 0.27,
-        "Shekel": 0.33,
-        "Swiss Franc": 1.27,
-        "UK Pound": 1.35,
-        "US Dollar": 1,
-        "Yen": 0.006,
-        "Yuan": 0.15,
-    }
     trans_sept_1st_df = trans_df[
         (trans_df["Timestamp"] >= "2022/09/01")
         & (trans_df["Timestamp"] <= "2022/09/06")
     ]
-    trans_sept_1st_wire_or_ach_df = trans_sept_1st_df[
+    trans_wire_ach_df = trans_sept_1st_df[
         (trans_sept_1st_df["Payment Format"] == "Wire")
         | (trans_sept_1st_df["Payment Format"] == "ACH")
-    ]
-    trans_sept_1st_wire_or_ach_converted_df = trans_sept_1st_wire_or_ach_df.copy()
-    trans_sept_1st_wire_or_ach_converted_df["Amount"] = (
-        trans_sept_1st_wire_or_ach_converted_df["Amount Paid"]
-        * trans_sept_1st_wire_or_ach_converted_df["Payment Currency"].map(TO_US_DOLLARS)
+    ].copy()
+
+    # Fetch rates for each unique date (at most 5 calls for period A)
+    rate_cache: dict[str, dict[str, float]] = {}
+    for date_slash in trans_wire_ach_df["Timestamp"].str[:10].unique():
+        date_dash = date_slash.replace("/", "-")
+        rate_cache[date_slash] = _fetch_usd_rates(date_dash)
+
+    trans_wire_ach_df["USD Amount"] = trans_wire_ach_df.apply(
+        lambda row: row["Amount Paid"]
+        * rate_cache[row["Timestamp"][:10]].get(row["Payment Currency"], 1.0),
+        axis=1,
     )
 
-    return trans_sept_1st_wire_or_ach_converted_df.shape[0]
+    return trans_wire_ach_df[trans_wire_ach_df["USD Amount"] < 1.0].shape[0]
 
 
 if __name__ == "__main__":
