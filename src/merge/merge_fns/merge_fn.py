@@ -16,5 +16,5 @@ class MergeFn:
         pass
 
     @abstractmethod
-    def get_result(self, client_id: UUID) -> Message | None:
+    def get_result(self, client_id: UUID) -> Message:
         pass
