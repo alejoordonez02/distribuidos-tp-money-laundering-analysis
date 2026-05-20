@@ -5,6 +5,7 @@ from converter import Converter
 from converter_fns import UC5USDConverterFn
 
 from common.comms.middleware import QueueRabbitMQ
+from common.conversion import FrankfurterConversionAPI
 
 MOM_HOST = os.environ["MOM_HOST"]
 RX = os.environ["RX"]
@@ -20,7 +21,7 @@ def main():
 
     match STRATEGY:
         case "uc5_usd":
-            fn = UC5USDConverterFn()
+            fn = UC5USDConverterFn(FrankfurterConversionAPI())
         case _:
             raise ValueError(f"unknown converter strategy: {STRATEGY}")
 
