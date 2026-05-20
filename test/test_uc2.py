@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 
 from .cfg import (
@@ -16,14 +17,6 @@ class Result:
 
     def __hash__(self):
         return hash((self.bank_id, self.account, self.bank_name, round(self.amount, 2)))
-
-    def __eq__(self, other):
-        return (
-            self.bank_id == other.bank_id
-            and self.account == other.account
-            and self.bank_name == other.bank_name
-            and round(self.amount, 2) == round(other.amount, 2)
-        )
 
 
 def test_uc2():
@@ -54,11 +47,12 @@ def test_uc2():
                 if "--- UC2 ---" in line:
                     break
 
-            # format: bank_id|account|bank_name|amount
+            # format: bank_id: {:<20} account: {:<20} bank_name: {:<30} amount: {}
             while line := responses.readline():
                 if "--- UC" in line:
                     break
-                bank_id, account, bank_name, amount = line.strip().split("|")
+                m = re.match(r"bank_id: (\S+)\s+account: (\S+)\s+bank_name: (.*?)\s+amount: (\S+)$", line.strip())
+                bank_id, account, bank_name, amount = m.group(1), m.group(2), m.group(3), m.group(4)
                 got.add(Result(bank_id, account, bank_name, float(amount)))
 
         assert got == expected
