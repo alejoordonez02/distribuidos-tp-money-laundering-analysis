@@ -50,8 +50,7 @@ class Join:
 
     def _handle_eof(self, join_fn: JoinFn, eof: EOF):
         response = join_fn.get_response(eof.client_id)
-        if response is not None:
-            self.client_responses_tx.send(response.serialize())
+        self.client_responses_tx.send(response.serialize())
 
     def _handle_message(
         self, join_fn: JoinFn, bytes2: bytes, ack: Callable, nack: Callable
