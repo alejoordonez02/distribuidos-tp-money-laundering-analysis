@@ -60,8 +60,12 @@ def gen_sampled_dataframe(
     dataframe_path: str,
     sampled_path: str,
 ):
+    """
+    Samples a dataset, writes it to its corresponding path and returns it.
+    """
     sampled_df = pd.read_csv(dataframe_path).sample(sample_size)
     sampled_df.to_csv(sampled_path)
+
     return sampled_df
 
 
@@ -74,6 +78,9 @@ def gen_results(
     uc4_results_path: str,
     uc5_results_path: str,
 ):
+    """
+    Generates the results for all use cases and writes them to the specified files.
+    """
     uc1_results = gen_uc1_results(trans_df)
     uc1_results.to_csv(uc1_results_path)
 
@@ -92,6 +99,9 @@ def gen_results(
 
 
 def gen_uc1_results(trans_df):
+    """
+    Returns a `DataFrame` with the results.
+    """
     trans_usd_df = trans_df[trans_df["Payment Currency"] == "US Dollar"]
     low_profile_transactions = trans_usd_df[trans_usd_df["Amount Paid"] < 50]
     return low_profile_transactions[
