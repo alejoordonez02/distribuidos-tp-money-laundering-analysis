@@ -25,12 +25,10 @@ class Aggregate:
         msg = deserialize_message(bytes2)
 
         if msg.type() == MessageType.EOF:
-            result = self.fn.get_result(msg.client_id)
-            if result is not None:
-                self.tx.send(result.serialize())
+            self.tx.send(self.fn.get_result(msg.client_id).serialize())
             self.tx.send(EOF(msg.client_id).serialize())
             logging.info(f"forwarded eof for client {msg.client_id}")
             return
 
-        self.fn.accumulate(msg)
+        self.fn.aggregate(msg)
         ack()

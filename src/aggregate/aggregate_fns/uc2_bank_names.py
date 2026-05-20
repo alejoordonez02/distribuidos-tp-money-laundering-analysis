@@ -8,13 +8,12 @@ from .aggregate_fn import AggregateFn
 class UC2BankNamesAggregateFn(AggregateFn):
 
     def __init__(self):
-        # client_id → {bank_id → bank_name}
-        self._state: dict[UUID, dict[str, str]] = {}
+        self._state: dict[UUID, BankNames] = {}
 
-    def accumulate(self, msg: BankNames):  # type: ignore[reportIncompatibleMethodOverride]
+    def aggregate(self, msg: BankNames):  # type: ignore[reportIncompatibleMethodOverride]
         if msg.client_id not in self._state:
-            self._state[msg.client_id] = {}
-        self._state[msg.client_id].update(msg.data)
+            self._state[msg.client_id] = BankNames(msg.client_id, {})
+        self._state[msg.client_id].data.update(msg.data)
 
-    def get_result(self, client_id: UUID) -> BankNames | None:
-        return BankNames(client_id, self._state.get(client_id, {}))
+    def get_result(self, client_id: UUID) -> BankNames:
+        return self._state.get(client_id, BankNames(client_id, {}))
