@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 
 from common.comms.messages import SumByPaymentFormat, Transactions
@@ -15,7 +16,7 @@ class UC3SumGroupByFn(GroupByFn):
         if msg.client_id not in self._state:
             self._state[msg.client_id] = SumByPaymentFormat(msg.client_id, {})
         state = self._state[msg.client_id].data
-        
+
         for t in msg.transactions:
             curr = state.get(t.payment_format)
             if curr is None:
@@ -26,5 +27,6 @@ class UC3SumGroupByFn(GroupByFn):
         
 
     def get_result(self, client_id: UUID) -> SumByPaymentFormat:
+        # logging.info(f"Sum: {self._state[client_id]._fields()}")
         return self._state.get(client_id, SumByPaymentFormat(client_id, {}))
         
