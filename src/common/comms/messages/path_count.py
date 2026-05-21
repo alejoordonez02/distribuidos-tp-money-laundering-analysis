@@ -11,11 +11,11 @@ class PathCounts(Message):
         self.client_id = client_id
         self.counts = counts
 
-    def add(self, path: Path):
+    def add(self, path: Path, count: int):
         if path not in self.counts:
             self.counts[path] = 0
 
-        self.counts[path] += 1
+        self.counts[path] += count
 
     @classmethod
     def _type(cls):

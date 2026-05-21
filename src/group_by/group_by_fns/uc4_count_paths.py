@@ -14,7 +14,7 @@ class UC4CountPaths(GroupByFn):
             for p in predecessors:
                 for s in successors:
                     path = Path(p, s)
-                    self.client_counts[msg.client_id].add(path)
+                    self.client_counts[msg.client_id].add(path, 1)
 
     def get_result(self, client_id: UUID) -> PathCounts:
         if client_id not in self.client_counts:
