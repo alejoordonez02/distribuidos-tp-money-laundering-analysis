@@ -34,6 +34,9 @@ def _get_rates(date_slash: str) -> dict[str, float]:
 
 
 def main():
+    """
+    Generate the input and expected output for each client.
+    """
     # same accounts dataset for all clients
     accounts_df = pd.read_csv(ACCOUNTS_PATH).sample(ACCOUNTS_SAMPLE_SIZE)
 
@@ -109,6 +112,9 @@ def gen_uc1_results(trans_df):
 
 
 def gen_uc2_results(trans_df, accounts_df):
+    """
+    Returns a `DataFrame` with the results.
+    """
     trans_usd_df = trans_df[trans_df["Payment Currency"] == "US Dollar"]
     max_amount_trans_usd_idx = trans_usd_df.groupby(["From Bank"])["Amount Paid"].idxmax()
     max_amount_trans_usd = trans_usd_df.loc[max_amount_trans_usd_idx]
@@ -122,6 +128,13 @@ def gen_uc2_results(trans_df, accounts_df):
 
 
 def gen_uc3_results(trans_df):
+    """
+    Source account, payment format, and amount of transactions in period [2022-09-06,
+    2022-11-06] with amount lower than AVG/100 of period [2022-09-01, 2022-09-05] for
+    the same type of transaction.
+
+    Returns a `DataFrame` with the results.
+    """
     trans_usd_df = trans_df[trans_df["Payment Currency"] == "US Dollar"]
     trans_usd_sept_1st_df = trans_usd_df[
         (trans_usd_df["Timestamp"] >= "2022/09/01")
@@ -147,6 +160,13 @@ def gen_uc3_results(trans_df):
 
 
 def gen_uc4_results(trans_df):
+    """
+    Accounts that match the scatter-gather pattern and where the source account has
+    transferred to more than 5 distinct accounts.
+
+    Returns a `DataFrame` with the results.
+    """
+
     def filter_function(x):
         unique_account_size = x.groupby(["To Bank", "Account.1"]).size().size
         return unique_account_size > 5 and unique_account_size < 10
@@ -193,6 +213,8 @@ def gen_uc5_results(trans_df) -> int:
     """
     Count of Wire/ACH transactions in period A [2022-09-01, 2022-09-05] whose
     amount converted to USD (via Frankfurter API) is less than 1.
+
+    Returns an integer with the result.
     """
     trans_sept_1st_df = trans_df[
         (trans_df["Timestamp"] >= "2022/09/01")
