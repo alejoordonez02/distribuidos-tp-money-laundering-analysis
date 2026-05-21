@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any, Self
 from uuid import UUID
 
@@ -39,5 +40,7 @@ class Transactions(Message):
     @classmethod
     def _from_fields(cls, fields: list[Any]) -> Self:
         client_id = UUID(fields[0])
-        transactions = [Transaction(*t_fields) for t_fields in fields[1:]]
+        transactions = [
+            Transaction(datetime.fromisoformat(t[0]), *t[1:]) for t in fields[1:]
+        ]
         return cls(client_id, transactions)
