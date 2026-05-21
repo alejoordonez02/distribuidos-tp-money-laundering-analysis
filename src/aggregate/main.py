@@ -2,7 +2,7 @@ import logging
 import os
 
 from aggregate import Aggregate
-from aggregate_fns import UC2BankNamesAggregateFn, UC2MaxAmountAggregateFn
+from aggregate_fns import UC2BankNamesAggregateFn, UC2MaxAmountAggregateFn, UC3AvgAggregateFn
 
 from common.comms.middleware import QueueRabbitMQ
 
@@ -23,6 +23,8 @@ def main():
             fn = UC2MaxAmountAggregateFn()
         case "uc2_bank_names":
             fn = UC2BankNamesAggregateFn()
+        case "uc3_avg":
+            fn = UC3AvgAggregateFn()
         case _:
             raise ValueError(f"unknown aggregate strategy: {STRATEGY}")
 

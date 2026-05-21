@@ -160,7 +160,20 @@ services:
       - STRATEGY=uc3_sum
       - RX=uc3_transactons_period_B
       - TX=uc3_sum_by_format
-    
+  uc3_aggregate_avg:
+    build:
+      context: ./src/
+      dockerfile: aggregate/Dockerfile
+    container_name: uc3_aggregate_avg
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc3_avg
+      - RX=uc3_sum_by_format
+      - TX=max_amounts_by_bank
 
   client_0:
     build:

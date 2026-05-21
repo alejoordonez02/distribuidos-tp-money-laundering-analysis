@@ -11,7 +11,8 @@ from .message import Message
 from .message_types import MessageType
 from .response import Response
 from .transactions import Transactions
-
+from .sum_by_payment_format import SumByPaymentFormat
+from .avg_by_format import AvgByFormat
 
 def deserialize_message(bytes2: bytes) -> Message:
     """
@@ -44,6 +45,10 @@ def deserialize_message(bytes2: bytes) -> Message:
             return BankNames.deserialize(bytes2)
         case MessageType.MERGED_BANK_DATA:
             return MergedBankData.deserialize(bytes2)
+        case MessageType.SUM_BY_PAYMENT_FORMAT:
+            return SumByPaymentFormat.deserialize(bytes2)
+        case MessageType.AVG_BY_FORMAT:
+            return AvgByFormat.deserialize(bytes2)
         case _:
             raise UnknownMessageError(
                 f"unknown message type {fields[0]} with contents {fields[1:]}"
