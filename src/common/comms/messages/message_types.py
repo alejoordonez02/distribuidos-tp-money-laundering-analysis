@@ -12,3 +12,4 @@ class MessageType(IntEnum):
     MERGED_BANK_DATA = 7
     GRAPH = 8
     PATH_COUNTS = 9
+    COUNT = 10

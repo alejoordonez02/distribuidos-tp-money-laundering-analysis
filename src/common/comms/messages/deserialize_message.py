@@ -12,6 +12,7 @@ from .message import Message
 from .message_types import MessageType
 from .path_count import PathCounts
 from .response import Response
+from .transaction_count import TransactionCount
 from .transactions import Transactions
 
 
@@ -50,6 +51,8 @@ def deserialize_message(bytes2: bytes) -> Message:
             return Graph.deserialize(bytes2)
         case MessageType.PATH_COUNTS:
             return PathCounts.deserialize(bytes2)
+        case MessageType.COUNT:
+            return TransactionCount.deserialize(bytes2)
         case _:
             raise UnknownMessageError(
                 f"unknown message type {fields[0]} with contents {fields[1:]}"

@@ -6,6 +6,7 @@ from group_by_fns import (
     UC2MaxAmountGroupByFn,
     UC4ComputeGraph,
     UC4CountPaths,
+    UC5CountGroupByFn,
 )
 
 from common.comms.middleware import QueueRabbitMQ
@@ -32,6 +33,8 @@ def main():
             fn = UC4ComputeGraph()
         case "uc4_count_paths":
             fn = UC4CountPaths()
+        case "uc5_count":
+            fn = UC5CountGroupByFn()
         case _:
             raise ValueError(f"unknown group_by strategy: {STRATEGY}")
 

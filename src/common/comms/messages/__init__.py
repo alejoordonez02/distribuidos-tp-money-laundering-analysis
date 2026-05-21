@@ -12,4 +12,5 @@ from .message import Message
 from .message_types import MessageType
 from .path_count import PathCounts
 from .response import Response
+from .transaction_count import TransactionCount
 from .transactions import Transactions
