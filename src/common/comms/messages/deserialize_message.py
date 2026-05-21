@@ -5,10 +5,12 @@ from .bank_names import BankNames
 from .eof import EOF
 from .errors import UnknownMessageError
 from .fin import FIN
+from .graph import Graph
 from .max_by_bank import MaxByBank
 from .merged_bank_data import MergedBankData
 from .message import Message
 from .message_types import MessageType
+from .path_count import PathCounts
 from .response import Response
 from .transactions import Transactions
 
@@ -44,6 +46,10 @@ def deserialize_message(bytes2: bytes) -> Message:
             return BankNames.deserialize(bytes2)
         case MessageType.MERGED_BANK_DATA:
             return MergedBankData.deserialize(bytes2)
+        case MessageType.GRAPH:
+            return Graph.deserialize(bytes2)
+        case MessageType.PATH_COUNTS:
+            return PathCounts.deserialize(bytes2)
         case _:
             raise UnknownMessageError(
                 f"unknown message type {fields[0]} with contents {fields[1:]}"
