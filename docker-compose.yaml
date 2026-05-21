@@ -146,7 +146,20 @@ services:
       - STRATEGY=uc2
       - CLIENT_RESPONSES_RX=max_amounts_w_name
       - CLIENT_RESPONSES_TX=server_responses
-
+  uc3_group_by_format:
+    build:
+      context: ./src/
+      dockerfile: group_by/Dockerfile
+    container_name: uc3_group_by_format
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc3_sum
+      - RX=uc3_transactons_period_B
+      - TX=partial_max_amounts
   client_0:
     build:
       context: ./src/
