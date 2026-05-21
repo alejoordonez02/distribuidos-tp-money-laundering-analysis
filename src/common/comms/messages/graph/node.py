@@ -11,5 +11,5 @@ class Node:
     def fields(self) -> tuple[str, str]:
         return (self.bank, self.account)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.key)
