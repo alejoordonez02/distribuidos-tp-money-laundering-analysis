@@ -5,7 +5,7 @@ from common.comms.messages import TransactionCount, Transactions
 from .group_by_fn import GroupByFn
 
 
-class UC5TransactionCountGroupByFn(GroupByFn):
+class UC5CountGroupByFn(GroupByFn):
     def __init__(self):
         self._state: dict[UUID, TransactionCount] = {}
 
