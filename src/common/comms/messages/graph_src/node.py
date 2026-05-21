@@ -4,7 +4,7 @@ class Node:
         bank: str,
         account: str,
     ):
-        self.key = self.bank + self.account
+        self.key = bank + account
         self.bank = bank
         self.account = account
 

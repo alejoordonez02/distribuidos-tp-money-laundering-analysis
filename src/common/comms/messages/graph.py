@@ -1,9 +1,9 @@
 from typing import Any, Self
 from uuid import UUID
 
-from common.comms.messages import Message, MessageType
-
-from .node import Node
+from .graph_src import Node
+from .message import Message
+from .message_types import MessageType
 
 
 class Graph(Message):
@@ -33,10 +33,8 @@ class Graph(Message):
             [
                 (
                     node.fields(),
-                    (
-                        [p.fields() for p in predecessors],
-                        [s.fields() for s in successors],
-                    ),
+                    [p.fields() for p in predecessors],
+                    [s.fields() for s in successors],
                 )
                 for node, (predecessors, successors) in self.nodes.items()
             ],
@@ -50,7 +48,7 @@ class Graph(Message):
                 set([Node(pbank, paccount) for (pbank, paccount) in predecessors]),
                 set([Node(sbank, saccount) for (sbank, saccount) in successors]),
             )
-            for ((nbank, naccount), predecessors, successors) in fields[1:]
+            for ((nbank, naccount), predecessors, successors) in fields[1]
         }
 
         return cls(client_id, nodes)

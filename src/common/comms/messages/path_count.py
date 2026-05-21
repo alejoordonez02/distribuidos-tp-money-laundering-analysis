@@ -1,10 +1,9 @@
 from typing import Any, Self
 from uuid import UUID
 
-from common.comms.messages import Message, MessageType
-
-from .node import Node
-from .path import Path
+from .graph_src import Node, Path
+from .message import Message
+from .message_types import MessageType
 
 
 class PathCounts(Message):

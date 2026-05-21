@@ -1,8 +1,6 @@
 from uuid import UUID
 
-from common.comms.messages import Graph
-from common.comms.messages.graph.path import Path
-from common.comms.messages.graph.path_count import PathCounts
+from common.comms.messages import Graph, Path, PathCounts
 
 from .group_by_fn import GroupByFn
 
