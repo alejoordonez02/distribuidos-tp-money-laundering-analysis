@@ -60,7 +60,6 @@ services:
       - STRATEGY=uc1
       - CLIENT_RESPONSES_RX=filtered_transactions
       - CLIENT_RESPONSES_TX=server_responses
-
   uc2_group_by_trans:
     build:
       context: ./src/
@@ -103,6 +102,34 @@ services:
       - STRATEGY=uc2_bank_names
       - RX=accounts_tx
       - TX=partial_bank_names
+  uc4_compute_graph:
+    build:
+      context: ./src/
+      dockerfile: group_by/Dockerfile
+    container_name: uc4_compute_graph
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc4_compute_graph
+      - RX=uc4_transactions
+      - TX=uc4_graphs
+  uc4_count_paths:
+    build:
+      context: ./src/
+      dockerfile: group_by/Dockerfile
+    container_name: uc4_count_paths
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc4_count_paths
+      - RX=uc4_graphs
+      - TX=uc4_paths
   uc2_aggregate_accs:
     build:
       context: ./src/
