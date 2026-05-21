@@ -1,3 +1,5 @@
 from .group_by_fn import GroupByFn
 from .uc2_bank_names import UC2BankNamesGroupByFn
 from .uc2_max_amount import UC2MaxAmountGroupByFn
+from .uc4_compute_graph import UC4ComputeGraph
+

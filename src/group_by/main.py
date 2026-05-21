@@ -1,10 +1,10 @@
 import logging
 import os
 
-from group_by import GroupBy
 from group_by_fns import UC2BankNamesGroupByFn, UC2MaxAmountGroupByFn
 
 from common.comms.middleware import QueueRabbitMQ
+from group_by import GroupBy
 
 MOM_HOST = os.environ["MOM_HOST"]
 RX = os.environ["RX"]
@@ -23,6 +23,8 @@ def main():
             fn = UC2MaxAmountGroupByFn()
         case "uc2_bank_names":
             fn = UC2BankNamesGroupByFn()
+        case "uc4_compute_graph":
+            fn = UC4ComputeGraph()
         case _:
             raise ValueError(f"unknown group_by strategy: {STRATEGY}")
 
