@@ -30,6 +30,8 @@ _TIMEOUT = 10
 _JSON_RATES_KEY = "rates"
 _JSON_USD_KEY = "USD"
 _TARGET_CURRENCIES = {"USD", "EUR"}
+_USD_NAME = "US Dollar"
+_EUR_NAME = "Euro"
 
 
 class FrankfurterConversionAPI(ConversionAPI):
@@ -43,7 +45,7 @@ class FrankfurterConversionAPI(ConversionAPI):
         eur_rates = resp.json()[_JSON_RATES_KEY]
         usd_per_eur = eur_rates[_JSON_USD_KEY]
 
-        rates: dict[str, float] = {"US Dollar": 1.0, "Euro": usd_per_eur}
+        rates: dict[str, float] = {_USD_NAME: 1.0, _EUR_NAME: usd_per_eur}
         for name, iso in _CURRENCY_ISO.items():
             if iso in _TARGET_CURRENCIES:
                 continue
