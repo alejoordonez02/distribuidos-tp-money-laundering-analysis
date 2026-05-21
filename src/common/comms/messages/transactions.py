@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any, Self
 from uuid import UUID
 
@@ -5,6 +6,8 @@ from common.data import Transaction
 
 from .message import Message
 from .message_types import MessageType
+
+DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
 class Transactions(Message):
@@ -39,5 +42,9 @@ class Transactions(Message):
     @classmethod
     def _from_fields(cls, fields: list[Any]) -> Self:
         client_id = UUID(fields[0])
-        transactions = [Transaction(*t_fields) for t_fields in fields[1:]]
+        transactions = [
+            Transaction(datetime.strptime(t_fields[0], DATETIME_FORMAT), *t_fields[1:])
+            for t_fields in fields[2:]
+        ]
+
         return cls(client_id, transactions)
