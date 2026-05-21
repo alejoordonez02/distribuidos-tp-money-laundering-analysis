@@ -1,2 +1,2 @@
-from .conversion_api import ConversionAPI
+from .conversion_api import ConversionAPI, ConversionAPIError
 from .frankfurter_conversion_api import FrankfurterConversionAPI

@@ -1,10 +1,12 @@
+from datetime import datetime
+
 from common.comms.messages import Transactions
 
 from .filter_fn import FilterFn
 
 _FORMATS = {"Wire", "ACH"}
-_PERIOD_A_START = "2022-09-01 00:00:00"
-_PERIOD_A_END = "2022-09-06 00:00:00"  # exclusive upper bound
+_PERIOD_A_START = datetime(2022, 9, 1)
+_PERIOD_A_END = datetime(2022, 9, 6)  # exclusive upper bound
 
 
 class UC5Filter(FilterFn):
@@ -12,6 +14,6 @@ class UC5Filter(FilterFn):
         filtered = [
             t for t in el.transactions
             if t.payment_format in _FORMATS
-            and _PERIOD_A_START <= str(t.timestamp) < _PERIOD_A_END
+            and _PERIOD_A_START <= t.timestamp < _PERIOD_A_END
         ]
         return Transactions(el.client_id, filtered)

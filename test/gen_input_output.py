@@ -8,6 +8,8 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
+from datetime import date
+
 import pandas as pd  # pyright: ignore    no me toma pandas :(
 from cfg import (
     ACCOUNTS_PATH,
@@ -21,20 +23,17 @@ from cfg import (
 from common.conversion import FrankfurterConversionAPI
 
 _conversion_api = FrankfurterConversionAPI()
-_rate_cache: dict[str, dict[str, float]] = {}
+_rate_cache: dict[date, dict[str, float]] = {}
 
 
 def _get_rates(date_slash: str) -> dict[str, float]:
-    date_dash = date_slash.replace("/", "-")
-    if date_dash not in _rate_cache:
-        _rate_cache[date_dash] = _conversion_api.get_rates(date_dash)
-    return _rate_cache[date_dash]
+    day = date.fromisoformat(date_slash.replace("/", "-"))
+    if day not in _rate_cache:
+        _rate_cache[day] = _conversion_api.get_rates(day)
+    return _rate_cache[day]
 
 
 def main():
-    """
-    Generate the input and expected output for each client.
-    """
     # same accounts dataset for all clients
     accounts_df = pd.read_csv(ACCOUNTS_PATH).sample(ACCOUNTS_SAMPLE_SIZE)
 
