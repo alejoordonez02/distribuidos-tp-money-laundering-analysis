@@ -45,6 +45,8 @@ services:
       - TRANSACTIONS_RX=transactions
       - FILTERED_TX=filtered_transactions
       - UC2_TRANSACTIONS_TX=uc2_transactions
+      - UC3_PERIOD_A_TRANSACTIONS_TX = uc3_transactons_period_A
+      - UC3_PERIOD_B_TRANSACTIONS_TX = uc3_transactons_period_B
   join:
     build:
       context: ./src/
