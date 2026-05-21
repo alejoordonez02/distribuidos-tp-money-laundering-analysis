@@ -88,6 +88,20 @@ services:
       - STRATEGY=uc2_max_amount
       - RX=partial_max_amounts
       - TX=max_amounts_by_bank
+  uc4_aggregate_paths:
+    build:
+      context: ./src/
+      dockerfile: aggregate/Dockerfile
+    container_name: uc4_aggregate_paths
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc4_aggregate_paths
+      - RX=uc4_paths
+      - TX=uc4_aggregated_paths
   uc2_group_by_accs:
     build:
       context: ./src/
