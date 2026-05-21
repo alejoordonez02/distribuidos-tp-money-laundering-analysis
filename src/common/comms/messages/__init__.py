@@ -1,6 +1,6 @@
 from .accounts import Accounts
 from .bank_names import BankNames
-from .count import Count
+from .transaction_count import TransactionCount
 from .deserialize_message import deserialize_message
 from .eof import EOF
 from .errors import UnexpectedMessageError, UnknownMessageError

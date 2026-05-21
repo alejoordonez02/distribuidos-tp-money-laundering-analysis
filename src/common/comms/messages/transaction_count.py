@@ -5,7 +5,7 @@ from .message import Message
 from .message_types import MessageType
 
 
-class Count(Message):
+class TransactionCount(Message):
     def __init__(self, client_id: UUID, count: int):
         self.client_id = client_id
         self.count = count
