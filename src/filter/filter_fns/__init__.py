@@ -4,3 +4,4 @@ from .uc1_filter import UC1Filter
 from .uc2_filter import UC2Filter
 from .uc3_filter_period_A import UC3FilterPeriodA
 from .uc3_filter_period_B import UC3FilterPeriodB
+from .uc3_avg_filter import UC3AvgFilter

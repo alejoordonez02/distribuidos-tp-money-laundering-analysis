@@ -14,6 +14,7 @@ from .transactions import Transactions
 from .sum_by_payment_format import SumByPaymentFormat
 from .avg_by_format import AvgByFormat
 from .merged_transactions import MergedTransactions
+from .filtered_by_average import FilteredByAverage
 
 def deserialize_message(bytes2: bytes) -> Message:
     """
@@ -52,6 +53,8 @@ def deserialize_message(bytes2: bytes) -> Message:
             return AvgByFormat.deserialize(bytes2)
         case MessageType.MERGED_TRANSACTIONS:
             return MergedTransactions.deserialize(bytes2)
+        case MessageType.FILTERED_BY_AVERAGE:
+            return FilteredByAverage.deserialize(bytes2)
         case _:
             raise UnknownMessageError(
                 f"unknown message type {fields[0]} with contents {fields[1:]}"

@@ -1,7 +1,7 @@
 import logging
 import os
 
-from join_fns import UC1Join, UC2Join
+from join_fns import UC1Join, UC2Join, UC3Join
 
 from common.comms.middleware import QueueRabbitMQ
 from join import Join
@@ -23,6 +23,8 @@ def main():
             join_fn = UC1Join()
         case "uc2":
             join_fn = UC2Join()
+        case "uc3":
+            join_fn = UC3Join()
         case _:
             raise ValueError(f"unknown join strategy: {STRATEGY}")
 

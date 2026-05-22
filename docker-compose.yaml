@@ -189,9 +189,38 @@ services:
       - MOM_PORT=5672
       - LEFT_RX=uc3_avg
       - RIGHT_RX=uc3_transactons_period_B
-      - TX=max_amounts_w_name
+      - TX=average_merged
       - STRATEGY=uc3_merge
 
+  uc3_filter:
+    build:
+      context: ./src/
+      dockerfile: filter/Dockerfile
+    container_name: uc3_filter
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc3_avg
+      - TRANSACTIONS_RX=average_merged
+      - UC3_FILTERED_TX=filtered_percent_avg_transactions
+  
+  uc3_join:
+    build:
+      context: ./src/
+      dockerfile: join/Dockerfile
+    container_name: uc3_join
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc3
+      - CLIENT_RESPONSES_RX=filtered_percent_avg_transactions
+      - CLIENT_RESPONSES_TX=server_responses
   client_0:
     build:
       context: ./src/
