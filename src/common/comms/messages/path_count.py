@@ -32,7 +32,7 @@ class PathCounts(Message):
         client_id = UUID(fields[0])
         counts = {
             Path(Node(obank, oaccount), Node(dbank, daccount)): count
-            for (((obank, oaccount), (dbank, daccount)), count) in fields[1:]
+            for (((obank, oaccount), (dbank, daccount)), count) in fields[1]
         }
 
         return cls(client_id, counts)
