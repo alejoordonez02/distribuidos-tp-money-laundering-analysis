@@ -6,7 +6,7 @@ from filter2 import Filter
 from common.comms.middleware import QueueRabbitMQ
 
 MOM_HOST = os.environ["MOM_HOST"]
-TRANSACTIONS_RX = os.environ["TRANSACTIONS_RX"]
+RX = os.environ["RX"]
 
 STRATEGY = os.getenv("STRATEGY", "default")
 
@@ -26,7 +26,7 @@ def make_default_filter():
     UC4_TRANSACTIONS_TX = os.environ["UC4_TRANSACTIONS_TX"]
     UC5_TRANSACTIONS_TX = os.environ["UC5_TRANSACTIONS_TX"]
 
-    transactions_rx = QueueRabbitMQ(MOM_HOST, TRANSACTIONS_RX)
+    transactions_rx = QueueRabbitMQ(MOM_HOST, RX)
     routes = [
         (QueueRabbitMQ(MOM_HOST, UC1_TRANSACTIONS_TX), UC1Filter()),
         (QueueRabbitMQ(MOM_HOST, UC2_TRANSACTIONS_TX), UC2Filter()),
@@ -37,12 +37,25 @@ def make_default_filter():
     return Filter(transactions_rx, routes)
 
 
+def make_uc4_path_filter():
+    from filter_fns import UC4PathFilter
+
+    UC4_FILTERED_PATHS_TX = os.environ["UC4_FILTERED_PATHS_TX"]
+
+    transactions_rx = QueueRabbitMQ(MOM_HOST, RX)
+    routes = [
+        (QueueRabbitMQ(MOM_HOST, UC4_FILTERED_PATHS_TX), UC4PathFilter()),
+    ]
+
+    return Filter(transactions_rx, routes)  # type: ignore[reportArgumentType]
+
+
 def make_uc5_amount_filter():
     from filter_fns import UC5AmountFilter
 
     UC5_AMOUNT_FILTERED_TX = os.environ["UC5_AMOUNT_FILTERED_TX"]
 
-    transactions_rx = QueueRabbitMQ(MOM_HOST, TRANSACTIONS_RX)
+    transactions_rx = QueueRabbitMQ(MOM_HOST, RX)
     routes = [
         (QueueRabbitMQ(MOM_HOST, UC5_AMOUNT_FILTERED_TX), UC5AmountFilter()),
     ]
@@ -59,6 +72,8 @@ def main():
             filter2 = make_default_filter()
         case "uc5_amount":
             filter2 = make_uc5_amount_filter()
+        case "uc4_path":
+            filter2 = make_uc4_path_filter()
         case _:
             raise ValueError(f"unknown filter strategy: {STRATEGY}")
 
