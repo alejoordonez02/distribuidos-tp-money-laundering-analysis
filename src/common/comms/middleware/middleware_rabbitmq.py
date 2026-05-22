@@ -63,11 +63,13 @@ class QueueRabbitMQ(MessageMiddlewareQueue):
 
 
 class ExchangeRabbitMQ(MessageMiddlewareExchange):
-    def __init__(self, host: str, exchange_name: str, routing_keys: list[str]):
+    def __init__(
+        self, host: str, exchange_name: str, routing_keys: list[str], exchange_type: str = "direct"
+    ):
         self.exchange_name = exchange_name
         self.conn = BlockingConnection(ConnectionParameters(host))
         self.chan = self.conn.channel()
-        self.chan.exchange_declare(exchange=exchange_name)
+        self.chan.exchange_declare(exchange=exchange_name, exchange_type=exchange_type)
 
         queue = self.chan.queue_declare(queue="", exclusive=True)
         queue_name = queue.method.queue
