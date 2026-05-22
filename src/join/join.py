@@ -15,7 +15,7 @@ from common.comms.middleware import MessageMiddlewareQueue
 class Join:
     def __init__(
         self,
-        partial_res_handlers: list[tuple[MessageMiddlewareQueue, JoinFn]],
+        partial_res_handlers: list[tuple[Callable[[], MessageMiddlewareQueue], JoinFn]],
         responses_tx: MessageMiddlewareQueue,
     ):
         self.partial_res_handlers = partial_res_handlers
@@ -23,7 +23,8 @@ class Join:
 
     def start(self):
         if len(self.partial_res_handlers) == 1:
-            mom, join_fn = self.partial_res_handlers[0]
+            mom_factory, join_fn = self.partial_res_handlers[0]
+            mom = mom_factory()
             mom.start_consuming(
                 lambda b, ack, nack: self._handle_message(join_fn, b, ack, nack)
             )
@@ -31,7 +32,8 @@ class Join:
 
         # multiples colas: cada una corre en su propio thread. Joinfn tiene que ser thread-safe pa.
         threads = []
-        for mom, join_fn in self.partial_res_handlers[:-1]:
+        for mom_factory, join_fn in self.partial_res_handlers[:-1]:
+            mom = mom_factory()
             t = Thread(
                 target=mom.start_consuming,
                 args=[
@@ -44,7 +46,8 @@ class Join:
             t.start()
             threads.append(t)
 
-        mom, join_fn = self.partial_res_handlers[-1]
+        mom_factory, join_fn = self.partial_res_handlers[-1]
+        mom = mom_factory()
         mom.start_consuming(
             lambda b, ack, nack: self._handle_message(join_fn, b, ack, nack)
         )
