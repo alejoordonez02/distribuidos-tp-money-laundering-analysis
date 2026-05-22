@@ -9,6 +9,9 @@ from common.comms.middleware import QueueRabbitMQ
 MOM_HOST = os.environ["MOM_HOST"]
 TRANSACTIONS_RX = os.environ["TRANSACTIONS_RX"]
 STRATEGY = os.getenv("STRATEGY", "default")
+FILTER_ID = int(os.environ["FILTER_ID"])
+FILTER_WORKERS = int(os.environ["FILTER_WORKERS"])
+FILTER_RING_BASE = os.environ["FILTER_RING_BASE"]
 
 LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
 
@@ -18,6 +21,8 @@ def main():
     logging.getLogger("pika").setLevel(logging.WARNING)
 
     transactions_rx = QueueRabbitMQ(MOM_HOST, TRANSACTIONS_RX)
+    ring_rx = QueueRabbitMQ(MOM_HOST, f"{FILTER_RING_BASE}_{FILTER_ID}")
+    ring_tx = QueueRabbitMQ(MOM_HOST, f"{FILTER_RING_BASE}_{(FILTER_ID + 1) % FILTER_WORKERS}")
 
     match STRATEGY:
         case "default":
@@ -37,7 +42,7 @@ def main():
         case _:
             raise ValueError(f"unknown filter strategy: {STRATEGY}")
 
-    Filter(transactions_rx, routes).start()
+    Filter(FILTER_ID, transactions_rx, ring_rx, ring_tx, routes).start()
 
 
 if __name__ == "__main__":
