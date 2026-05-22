@@ -132,6 +132,7 @@ services:
       - LEFT_RX=max_amounts_by_bank
       - RIGHT_RX=bank_id_name_mappings
       - TX=max_amounts_w_name
+      - STRATEGY=uc2_merge
   uc2_join:
     build:
       context: ./src/
@@ -158,7 +159,7 @@ services:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
       - STRATEGY=uc3_sum
-      - RX=uc3_transactons_period_B
+      - RX=uc3_transactons_period_A
       - TX=uc3_sum_by_format
   uc3_aggregate_avg:
     build:
@@ -173,7 +174,23 @@ services:
       - MOM_PORT=5672
       - STRATEGY=uc3_avg
       - RX=uc3_sum_by_format
-      - TX=max_amounts_by_bank
+      - TX=uc3_avg
+    
+  uc3_merge:
+    build:
+      context: ./src/
+      dockerfile: merge/Dockerfile
+    container_name: uc3_merge
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - LEFT_RX=uc3_avg
+      - RIGHT_RX=uc3_transactons_period_B
+      - TX=max_amounts_w_name
+      - STRATEGY=uc3_merge
 
   client_0:
     build:

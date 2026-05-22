@@ -12,3 +12,4 @@ from .response import Response
 from .transactions import Transactions
 from .sum_by_payment_format import SumByPaymentFormat
 from .avg_by_format import AvgByFormat
+from .merged_transactions import MergedTransactions

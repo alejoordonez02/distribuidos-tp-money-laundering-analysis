@@ -12,3 +12,4 @@ class MessageType(IntEnum):
     MERGED_BANK_DATA = 7
     SUM_BY_PAYMENT_FORMAT = 8
     AVG_BY_FORMAT = 9
+    MERGED_TRANSACTIONS = 10
