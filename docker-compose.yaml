@@ -129,18 +129,17 @@ services:
       - RX=uc4_graphs
       - TX=uc4_paths
 
-  uc5_converter_group_by:
+  uc5_converter:
     build:
       context: ./src/
       dockerfile: converter/Dockerfile
-    container_name: uc5_converter_group_by
+    container_name: uc5_converter
     depends_on:
       rabbitmq:
         condition: service_healthy
     environment:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
-      - STRATEGY=uc5_converter
       - RX=uc5_filtered_transactions
       - TX=uc5_converted_transactions
 
@@ -238,7 +237,7 @@ services:
       - UC3_RX=uc3_join
       - UC4_RX=uc4_join
       - UC5_RX=uc5_join
-      - RESPONSES_TX=server_responses
+      - RESPONSES_TX=responses
 
   # --- clients ---
   client_0:

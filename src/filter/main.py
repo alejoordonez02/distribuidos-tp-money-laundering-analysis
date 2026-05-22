@@ -21,7 +21,7 @@ def make_default_filter():
         UC5Filter,
     )
 
-    UC1_TRANSACTIONS_TX = os.environ["FILTERED_TX"]
+    UC1_TRANSACTIONS_TX = os.environ["UC1_TRANSACTIONS_TX"]
     UC2_TRANSACTIONS_TX = os.environ["UC2_TRANSACTIONS_TX"]
     UC4_TRANSACTIONS_TX = os.environ["UC4_TRANSACTIONS_TX"]
     UC5_TRANSACTIONS_TX = os.environ["UC5_TRANSACTIONS_TX"]
