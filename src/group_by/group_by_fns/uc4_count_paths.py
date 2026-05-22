@@ -10,6 +10,9 @@ class UC4CountPaths(GroupByFn):
         self.client_counts: dict[UUID, PathCounts] = {}
 
     def group_by(self, msg: Graph):  # type: ignore[reportIncompatibleMethodOverride]
+        if msg.client_id not in self.client_counts:
+            self.client_counts[msg.client_id] = PathCounts(msg.client_id, {})
+
         for predecessors, successors in msg.nodes.values():
             for p in predecessors:
                 for s in successors:
