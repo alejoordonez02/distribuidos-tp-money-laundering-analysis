@@ -24,8 +24,8 @@ class UC3Join(JoinFn):
         # return Response(client_id, body)
         
         body = "--- UC3 ---"
-        for origin_account, amount in self._state.get(client_id, FilteredByAverage(client_id, [])).entries:
-            body += f"\norigin account: {origin_account:<20} amount: {amount}"
+        for bank_id , origin_account, payment_format, amount in self._state.get(client_id, FilteredByAverage(client_id, [])).entries:
+            body += f"\nbank_id: {bank_id:<20} account: {origin_account:<20} payment_format: {payment_format:<20} amount: {amount}"
         body += "\n"
         logging.info(f"{body}")
         return Response(client_id, body)
