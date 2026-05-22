@@ -46,6 +46,7 @@ class ClientHandler:
 
     def _handle_transactions(self):
         transactions_tx = self.trans_tx_factory()
+        transactions_count = 0
         while True:
             msg = deserialize_message(self.conn.recv())
             logging.debug(f"received message from client: {msg.__dict__}")
@@ -53,11 +54,13 @@ class ClientHandler:
             match msg.type():
                 case MessageType.EOF:
                     msg.client_id = self.id
+                    msg.expected_count = transactions_count
                     transactions_tx.send(msg.serialize())
                     break
                 case MessageType.TRANSACTIONS:
                     msg.client_id = self.id
                     transactions_tx.send(msg.serialize())
+                    transactions_count += 1
                 case _:
                     raise UnexpectedMessageError(
                         "client handler received unexpected msg: {msg.__dict__}"
