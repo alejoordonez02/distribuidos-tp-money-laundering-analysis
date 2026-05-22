@@ -47,11 +47,26 @@ services:
     environment:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
-      - TRANSACTIONS_RX=client_transactions
+      - RX=client_transactions
       - UC1_TRANSACTIONS_TX=uc1_join
       - UC2_TRANSACTIONS_TX=uc2_filtered_transactions
       - UC4_TRANSACTIONS_TX=uc4_filtered_transactions
       - UC5_TRANSACTIONS_TX=uc5_filtered_transactions
+
+  uc4_path_filter:
+    build:
+      context: ./src/
+      dockerfile: filter/Dockerfile
+    container_name: uc4_path_filter
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc4_path
+      - RX=uc4_aggregated_paths
+      - UC4_FILTERED_PATHS_TX=uc4_join
 
   uc5_amount_filter:
     build:
@@ -65,7 +80,7 @@ services:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
       - STRATEGY=uc5_amount
-      - TRANSACTIONS_RX=uc5_converted_transactions
+      - RX=uc5_converted_transactions
       - UC5_AMOUNT_FILTERED_TX=uc5_filtered_transactions
 
   # --- groupbys ---
@@ -174,21 +189,6 @@ services:
       - RX=uc2_partial_max_amount
       - TX=uc2_max_amounts_by_bank
 
-  uc4_aggregate_paths_aggregate:
-    build:
-      context: ./src/
-      dockerfile: aggregate/Dockerfile
-    container_name: uc4_aggregate_pathsaggregate_
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - STRATEGY=uc4_aggregate_paths
-      - RX=uc4_paths
-      - TX=uc4_aggregated_paths
-
   uc2_bank_names_aggregate:
     build:
       context: ./src/
@@ -203,6 +203,21 @@ services:
       - STRATEGY=uc2_bank_names
       - RX=uc2_partial_bank_names
       - TX=uc2_bank_id_name_mappings
+
+  uc4_paths_aggregate:
+    build:
+      context: ./src/
+      dockerfile: aggregate/Dockerfile
+    container_name: uc4_paths_aggregate
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc4_paths
+      - RX=uc4_paths
+      - TX=uc4_aggregated_paths
 
   # --- merges ---
   uc2_merge:
@@ -253,7 +268,7 @@ services:
       - RESPONSES_PATH=/responses/responses_0.csv
       - GATEWAY_HOST=gateway
       - GATEWAY_PORT=12345
-      - NRESPONSES=3
+      - NRESPONSES=4
     volumes:
       - ./datasets:/datasets
       - ./responses:/responses
@@ -271,7 +286,7 @@ services:
       - RESPONSES_PATH=/responses/responses_1.csv
       - GATEWAY_HOST=gateway
       - GATEWAY_PORT=12345
-      - NRESPONSES=3
+      - NRESPONSES=4
     volumes:
       - ./datasets:/datasets
       - ./responses:/responses

@@ -27,7 +27,7 @@ def main():
             fn = UC2MaxAmountAggregateFn()
         case "uc2_bank_names":
             fn = UC2BankNamesAggregateFn()
-        case "uc4_aggregate_paths":
+        case "uc4_paths":
             fn = UC4AggregatePaths()
         case _:
             raise ValueError(f"unknown aggregate strategy: {STRATEGY}")
