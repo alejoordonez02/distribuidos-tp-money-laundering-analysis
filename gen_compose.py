@@ -1,3 +1,68 @@
+#!/usr/bin/env python3
+"""
+Regenerate docker-compose.yaml from the worker counts below.
+Usage: python gen_compose.py
+"""
+
+# --- CONFIG ---
+FILTER_WORKERS = 5
+# --------------
+
+
+def _on_rabbitmq():
+    return """\
+    depends_on:
+      rabbitmq:
+        condition: service_healthy"""
+
+
+def _on_gateway():
+    return """\
+    depends_on:
+      - gateway"""
+
+
+def _filter(i):
+    return f"""\
+  filter_{i}:
+    build:
+      context: ./src/
+      dockerfile: filter/Dockerfile
+    container_name: filter_{i}
+{_on_rabbitmq()}
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - TRANSACTIONS_RX=transactions
+      - FILTERED_TX=filtered_transactions
+      - UC2_TRANSACTIONS_TX=uc2_transactions
+      - UC5_TRANSACTIONS_TX=uc5_transactions
+      - FILTER_ID={i}
+      - FILTER_RING_BASE=filter_ring
+      - FILTER_WORKERS={FILTER_WORKERS}"""
+
+
+def _client(i):
+    return f"""\
+  client_{i}:
+    build:
+      context: ./src/
+      dockerfile: client/Dockerfile
+    container_name: client_{i}
+{_on_gateway()}
+    environment:
+      - TRANSACTIONS_PATH=/datasets/transactions_{i}.csv
+      - ACCOUNTS_PATH=/datasets/LI-Small_accounts.csv
+      - RESPONSES_PATH=/responses/responses_{i}.csv
+      - GATEWAY_HOST=gateway
+      - GATEWAY_PORT=12345
+      - NRESPONSES=3
+    volumes:
+      - ./datasets:/datasets
+      - ./responses:/responses"""
+
+
+FIXED = """\
 services:
   rabbitmq:
     build:
@@ -30,97 +95,9 @@ services:
       - MOM_PORT=5672
       - SERVER_QUEUE_RX=server_responses
       - TRANSACTIONS_TX=transactions
-      - ACCOUNTS_TX=accounts_tx
-  filter_0:
-    build:
-      context: ./src/
-      dockerfile: filter/Dockerfile
-    container_name: filter_0
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - TRANSACTIONS_RX=transactions
-      - FILTERED_TX=filtered_transactions
-      - UC2_TRANSACTIONS_TX=uc2_transactions
-      - UC5_TRANSACTIONS_TX=uc5_transactions
-      - FILTER_ID=0
-      - FILTER_RING_BASE=filter_ring
-      - FILTER_WORKERS=5
-  filter_1:
-    build:
-      context: ./src/
-      dockerfile: filter/Dockerfile
-    container_name: filter_1
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - TRANSACTIONS_RX=transactions
-      - FILTERED_TX=filtered_transactions
-      - UC2_TRANSACTIONS_TX=uc2_transactions
-      - UC5_TRANSACTIONS_TX=uc5_transactions
-      - FILTER_ID=1
-      - FILTER_RING_BASE=filter_ring
-      - FILTER_WORKERS=5
-  filter_2:
-    build:
-      context: ./src/
-      dockerfile: filter/Dockerfile
-    container_name: filter_2
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - TRANSACTIONS_RX=transactions
-      - FILTERED_TX=filtered_transactions
-      - UC2_TRANSACTIONS_TX=uc2_transactions
-      - UC5_TRANSACTIONS_TX=uc5_transactions
-      - FILTER_ID=2
-      - FILTER_RING_BASE=filter_ring
-      - FILTER_WORKERS=5
-  filter_3:
-    build:
-      context: ./src/
-      dockerfile: filter/Dockerfile
-    container_name: filter_3
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - TRANSACTIONS_RX=transactions
-      - FILTERED_TX=filtered_transactions
-      - UC2_TRANSACTIONS_TX=uc2_transactions
-      - UC5_TRANSACTIONS_TX=uc5_transactions
-      - FILTER_ID=3
-      - FILTER_RING_BASE=filter_ring
-      - FILTER_WORKERS=5
-  filter_4:
-    build:
-      context: ./src/
-      dockerfile: filter/Dockerfile
-    container_name: filter_4
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - TRANSACTIONS_RX=transactions
-      - FILTERED_TX=filtered_transactions
-      - UC2_TRANSACTIONS_TX=uc2_transactions
-      - UC5_TRANSACTIONS_TX=uc5_transactions
-      - FILTER_ID=4
-      - FILTER_RING_BASE=filter_ring
-      - FILTER_WORKERS=5
+      - ACCOUNTS_TX=accounts_tx"""
+
+FIXED_UC1 = """\
   join:
     build:
       context: ./src/
@@ -134,7 +111,9 @@ services:
       - MOM_PORT=5672
       - STRATEGY=uc1
       - CLIENT_RESPONSES_RX=filtered_transactions
-      - CLIENT_RESPONSES_TX=server_responses
+      - CLIENT_RESPONSES_TX=server_responses"""
+
+FIXED_UC2 = """\
   uc2_group_by_trans:
     build:
       context: ./src/
@@ -218,7 +197,9 @@ services:
       - MOM_PORT=5672
       - STRATEGY=uc2
       - CLIENT_RESPONSES_RX=max_amounts_w_name
-      - CLIENT_RESPONSES_TX=server_responses
+      - CLIENT_RESPONSES_TX=server_responses"""
+
+FIXED_UC5 = """\
   uc5_converter:
     build:
       context: ./src/
@@ -277,38 +258,23 @@ services:
       - MOM_PORT=5672
       - STRATEGY=uc5
       - CLIENT_RESPONSES_RX=uc5_partial_counts
-      - CLIENT_RESPONSES_TX=server_responses
-  client_0:
-    build:
-      context: ./src/
-      dockerfile: client/Dockerfile
-    container_name: client_0
-    depends_on:
-      - gateway
-    environment:
-      - TRANSACTIONS_PATH=/datasets/transactions_0.csv
-      - ACCOUNTS_PATH=/datasets/LI-Small_accounts.csv
-      - RESPONSES_PATH=/responses/responses_0.csv
-      - GATEWAY_HOST=gateway
-      - GATEWAY_PORT=12345
-      - NRESPONSES=3
-    volumes:
-      - ./datasets:/datasets
-      - ./responses:/responses
-  client_1:
-    build:
-      context: ./src/
-      dockerfile: client/Dockerfile
-    container_name: client_1
-    depends_on:
-      - gateway
-    environment:
-      - TRANSACTIONS_PATH=/datasets/transactions_1.csv
-      - ACCOUNTS_PATH=/datasets/LI-Small_accounts.csv
-      - RESPONSES_PATH=/responses/responses_1.csv
-      - GATEWAY_HOST=gateway
-      - GATEWAY_PORT=12345
-      - NRESPONSES=3
-    volumes:
-      - ./datasets:/datasets
-      - ./responses:/responses
+      - CLIENT_RESPONSES_TX=server_responses"""
+
+
+def generate():
+    sections = [
+        FIXED,
+        "\n".join(_filter(i) for i in range(FILTER_WORKERS)),
+        FIXED_UC1,
+        FIXED_UC2,
+        FIXED_UC5,
+        _client(0),
+        _client(1),
+    ]
+    return "\n".join(sections) + "\n"
+
+
+if __name__ == "__main__":
+    output = generate()
+    with open("docker-compose.yaml", "w") as f:
+        f.write(output)
