@@ -34,7 +34,11 @@ class Join:
         for mom, join_fn in self.partial_res_handlers[:-1]:
             t = Thread(
                 target=mom.start_consuming,
-                args=[lambda b, ack, nack, fn=join_fn: self._handle_message(fn, b, ack, nack)],
+                args=[
+                    lambda b, ack, nack, fn=join_fn: self._handle_message(
+                        fn, b, ack, nack
+                    )
+                ],
                 daemon=True,
             )
             t.start()
@@ -61,8 +65,7 @@ class Join:
         if msg.type() == MessageType.EOF:
             logging.info(f"received eof {msg.__dict__}")
             self._handle_eof(join_fn, msg)  # type: ignore[reportArgumentType]
-            return
-
-        join_fn.join(msg)
+        else:
+            join_fn.join(msg)
 
         ack()
