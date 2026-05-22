@@ -14,6 +14,7 @@ from common.data import Account, Transaction
 NRESPONSES = int(os.getenv("NRESPONSES", "1"))
 # TODO: no way this uuid can be here
 TMP_CLIENT_ID = uuid4()
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", "500"))
 
 
 class Client:
@@ -39,17 +40,13 @@ class Client:
         self._run()
 
     def _run(self):
-        # read datasets
-        transactions = self._read_transactions()
-        accounts = self._read_accounts()
-
-        # send data
-        self._send_transactions(transactions)
+        # read and send datasets in batches
+        self._send_transactions_batched()
         self._send_eof()
 
         logging.info("sent transactions eof to server")
 
-        self._send_accounts(accounts)
+        self._send_accounts_batched()
         self._send_eof()
 
         logging.info("sent accounts eof to server")
@@ -64,45 +61,35 @@ class Client:
 
         self.conn.close()
 
-    # TODO: read batches rather than the whole thing
-    def _read_transactions(self) -> list[Transaction]:
-        transactions_batch = []
-
-        with open(self.transactions_path, "r") as transactions:
-            transactions.readline()  # ignore header
-
-            while line := transactions.readline():
-                transaction = self.transaction_parser.parse(line)
-                transactions_batch.append(transaction)
-
-        return transactions_batch
-
-    # TODO: read batches rather than the whole thing
-    def _read_accounts(self) -> list[Account]:
-        accounts_batch = []
-
-        with open(self.accounts_path, "r") as accounts:
-            accounts.readline()  # ignore header
-
-            while line := accounts.readline():
-                account = self.account_parser.parse(line)
-                accounts_batch.append(account)
-
-        return accounts_batch
-
-    def _send_transactions(self, transactions: list[Transaction]):
+    def _send_transactions_batched(self):
         """
-        Send transaction batch to server.
+        Read transactions from CSV in batches of BATCH_SIZE and send each batch to server.
         """
-        msg = Transactions(TMP_CLIENT_ID, transactions)
-        self.conn.send(msg.serialize())
+        with open(self.transactions_path, "r") as f:
+            f.readline()  # skip header
+            batch: list[Transaction] = []
+            while line := f.readline():
+                batch.append(self.transaction_parser.parse(line))
+                if len(batch) == BATCH_SIZE:
+                    self.conn.send(Transactions(TMP_CLIENT_ID, batch).serialize())
+                    batch = []
+            if batch:
+                self.conn.send(Transactions(TMP_CLIENT_ID, batch).serialize())
 
-    def _send_accounts(self, accounts: list[Account]):
+    def _send_accounts_batched(self):
         """
-        Send accounts batch to server.
+        Read accounts from CSV in batches of BATCH_SIZE and send each batch to server.
         """
-        msg = Accounts(TMP_CLIENT_ID, accounts)
-        self.conn.send(msg.serialize())
+        with open(self.accounts_path, "r") as f:
+            f.readline()  # skip header
+            batch: list[Account] = []
+            while line := f.readline():
+                batch.append(self.account_parser.parse(line))
+                if len(batch) == BATCH_SIZE:
+                    self.conn.send(Accounts(TMP_CLIENT_ID, batch).serialize())
+                    batch = []
+            if batch:
+                self.conn.send(Accounts(TMP_CLIENT_ID, batch).serialize())
 
     def _send_eof(self):
         self.conn.send(EOF(TMP_CLIENT_ID).serialize())
