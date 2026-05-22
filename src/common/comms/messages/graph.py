@@ -52,3 +52,17 @@ class Graph(Message):
         }
 
         return cls(client_id, nodes)
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, Graph):
+            return False
+
+        for node, (predecessors, successors) in other.nodes.items():
+            if node not in self.nodes:
+                return False
+            if predecessors != self.nodes[node][0]:
+                return False
+            if successors != self.nodes[node][1]:
+                return False
+
+        return True
