@@ -13,3 +13,6 @@ class Node:
 
     def __hash__(self) -> int:
         return hash(self.key)
+
+    def __eq__(self, other) -> bool:
+        return other.key == self.key
