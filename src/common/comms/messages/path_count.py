@@ -36,3 +36,10 @@ class PathCounts(Message):
         }
 
         return cls(client_id, counts)
+
+    def __eq__(self, other) -> bool:
+        return (
+            isinstance(other, PathCounts)
+            and other.client_id == self.client_id
+            and other.counts == self.counts
+        )
