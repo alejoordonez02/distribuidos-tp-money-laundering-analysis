@@ -11,7 +11,7 @@ class UC2MaxAmountGroupByFn(GroupByFn):
     def __init__(self):
         self._state: dict[UUID, MaxByBank] = {}
 
-    def aggregate(self, msg: Transactions):  # type: ignore[reportIncompatibleMethodOverride]
+    def group_by(self, msg: Transactions):  # type: ignore[reportIncompatibleMethodOverride]
         if msg.client_id not in self._state:
             self._state[msg.client_id] = MaxByBank(msg.client_id, {})
         state = self._state[msg.client_id].data

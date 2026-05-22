@@ -30,5 +30,5 @@ class GroupBy:
             logging.info(f"forwarded eof for client {msg.client_id}")
             return
 
-        self.fn.aggregate(msg)
+        self.fn.group_by(msg)
         ack()

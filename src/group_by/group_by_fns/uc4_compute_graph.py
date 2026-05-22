@@ -9,7 +9,7 @@ class UC4ComputeGraph(GroupByFn):
     def __init__(self):
         self.graphs: dict[UUID, Graph] = {}
 
-    def aggregate(self, msg: Transactions):  # type: ignore[reportIncompatibleMethodOverride]
+    def group_by(self, msg: Transactions):  # type: ignore[reportIncompatibleMethodOverride]
         if msg.client_id not in self.graphs:
             self.graphs[msg.client_id] = Graph(msg.client_id, {})
 

@@ -9,7 +9,7 @@ class UC5CountGroupByFn(GroupByFn):
     def __init__(self):
         self._state: dict[UUID, TransactionCount] = {}
 
-    def aggregate(self, msg: Transactions):  # type: ignore[reportIncompatibleMethodOverride]
+    def group_by(self, msg: Transactions):  # type: ignore[reportIncompatibleMethodOverride]
         if msg.client_id not in self._state:
             self._state[msg.client_id] = TransactionCount(msg.client_id, 0)
         self._state[msg.client_id].count += len(msg.transactions)

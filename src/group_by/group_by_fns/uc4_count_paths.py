@@ -9,7 +9,7 @@ class UC4CountPaths(GroupByFn):
     def __init__(self):
         self.client_counts: dict[UUID, PathCounts] = {}
 
-    def aggregate(self, msg: Graph):  # type: ignore[reportIncompatibleMethodOverride]
+    def group_by(self, msg: Graph):  # type: ignore[reportIncompatibleMethodOverride]
         for predecessors, successors in msg.nodes.values():
             for p in predecessors:
                 for s in successors:
