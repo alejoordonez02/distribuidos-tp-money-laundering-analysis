@@ -3,7 +3,7 @@ from .node import Node
 
 class Path:
     def __init__(self, origin: Node, destination: Node):
-        self.key = self.origin.key + self.destination.key
+        self.key = origin.key + destination.key
         self.origin = origin
         self.destination = destination
 
