@@ -16,7 +16,7 @@ class UC3FilterPeriodB(FilterFn):
         beggining_date = datetime.strptime(BEGGINING_PERIOD, DATETIME_FORMAT)
         end_date = datetime.strptime(END_PERIOD, DATETIME_FORMAT)
         for t in el.transactions:
-            transaction_date = datetime.strptime(t.timestamp, DATETIME_FORMAT)
+            transaction_date = t.timestamp
             if t.payment_currency == TARGET_CURRENCY and transaction_date >= beggining_date and transaction_date <= end_date:
                 filtered.append(t)
                 # logging.info(f"F Transaction: {t}")

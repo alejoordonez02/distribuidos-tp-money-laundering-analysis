@@ -14,3 +14,4 @@ class MessageType(IntEnum):
     AVG_BY_FORMAT = 9
     MERGED_TRANSACTIONS = 10
     FILTERED_BY_AVERAGE = 11
+    COUNT = 12

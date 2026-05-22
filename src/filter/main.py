@@ -2,7 +2,7 @@ import logging
 import os
 
 from filter2 import Filter
-from filter_fns import UC1Filter, UC2Filter, UC3FilterPeriodA, UC3FilterPeriodB, UC3AvgFilter
+from filter_fns import UC1Filter, UC2Filter, UC3FilterPeriodA, UC3FilterPeriodB, UC3AvgFilter, UC5AmountFilter, UC5Filter
 
 from common.comms.middleware import QueueRabbitMQ
 
@@ -35,6 +35,11 @@ def main():
             UC3_FILTERED_TX = os.environ["UC3_FILTERED_TX"] 
             routes = [
                 (QueueRabbitMQ(MOM_HOST, UC3_FILTERED_TX), UC3AvgFilter())
+            ]
+        case "uc5_amount":
+            UC5_AMOUNT_FILTERED_TX = os.environ["UC5_AMOUNT_FILTERED_TX"]
+            routes = [
+                (QueueRabbitMQ(MOM_HOST, UC5_AMOUNT_FILTERED_TX), UC5AmountFilter()),
             ]
         case _:
             raise ValueError(f"unknown filter strategy: {STRATEGY}")

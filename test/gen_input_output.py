@@ -3,6 +3,13 @@
 # source was only modified so that it produces files with input and expected output
 # for each client.
 
+import sys
+import os
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+
+from datetime import date
+
 import pandas as pd  # pyright: ignore    no me toma pandas :(
 from cfg import (
     ACCOUNTS_PATH,
@@ -13,6 +20,17 @@ from cfg import (
     TRANSACTIONS_PATH,
     TRANSACTIONS_SAMPLE_SIZE,
 )
+from common.conversion import FrankfurterConversionAPI
+
+_conversion_api = FrankfurterConversionAPI()
+_rate_cache: dict[date, dict[str, float]] = {}
+
+
+def _get_rates(date_slash: str) -> dict[str, float]:
+    day = date.fromisoformat(date_slash.replace("/", "-"))
+    if day not in _rate_cache:
+        _rate_cache[day] = _conversion_api.get_rates(day)
+    return _rate_cache[day]
 
 
 def main():
@@ -20,7 +38,9 @@ def main():
     Generate the input and expected output for each client.
     """
     # same accounts dataset for all clients
-    accounts_df = pd.read_csv(ACCOUNTS_PATH).sample(ACCOUNTS_SAMPLE_SIZE)
+    accounts_df = pd.read_csv(ACCOUNTS_PATH)
+    if ACCOUNTS_SAMPLE_SIZE is not None:
+        accounts_df = accounts_df.sample(ACCOUNTS_SAMPLE_SIZE)
 
     for n in range(NCLIENTS):
         trans_df = gen_sampled_dataframe(
@@ -88,11 +108,9 @@ def gen_uc1_results(trans_df):
     """
     trans_usd_df = trans_df[trans_df["Payment Currency"] == "US Dollar"]
     low_profile_transactions = trans_usd_df[trans_usd_df["Amount Paid"] < 50]
-    low_profile_transactions = low_profile_transactions[
+    return low_profile_transactions[
         ["From Bank", "Account", "To Bank", "Account.1", "Amount Paid"]
     ]
-
-    return low_profile_transactions
 
 
 def gen_uc2_results(trans_df, accounts_df):
@@ -100,9 +118,7 @@ def gen_uc2_results(trans_df, accounts_df):
     Returns a `DataFrame` with the results.
     """
     trans_usd_df = trans_df[trans_df["Payment Currency"] == "US Dollar"]
-    max_amount_trans_usd_idx = trans_usd_df.groupby(["From Bank"])[
-        "Amount Paid"
-    ].idxmax()
+    max_amount_trans_usd_idx = trans_usd_df.groupby(["From Bank"])["Amount Paid"].idxmax()
     max_amount_trans_usd = trans_usd_df.loc[max_amount_trans_usd_idx]
     # Each bank_id maps to exactly one bank_name; deduplicate before merging
     # to avoid producing one row per account in the bank (many-to-many explosion)
@@ -110,7 +126,6 @@ def gen_uc2_results(trans_df, accounts_df):
     max_amount_bank = max_amount_trans_usd.merge(
         bank_names, left_on="From Bank", right_on="Bank ID"
     )
-
     return max_amount_bank[["From Bank", "Account", "Bank Name", "Amount Paid"]]
 
 
@@ -123,12 +138,10 @@ def gen_uc3_results(trans_df):
     Returns a `DataFrame` with the results.
     """
     trans_usd_df = trans_df[trans_df["Payment Currency"] == "US Dollar"]
-
     trans_usd_sept_1st_df = trans_usd_df[
         (trans_usd_df["Timestamp"] >= "2022/09/01")
         & (trans_usd_df["Timestamp"] <= "2022/09/06")
     ]
-
     avg_amounts_per_type = (
         trans_usd_sept_1st_df.groupby(["Payment Format"])["Amount Paid"]
         .mean()
@@ -140,20 +153,12 @@ def gen_uc3_results(trans_df):
     ]
     trans_usd_sept_2nd_with_avg_df = trans_usd_sept_2nd_df.merge(
         avg_amounts_per_type, left_on=["Payment Format"], right_on=["Payment Format"]
-    ).rename(
-        columns={
-            "Amount Paid_x": "Amount Paid",
-            "Amount Paid_y": "AVG",
-        }
-    )
-    lower_trans_usd_sept_2nd_with_avg_df = trans_usd_sept_2nd_with_avg_df[
+    ).rename(columns={"Amount Paid_x": "Amount Paid", "Amount Paid_y": "AVG"})
+    lower_trans = trans_usd_sept_2nd_with_avg_df[
         trans_usd_sept_2nd_with_avg_df["Amount Paid"]
         < trans_usd_sept_2nd_with_avg_df["AVG"] * 0.01
     ]
-
-    return lower_trans_usd_sept_2nd_with_avg_df[
-        ["From Bank", "Account", "Payment Format", "Amount Paid"]
-    ]
+    return lower_trans[["From Bank", "Account", "Payment Format", "Amount Paid"]]
 
 
 def gen_uc4_results(trans_df):
@@ -169,16 +174,13 @@ def gen_uc4_results(trans_df):
         return unique_account_size > 5 and unique_account_size < 10
 
     trans_usd_df = trans_df[trans_df["Payment Currency"] == "US Dollar"]
-
     trans_usd_sept_1st_df = trans_usd_df[
         (trans_usd_df["Timestamp"] >= "2022/09/01")
         & (trans_usd_df["Timestamp"] <= "2022/09/06")
     ]
-
     ranged_trans_usd_sept_df = trans_usd_sept_1st_df.groupby(
         ["From Bank", "Account"]
     ).filter(filter_function)
-
     accounts_df = ranged_trans_usd_sept_df[
         ["From Bank", "Account", "To Bank", "Account.1"]
     ]
@@ -200,60 +202,37 @@ def gen_uc4_results(trans_df):
         ["From Bank", "From Account", "To Bank", "To Account"], as_index=False
     ).size()
     account_pairs_df = account_pairs_df[(account_pairs_df["size"] > 5)]
-
     from_account_pairs_df = account_pairs_df[["From Bank", "From Account"]].rename(
         columns={"From Bank": "Bank", "From Account": "Account"}
     )
     to_account_pairs_df = account_pairs_df[["To Bank", "To Account"]].rename(
         columns={"To Bank": "Bank", "To Account": "Account"}
     )
-    unique_accounts = pd.concat(
-        [from_account_pairs_df, to_account_pairs_df]
-    ).drop_duplicates()
-
-    return unique_accounts
+    return pd.concat([from_account_pairs_df, to_account_pairs_df]).drop_duplicates()
 
 
 def gen_uc5_results(trans_df) -> int:
     """
-    Count of transactions of period [2022-09-01, 2022-09-05] with type Wire or ACH,
-    having converted amount for that day less than USD 1. Map everything to US
-    Dollars by a fixed table.
+    Count of Wire/ACH transactions in period A [2022-09-01, 2022-09-05] whose
+    amount converted to USD (via Frankfurter API) is less than 1.
 
     Returns an integer with the result.
     """
-    TO_US_DOLLARS = {
-        "Australian Dollar": 0.72,
-        "Bitcoin": 78.33,
-        "Brazil Real": 0.20,
-        "Canadian Dollar": 0.73,
-        "Euro": 1.17,
-        "Mexican Peso": 0.06,
-        "Ruble": 0.01,
-        "Rupee": 0.01,
-        "Saudi Riyal": 0.27,
-        "Shekel": 0.33,
-        "Swiss Franc": 1.27,
-        "UK Pound": 1.35,
-        "US Dollar": 1,
-        "Yen": 0.006,
-        "Yuan": 0.15,
-    }
     trans_sept_1st_df = trans_df[
         (trans_df["Timestamp"] >= "2022/09/01")
-        & (trans_df["Timestamp"] <= "2022/09/06")
+        & (trans_df["Timestamp"] < "2022/09/06")
     ]
-    trans_sept_1st_wire_or_ach_df = trans_sept_1st_df[
+    trans_wire_ach_df = trans_sept_1st_df[
         (trans_sept_1st_df["Payment Format"] == "Wire")
         | (trans_sept_1st_df["Payment Format"] == "ACH")
-    ]
-    trans_sept_1st_wire_or_ach_converted_df = trans_sept_1st_wire_or_ach_df.copy()
-    trans_sept_1st_wire_or_ach_converted_df["Amount"] = (
-        trans_sept_1st_wire_or_ach_converted_df["Amount Paid"]
-        * trans_sept_1st_wire_or_ach_converted_df["Payment Currency"].map(TO_US_DOLLARS)
-    )
+    ].copy()
 
-    return trans_sept_1st_wire_or_ach_converted_df.shape[0]
+    trans_wire_ach_df["USD Amount"] = trans_wire_ach_df.apply(
+        lambda row: row["Amount Paid"]
+        * _get_rates(row["Timestamp"][:10]).get(row["Payment Currency"], 1.0),
+        axis=1,
+    )
+    return trans_wire_ach_df[trans_wire_ach_df["USD Amount"] < 1.0].shape[0]
 
 
 if __name__ == "__main__":
