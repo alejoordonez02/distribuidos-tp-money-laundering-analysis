@@ -11,6 +11,9 @@ test/expected_responses
 # drawio
 **.bkp
 
+# local scripts
+dev.sh
+
 # latex
 **.aux
 **.log
