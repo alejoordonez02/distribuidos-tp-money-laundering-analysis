@@ -35,3 +35,42 @@ def test_single_path_graph():
     path_count = fn.get_result(some_uuid)  # type: ignore[reportArgumentType]
 
     assert path_count == expected_path_count
+
+
+def test_two_path_graph():
+    some_uuid = "some_uuid"
+    origin_bank = "origin_bank"
+    origin_account = "origin_account"
+    middle_bank = "middle_bank"
+    middle_account = "middle_account"
+    middle_bank2 = "middle_bank2"
+    middle_account2 = "middle_account2"
+    destination_bank = "destination_bank"
+    destination_account = "destination_account"
+
+    origin_node = Node(origin_bank, origin_account)
+    middle_node = Node(middle_bank, middle_account)
+    middle_node2 = Node(middle_bank2, middle_account2)
+    destination_node = Node(destination_bank, destination_account)
+
+    graph = Graph(
+        some_uuid,  # type: ignore[reportArgumentType]
+        {
+            origin_node: (set(), set([middle_node, middle_node2])),
+            destination_node: (set([middle_node, middle_node2]), set()),
+            middle_node: (set([origin_node]), set([destination_node])),
+            middle_node2: (set([origin_node]), set([destination_node])),
+        },
+    )
+
+    expected_path_count = PathCounts(
+        some_uuid,  # type: ignore[reportArgumentType]
+        {Path(origin_node, destination_node): 2},
+    )
+
+    fn = UC4CountPaths()
+    fn.group_by(graph)
+
+    path_count = fn.get_result(some_uuid)  # type: ignore[reportArgumentType]
+
+    assert path_count == expected_path_count
