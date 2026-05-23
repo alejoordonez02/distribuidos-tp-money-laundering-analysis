@@ -11,6 +11,7 @@ TARGET_PERIOD = (
 )
 
 
+# TODO: este código está repetido en period b
 class UC3FilterPeriodA(FilterFn):
     def filter(self, el: Transactions) -> Transactions:  # type: ignore[reportIncompatibleMethodOverride]
         filtered = [
