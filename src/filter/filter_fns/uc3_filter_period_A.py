@@ -7,7 +7,7 @@ from .filter_fn import FilterFn
 TARGET_CURRENCY = "US Dollar"
 TARGET_PERIOD = (
     datetime(year=2022, month=9, day=1),
-    datetime(year=2022, month=9, day=5),
+    datetime(year=2022, month=9, day=6),
 )
 
 
