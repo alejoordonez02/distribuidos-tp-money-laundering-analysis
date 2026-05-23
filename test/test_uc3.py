@@ -36,9 +36,8 @@ def test_uc3():
         ) as expected_responses:
             expected_responses.readline()  # skip header
             while line := expected_responses.readline():
-                # CSV: idx,From Bank,Account,Bank Name,Amount Paid
-                # Split at most 4 times to handle bank names with commas
-                parts = line.rstrip("\n").split(",", 4)
+                # CSV: idx,From Bank,Account,Payment format,Amount Paid
+                parts = line.rstrip("\n").split(",")
                 _, bank_id, account, payment_format, amount = parts
                 expected.add(Result(bank_id, account, payment_format, float(amount)))
 
@@ -47,7 +46,7 @@ def test_uc3():
                 if "--- UC3 ---" in line:
                     break
 
-            # format: bank_id: {:<20} account: {:<20} payment_format: {:<30} amount: {}
+            # format: bank_id: {:<20} account: {:<20} payment_format: {:<20} amount: {}
             while line := responses.readline():
                 if "--- UC" in line:
                     break
