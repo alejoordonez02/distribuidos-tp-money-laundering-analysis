@@ -5,22 +5,19 @@ from common.comms.messages import Transactions
 from .filter_fn import FilterFn
 
 TARGET_CURRENCY = "US Dollar"
-DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
-BEGGINING_PERIOD = "2022-09-01 00:00:00"
-END_PERIOD = "2022-09-05 23:59:59"
+TARGET_PERIOD = (
+    datetime(year=2022, month=9, day=1),
+    datetime(year=2022, month=9, day=5),
+)
 
 
 class UC3FilterPeriodA(FilterFn):
     def filter(self, el: Transactions) -> Transactions:  # type: ignore[reportIncompatibleMethodOverride]
-        filtered = []
-        beggining_date = datetime.strptime(BEGGINING_PERIOD, DATETIME_FORMAT)
-        end_date = datetime.strptime(END_PERIOD, DATETIME_FORMAT)
-        for t in el.transactions:
-            transaction_date = t.timestamp
-            if (
-                t.payment_currency == TARGET_CURRENCY
-                and transaction_date >= beggining_date
-                and transaction_date <= end_date
-            ):
-                filtered.append(t)
+        filtered = [
+            t
+            for t in el.transactions
+            if t.payment_currency == TARGET_CURRENCY
+            and TARGET_PERIOD[0] <= t.timestamp <= TARGET_PERIOD[1]
+        ]
+
         return Transactions(el.client_id, filtered)
