@@ -19,7 +19,6 @@ class UC3AvgAggregateFn(AggregateFn):
             curr = state.get(format, (0,0))
             curr = (curr[0] + total_sum, curr[1] + transactions_amount)
             state[format] = curr
-        # logging.info(f"STATE: {self._state[msg.client_id]._fields()}")
 
     def get_result(self, client_id: UUID) -> AvgByFormat:
         response = {}
@@ -29,5 +28,4 @@ class UC3AvgAggregateFn(AggregateFn):
         
         msg = self._state.get(client_id)
         msg.data = response
-        # logging.info(f"Sending msg: {msg._fields()}")
         return msg

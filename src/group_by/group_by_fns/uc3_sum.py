@@ -27,6 +27,5 @@ class UC3SumGroupByFn(GroupByFn):
         
 
     def get_result(self, client_id: UUID) -> SumByPaymentFormat:
-        # logging.info(f"Sum: {self._state[client_id]._fields()}")
         return self._state.get(client_id, SumByPaymentFormat(client_id, {}))
         

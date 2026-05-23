@@ -19,5 +19,4 @@ class UC3FilterPeriodB(FilterFn):
             transaction_date = t.timestamp
             if t.payment_currency == TARGET_CURRENCY and transaction_date >= beggining_date and transaction_date <= end_date:
                 filtered.append(t)
-                # logging.info(f"F Transaction: {t}")
         return Transactions(el.client_id, filtered)

@@ -17,16 +17,9 @@ class UC3Join(JoinFn):
         
 
     def get_response(self, client_id: UUID) -> Response:
-        # body = "--- UC2 ---"
-        # for bank_id, account, max_amount, bank_name in self._state.get(client_id, MergedBankData(client_id, [])).entries:
-        #     body += f"\nbank_id: {bank_id:<20} account: {account:<20} bank_name: {bank_name:<30} amount: {max_amount}"
-        # body += "\n"
-        # return Response(client_id, body)
-        
         body = "--- UC3 ---"
         for bank_id , origin_account, payment_format, amount in self._state.get(client_id, FilteredByAverage(client_id, [])).entries:
             body += f"\nbank_id: {bank_id:<20} account: {origin_account:<20} payment_format: {payment_format:<20} amount: {amount}"
         body += "\n"
-        logging.info(f"{body}")
         return Response(client_id, body)
         
