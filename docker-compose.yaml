@@ -55,11 +55,11 @@ services:
       - UC4_TRANSACTIONS_TX=uc4_filtered_transactions
       - UC5_TRANSACTIONS_TX=uc5_filtered_transactions
 
-  uc3_filter:
+  uc3_average_filter:
     build:
       context: ./src/
       dockerfile: filter/Dockerfile
-    container_name: uc3_filter
+    container_name: uc3_average_filter
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -67,7 +67,7 @@ services:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
       - STRATEGY=uc3_avg
-      - TRANSACTIONS_RX=average_merged
+      - RX=uc3_average_merged
       - UC3_FILTERED_TX=uc3_join
 
   uc4_path_filter:
@@ -281,6 +281,7 @@ services:
       - LEFT_RX=uc2_max_amounts_by_bank
       - RIGHT_RX=uc2_bank_id_name_mappings
       - TX=uc2_join
+      - STRATEGY=uc2_merge
 
   uc3_merge:
     build:
@@ -295,7 +296,7 @@ services:
       - MOM_PORT=5672
       - LEFT_RX=uc3_avg
       - RIGHT_RX=uc3_transactons_period_B
-      - TX=average_merged
+      - TX=uc3_average_merged
       - STRATEGY=uc3_merge
 
   # --- join ---
@@ -331,7 +332,7 @@ services:
       - RESPONSES_PATH=/responses/responses_0.csv
       - GATEWAY_HOST=gateway
       - GATEWAY_PORT=12345
-      - NRESPONSES=4
+      - NRESPONSES=5
       - BATCH_SIZE=500
     volumes:
       - ./datasets:/datasets
@@ -350,7 +351,7 @@ services:
       - RESPONSES_PATH=/responses/responses_1.csv
       - GATEWAY_HOST=gateway
       - GATEWAY_PORT=12345
-      - NRESPONSES=4
+      - NRESPONSES=5
       - BATCH_SIZE=500
     volumes:
       - ./datasets:/datasets
