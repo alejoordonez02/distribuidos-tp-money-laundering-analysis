@@ -1,7 +1,7 @@
 import logging
 import os
 
-from join_fns import UC1Join, UC2Join, UC4Join, UC5Join
+from join_fns import UC1Join, UC2Join, UC3Join, UC4Join, UC5Join
 
 from common.comms.middleware import QueueRabbitMQ
 from join import Join
@@ -24,7 +24,7 @@ def main():
     partial_res_handlers = [
         (lambda: QueueRabbitMQ(MOM_HOST, UC1_RX), UC1Join()),
         (lambda: QueueRabbitMQ(MOM_HOST, UC2_RX), UC2Join()),
-        # TODO: (QueueRabbitMQ(MOM_HOST, UC3_RX), UC3Join()),
+        (lambda: QueueRabbitMQ(MOM_HOST, UC3_RX), UC3Join()),
         (lambda: QueueRabbitMQ(MOM_HOST, UC4_RX), UC4Join()),
         (lambda: QueueRabbitMQ(MOM_HOST, UC5_RX), UC5Join()),
     ]

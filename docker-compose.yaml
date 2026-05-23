@@ -50,8 +50,25 @@ services:
       - RX=client_transactions
       - UC1_TRANSACTIONS_TX=uc1_join
       - UC2_TRANSACTIONS_TX=uc2_filtered_transactions
+      - UC3_PERIOD_A_TRANSACTIONS_TX=uc3_transactons_period_A
+      - UC3_PERIOD_B_TRANSACTIONS_TX=uc3_transactons_period_B
       - UC4_TRANSACTIONS_TX=uc4_filtered_transactions
       - UC5_TRANSACTIONS_TX=uc5_filtered_transactions
+
+  uc3_filter:
+    build:
+      context: ./src/
+      dockerfile: filter/Dockerfile
+    container_name: uc3_filter
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc3_avg
+      - TRANSACTIONS_RX=average_merged
+      - UC3_FILTERED_TX=uc3_join
 
   uc4_path_filter:
     build:
@@ -113,6 +130,21 @@ services:
       - STRATEGY=uc2_bank_names
       - RX=client_accounts
       - TX=uc2_partial_bank_names
+
+  uc3_group_by_format:
+    build:
+      context: ./src/
+      dockerfile: group_by/Dockerfile
+    container_name: uc3_group_by_format
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc3_sum
+      - RX=uc3_transactons_period_A
+      - TX=uc3_sum_by_format
 
   uc4_compute_graph_group_by:
     build:
@@ -204,6 +236,21 @@ services:
       - RX=uc2_partial_bank_names
       - TX=uc2_bank_id_name_mappings
 
+  uc3_average_aggregate:
+    build:
+      context: ./src/
+      dockerfile: aggregate/Dockerfile
+    container_name: uc3_average_aggregate
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc3_average
+      - RX=uc3_sum_by_format
+      - TX=uc3_avg
+
   uc4_paths_aggregate:
     build:
       context: ./src/
@@ -234,6 +281,22 @@ services:
       - LEFT_RX=uc2_max_amounts_by_bank
       - RIGHT_RX=uc2_bank_id_name_mappings
       - TX=uc2_join
+
+  uc3_merge:
+    build:
+      context: ./src/
+      dockerfile: merge/Dockerfile
+    container_name: uc3_merge
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - LEFT_RX=uc3_avg
+      - RIGHT_RX=uc3_transactons_period_B
+      - TX=average_merged
+      - STRATEGY=uc3_merge
 
   # --- join ---
   join:

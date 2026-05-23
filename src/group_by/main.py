@@ -4,6 +4,7 @@ import os
 from group_by_fns import (
     UC2BankNamesGroupByFn,
     UC2MaxAmountGroupByFn,
+    UC3SumGroupByFn,
     UC4ComputeGraph,
     UC4CountPaths,
     UC5CountGroupByFn,
@@ -29,6 +30,8 @@ def main():
             fn = UC2MaxAmountGroupByFn()
         case "uc2_bank_names":
             fn = UC2BankNamesGroupByFn()
+        case "uc3_sum":
+            fn = UC3SumGroupByFn()
         case "uc4_compute_graph":
             fn = UC4ComputeGraph()
         case "uc4_count_paths":

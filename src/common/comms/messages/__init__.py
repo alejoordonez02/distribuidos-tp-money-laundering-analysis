@@ -14,3 +14,6 @@ from .path_count import PathCounts
 from .response import Response
 from .transaction_count import TransactionCount
 from .transactions import Transactions
+from .sum_by_payment_format import SumByPaymentFormat
+from .avg_by_format import AvgByFormat
+from .merged_transactions import MergedTransactions
