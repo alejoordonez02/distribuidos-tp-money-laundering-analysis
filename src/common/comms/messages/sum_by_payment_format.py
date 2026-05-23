@@ -7,9 +7,9 @@ from .message_types import MessageType
 
 class SumByPaymentFormat(Message):
 
-    def __init__(self, client_id: UUID, data: dict[str, tuple[float, int]]):
+    def __init__(self, client_id: UUID, sum_amounts: dict[str, tuple[float, int]]):
         self.client_id = client_id
-        self.data = data  # payment_format → (total_sum, transaction_amounts)
+        self.sum_amounts = sum_amounts  # payment_format → (total_sum, transaction_amounts)
         
 
     @classmethod
@@ -19,7 +19,7 @@ class SumByPaymentFormat(Message):
     def _fields(self) -> list[Any]:
         return [
             self.client_id,
-            *[[payment_format, total_sum, transaction_amounts] for payment_format, (total_sum, transaction_amounts) in self.data.items()],
+            *[[payment_format, total_sum, transaction_amounts] for payment_format, (total_sum, transaction_amounts) in self.sum_amounts.items()],
         ]
         
 

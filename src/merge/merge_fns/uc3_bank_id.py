@@ -18,7 +18,7 @@ class UC3BankIdMergeFn(MergeFn):
             self._averages[msg.client_id] = {}
         
         avgs = self._averages[msg.client_id]
-        for (format, avg) in msg.data.items():
+        for (format, avg) in msg.averages.items():
             avgs[format] = avg
         
 

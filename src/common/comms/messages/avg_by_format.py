@@ -7,9 +7,9 @@ from .message_types import MessageType
 
 class AvgByFormat(Message):
    
-    def __init__(self, client_id: UUID, data: dict[str, float]):
+    def __init__(self, client_id: UUID, averages: dict[str, float]):
         self.client_id = client_id
-        self.data = data  # payment_format → amount_average
+        self.averages = averages  # payment_format → amount_average
 
     @classmethod
     def _type(cls):
@@ -18,7 +18,7 @@ class AvgByFormat(Message):
     def _fields(self) -> list[Any]:
         return [
             self.client_id,
-            *[[payment_format, amount_average] for payment_format, amount_average in self.data.items()],
+            *[[payment_format, amount_average] for payment_format, amount_average in self.averages.items()],
         ]
         
 
