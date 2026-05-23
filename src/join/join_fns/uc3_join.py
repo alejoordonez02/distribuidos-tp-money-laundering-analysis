@@ -14,7 +14,6 @@ class UC3Join(JoinFn):
         if el.client_id not in self._state:
             self._state[el.client_id] = Transactions(el.client_id, [])
         self._state[el.client_id].transactions.extend(el.transactions)
-        
 
     def get_response(self, client_id: UUID) -> Response:
         body = "--- UC3 ---"
@@ -22,4 +21,3 @@ class UC3Join(JoinFn):
             body += f"\nbank_id: {t.from_bank:<20} account: {t.from_account:<20} payment_format: {t.payment_format:<20} amount: {t.amount_paid}"
         body += "\n"
         return Response(client_id, body)
-        

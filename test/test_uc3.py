@@ -16,7 +16,9 @@ class Result:
     amount: float
 
     def __hash__(self):
-        return hash((self.bank_id, self.account, self.payment_format, round(self.amount, 2)))
+        return hash(
+            (self.bank_id, self.account, self.payment_format, round(self.amount, 2))
+        )
 
 
 def test_uc3():
@@ -50,8 +52,16 @@ def test_uc3():
             while line := responses.readline():
                 if "--- UC" in line:
                     break
-                m = re.match(r"bank_id: (\S+)\s+account: (\S+)\s+payment_format: (.*?)\s+amount: (\S+)$", line.strip())
-                bank_id, account, payment_format, amount = m.group(1), m.group(2), m.group(3), m.group(4)
+                m = re.match(
+                    r"bank_id: (\S+)\s+account: (\S+)\s+payment_format: (.*?)\s+amount: (\S+)$",
+                    line.strip(),
+                )
+                bank_id, account, payment_format, amount = (
+                    m.group(1),
+                    m.group(2),
+                    m.group(3),
+                    m.group(4),
+                )
                 got.add(Result(bank_id, account, payment_format, float(amount)))
 
         assert got == expected

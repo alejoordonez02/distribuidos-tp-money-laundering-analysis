@@ -2,7 +2,15 @@ import logging
 import os
 
 from filter2 import Filter
-from filter_fns import UC1Filter, UC2Filter, UC3FilterPeriodA, UC3FilterPeriodB, UC3AvgFilter, UC5AmountFilter, UC5Filter
+from filter_fns import (
+    UC1Filter,
+    UC2Filter,
+    UC3FilterPeriodA,
+    UC3FilterPeriodB,
+    UC3AvgFilter,
+    UC5AmountFilter,
+    UC5Filter,
+)
 
 from common.comms.middleware import QueueRabbitMQ
 
@@ -29,15 +37,19 @@ def main():
             routes = [
                 (QueueRabbitMQ(MOM_HOST, FILTERED_TX), UC1Filter()),
                 (QueueRabbitMQ(MOM_HOST, UC2_TRANSACTIONS_TX), UC2Filter()),
-                (QueueRabbitMQ(MOM_HOST, UC3_PERIOD_A_TRANSACTIONS_TX), UC3FilterPeriodA()),
-                (QueueRabbitMQ(MOM_HOST, UC3_PERIOD_B_TRANSACTIONS_TX), UC3FilterPeriodB()),
-                (QueueRabbitMQ(MOM_HOST, UC5_TRANSACTIONS_TX), UC5Filter())
+                (
+                    QueueRabbitMQ(MOM_HOST, UC3_PERIOD_A_TRANSACTIONS_TX),
+                    UC3FilterPeriodA(),
+                ),
+                (
+                    QueueRabbitMQ(MOM_HOST, UC3_PERIOD_B_TRANSACTIONS_TX),
+                    UC3FilterPeriodB(),
+                ),
+                (QueueRabbitMQ(MOM_HOST, UC5_TRANSACTIONS_TX), UC5Filter()),
             ]
         case "uc3_avg":
-            UC3_FILTERED_TX = os.environ["UC3_FILTERED_TX"] 
-            routes = [
-                (QueueRabbitMQ(MOM_HOST, UC3_FILTERED_TX), UC3AvgFilter())
-            ]
+            UC3_FILTERED_TX = os.environ["UC3_FILTERED_TX"]
+            routes = [(QueueRabbitMQ(MOM_HOST, UC3_FILTERED_TX), UC3AvgFilter())]
         case "uc5_amount":
             UC5_AMOUNT_FILTERED_TX = os.environ["UC5_AMOUNT_FILTERED_TX"]
             routes = [

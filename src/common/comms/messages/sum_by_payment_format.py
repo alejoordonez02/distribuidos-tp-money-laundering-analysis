@@ -6,11 +6,11 @@ from .message_types import MessageType
 
 
 class SumByPaymentFormat(Message):
-
     def __init__(self, client_id: UUID, sum_amounts: dict[str, tuple[float, int]]):
         self.client_id = client_id
-        self.sum_amounts = sum_amounts  # payment_format → (total_sum, transaction_amounts)
-        
+        self.sum_amounts = (
+            sum_amounts  # payment_format → (total_sum, transaction_amounts)
+        )
 
     @classmethod
     def _type(cls):
@@ -19,13 +19,17 @@ class SumByPaymentFormat(Message):
     def _fields(self) -> list[Any]:
         return [
             self.client_id,
-            *[[payment_format, total_sum, transaction_amounts] for payment_format, (total_sum, transaction_amounts) in self.sum_amounts.items()],
+            *[
+                [payment_format, total_sum, transaction_amounts]
+                for payment_format, (
+                    total_sum,
+                    transaction_amounts,
+                ) in self.sum_amounts.items()
+            ],
         ]
-        
 
     @classmethod
     def _from_fields(cls, fields: list[Any]) -> Self:
         client_id = UUID(fields[0])
         data = {e[0]: (float(e[1]), int(e[2])) for e in fields[1:]}
         return cls(client_id, data)
-        

@@ -2,7 +2,11 @@ import logging
 import os
 
 from aggregate import Aggregate
-from aggregate_fns import UC2BankNamesAggregateFn, UC2MaxAmountAggregateFn, UC3AvgAggregateFn
+from aggregate_fns import (
+    UC2BankNamesAggregateFn,
+    UC2MaxAmountAggregateFn,
+    UC3AvgAggregateFn,
+)
 
 from common.comms.middleware import QueueRabbitMQ
 

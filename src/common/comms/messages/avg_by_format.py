@@ -6,7 +6,6 @@ from .message_types import MessageType
 
 
 class AvgByFormat(Message):
-   
     def __init__(self, client_id: UUID, averages: dict[str, float]):
         self.client_id = client_id
         self.averages = averages  # payment_format → amount_average
@@ -18,9 +17,11 @@ class AvgByFormat(Message):
     def _fields(self) -> list[Any]:
         return [
             self.client_id,
-            *[[payment_format, amount_average] for payment_format, amount_average in self.averages.items()],
+            *[
+                [payment_format, amount_average]
+                for payment_format, amount_average in self.averages.items()
+            ],
         ]
-        
 
     @classmethod
     def _from_fields(cls, fields: list[Any]) -> Self:

@@ -2,7 +2,12 @@ import logging
 import os
 
 from group_by import GroupBy
-from group_by_fns import UC2BankNamesGroupByFn, UC2MaxAmountGroupByFn, UC3SumGroupByFn, UC5CountGroupByFn
+from group_by_fns import (
+    UC2BankNamesGroupByFn,
+    UC2MaxAmountGroupByFn,
+    UC3SumGroupByFn,
+    UC5CountGroupByFn,
+)
 
 from common.comms.middleware import QueueRabbitMQ
 
