@@ -22,38 +22,27 @@ class Join:
         self.client_responses_tx = responses_tx
 
     def start(self):
-        if len(self.partial_res_handlers) == 1:
-            mom_factory, join_fn = self.partial_res_handlers[0]
-            mom = mom_factory()
-            mom.start_consuming(
-                lambda b, ack, nack: self._handle_message(join_fn, b, ack, nack)
-            )
-            return
-
-        # multiples colas: cada una corre en su propio thread. Joinfn tiene que ser thread-safe pa.
-        threads = []
-        for mom_factory, join_fn in self.partial_res_handlers[:-1]:
-            mom = mom_factory()
+        handles = []
+        for mom_factory, join_fn in self.partial_res_handlers[1:]:
             t = Thread(
-                target=mom.start_consuming,
-                args=[
-                    lambda b, ack, nack, fn=join_fn: self._handle_message(
-                        fn, b, ack, nack
-                    )
-                ],
-                daemon=True,
+                target=self._handle_route, args=[mom_factory, join_fn], daemon=True
             )
             t.start()
-            threads.append(t)
+            handles.append(t)
 
-        mom_factory, join_fn = self.partial_res_handlers[-1]
+        mom_factory, join_fn = self.partial_res_handlers[1]
+        self._handle_route(mom_factory, join_fn)
+
+        for t in handles:
+            t.join()
+
+    def _handle_route(
+        self, mom_factory: Callable[[], MessageMiddlewareQueue], join_fn: JoinFn
+    ):
         mom = mom_factory()
         mom.start_consuming(
-            lambda b, ack, nack: self._handle_message(join_fn, b, ack, nack)
+            lambda b, ack, nack,: self._handle_message(join_fn, b, ack, nack)
         )
-
-        for t in threads:
-            t.join()
 
     def _handle_eof(self, join_fn: JoinFn, eof: EOF):
         response = join_fn.get_response(eof.client_id)
