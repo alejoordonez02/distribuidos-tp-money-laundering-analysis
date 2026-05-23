@@ -4,6 +4,10 @@ from uuid import UUID
 from client_handler import ClientHandler
 
 
+class ClientNotFoundError(Exception):
+    pass
+
+
 class ClientMonitor:
     """
     A thread-safe wrapper for the clients dict.
@@ -27,4 +31,9 @@ class ClientMonitor:
         This method will not remove the client from the list.
         """
         with self.mtx:
-            return self.clients[client_id]
+            if client_id not in self.clients:
+                raise ClientNotFoundError(
+                    f"client {client_id} not found, current client list is {[c for c in self.clients.keys()]}"
+                )
+
+            return self.clients.get(client_id)

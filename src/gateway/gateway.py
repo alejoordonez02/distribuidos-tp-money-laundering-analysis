@@ -4,7 +4,7 @@ from threading import Thread
 from typing import Callable
 
 from client_handler import ClientHandler
-from client_monitor import ClientMonitor
+from client_monitor import ClientMonitor, ClientNotFoundError
 
 from common.comms.connection import Connection
 from common.comms.messages import (
@@ -60,14 +60,22 @@ class Gateway:
     def _handle_server_response(self, bytes2: bytes, ack: Callable, nack: Callable):
         try:
             response = Response.deserialize(bytes2)
-        except UnexpectedMessageError:
-            logging.error(f"received unexpected from server: {bytes2}")
+        except UnexpectedMessageError as e:
+            logging.error(f"received unexpected from server: {e}")
+            nack()
             return
-        except UnknownMessageError:
-            logging.error(f"received unknown from server: {bytes2}")
+        except UnknownMessageError as e:
+            logging.error(f"received unknown from server: {e}")
+            nack()
             return
 
-        self.clients.get(response.client_id).send(response)  # type: ignore[reportAttributeAccessIssue]
+        try:
+            self.clients.get(response.client_id).send(response)  # type: ignore[reportAttributeAccessIssue]
+        except ClientNotFoundError as e:
+            logging.error(f"failed to get client response: {e}")
+            nack()
+            return
+
         ack()
 
     def _run(self):
