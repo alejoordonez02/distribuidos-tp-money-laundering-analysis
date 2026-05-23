@@ -25,11 +25,13 @@ def main():
             UC2_TRANSACTIONS_TX = os.environ["UC2_TRANSACTIONS_TX"]
             UC3_PERIOD_A_TRANSACTIONS_TX = os.environ["UC3_PERIOD_A_TRANSACTIONS_TX"]
             UC3_PERIOD_B_TRANSACTIONS_TX = os.environ["UC3_PERIOD_B_TRANSACTIONS_TX"]
+            UC5_TRANSACTIONS_TX = os.environ["UC5_TRANSACTIONS_TX"]
             routes = [
                 (QueueRabbitMQ(MOM_HOST, FILTERED_TX), UC1Filter()),
                 (QueueRabbitMQ(MOM_HOST, UC2_TRANSACTIONS_TX), UC2Filter()),
                 (QueueRabbitMQ(MOM_HOST, UC3_PERIOD_A_TRANSACTIONS_TX), UC3FilterPeriodA()),
-                (QueueRabbitMQ(MOM_HOST, UC3_PERIOD_B_TRANSACTIONS_TX), UC3FilterPeriodB())
+                (QueueRabbitMQ(MOM_HOST, UC3_PERIOD_B_TRANSACTIONS_TX), UC3FilterPeriodB()),
+                (QueueRabbitMQ(MOM_HOST, UC5_TRANSACTIONS_TX), UC5Filter())
             ]
         case "uc3_avg":
             UC3_FILTERED_TX = os.environ["UC3_FILTERED_TX"] 

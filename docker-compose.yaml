@@ -292,7 +292,7 @@ services:
       - RESPONSES_PATH=/responses/responses_0.csv
       - GATEWAY_HOST=gateway
       - GATEWAY_PORT=12345
-      - NRESPONSES=3
+      - NRESPONSES=4
       - BATCH_SIZE=500
     volumes:
       - ./datasets:/datasets
@@ -310,7 +310,7 @@ services:
       - RESPONSES_PATH=/responses/responses_1.csv
       - GATEWAY_HOST=gateway
       - GATEWAY_PORT=12345
-      - NRESPONSES=3
+      - NRESPONSES=4
       - BATCH_SIZE=500
     volumes:
       - ./datasets:/datasets
