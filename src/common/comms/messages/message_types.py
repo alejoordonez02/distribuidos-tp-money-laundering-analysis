@@ -10,4 +10,7 @@ class MessageType(IntEnum):
     MAX_BY_BANK = 5
     BANK_NAMES = 6
     MERGED_BANK_DATA = 7
-    COUNT = 8
+    SUM_BY_PAYMENT_FORMAT = 8
+    AVG_BY_FORMAT = 9
+    MERGED_TRANSACTIONS = 10
+    COUNT = 12

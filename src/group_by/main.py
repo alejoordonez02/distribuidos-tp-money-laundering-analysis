@@ -2,7 +2,12 @@ import logging
 import os
 
 from group_by import GroupBy
-from group_by_fns import UC2BankNamesGroupByFn, UC2MaxAmountGroupByFn, UC5CountGroupByFn
+from group_by_fns import (
+    UC2BankNamesGroupByFn,
+    UC2MaxAmountGroupByFn,
+    UC3SumGroupByFn,
+    UC5CountGroupByFn,
+)
 
 from common.comms.middleware import QueueRabbitMQ
 
@@ -23,6 +28,8 @@ def main():
             fn = UC2MaxAmountGroupByFn()
         case "uc2_bank_names":
             fn = UC2BankNamesGroupByFn()
+        case "uc3_sum":
+            fn = UC3SumGroupByFn()
         case "uc5_count":
             fn = UC5CountGroupByFn()
         case _:
