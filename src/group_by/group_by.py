@@ -28,7 +28,7 @@ class GroupBy:
             self.tx.send(self.fn.get_result(msg.client_id).serialize())
             self.tx.send(EOF(msg.client_id).serialize())
             logging.info(f"forwarded eof for client {msg.client_id}")
-            return
+        else:
+            self.fn.group_by(msg)
 
-        self.fn.group_by(msg)
         ack()
