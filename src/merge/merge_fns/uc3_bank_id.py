@@ -38,6 +38,5 @@ class UC3BankIdMergeFn(MergeFn):
         for t in transactions:
             if t.payment_format not in averages:
                 continue
-            entry = (t.from_bank, t.from_account, t.payment_format, t.amount_paid, averages[t.payment_format])
-            entries.append(entry)
-        return MergedTransactions(client_id, entries)
+            entries.append(t)
+        return MergedTransactions(client_id, entries, averages)

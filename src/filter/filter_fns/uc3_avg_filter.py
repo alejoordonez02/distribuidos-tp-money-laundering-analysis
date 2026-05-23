@@ -1,16 +1,16 @@
 from datetime import datetime
 
-from common.comms.messages import FilteredByAverage
+from common.comms.messages import FilteredByAverage, MergedTransactions, Transactions
 
 from .filter_fn import FilterFn
 
 PERCENTAGE = 0.01
 
 class UC3AvgFilter(FilterFn):
-    def filter(self, el: MergedTransactions) -> FilteredByAverage:  # type: ignore[reportIncompatibleMethodOverride]
+    def filter(self, el: MergedTransactions) -> Transactions:  # type: ignore[reportIncompatibleMethodOverride]
         filtered = []
-        for (bank_id, account, payment_format, amount, average) in el.entries:
-            if amount < PERCENTAGE * average:
-                filtered.append((bank_id, account, payment_format, amount))
+        for t in el.transactions:
+            if t.payment_format in el.averages and t.amount_paid < PERCENTAGE * el.averages[t.payment_format]:
+                filtered.append(t)
         
-        return FilteredByAverage(el.client_id, filtered)
+        return Transactions(el.client_id, filtered)
