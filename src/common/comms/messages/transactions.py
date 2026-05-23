@@ -44,7 +44,7 @@ class Transactions(Message):
         client_id = UUID(fields[0])
         transactions = [
             Transaction(datetime.strptime(t_fields[0], DATETIME_FORMAT), *t_fields[1:])
-            for t_fields in fields[2:]
+            for t_fields in fields[1:]
         ]
 
         return cls(client_id, transactions)
