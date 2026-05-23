@@ -30,7 +30,7 @@ class Join:
             t.start()
             handles.append(t)
 
-        mom_factory, join_fn = self.partial_res_handlers[1]
+        mom_factory, join_fn = self.partial_res_handlers[0]
         self._handle_route(mom_factory, join_fn)
 
         for t in handles:
