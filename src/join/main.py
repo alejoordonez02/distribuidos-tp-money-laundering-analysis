@@ -28,9 +28,11 @@ def main():
         (lambda: QueueRabbitMQ(MOM_HOST, UC4_RX), UC4Join()),
         (lambda: QueueRabbitMQ(MOM_HOST, UC5_RX), UC5Join()),
     ]
-    responses_tx = QueueRabbitMQ(MOM_HOST, RESPONSES_TX)
 
-    join = Join(partial_res_handlers, responses_tx)
+    def responses_tx_factory():
+        return QueueRabbitMQ(MOM_HOST, RESPONSES_TX)
+
+    join = Join(partial_res_handlers, responses_tx_factory)
     join.start()
 
 
