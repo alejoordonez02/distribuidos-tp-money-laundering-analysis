@@ -36,6 +36,6 @@ class UC3BankIdMergeFn(MergeFn):
         transactions = self._transacions_to_merge.get(client_id, [])
         entries = []
         for t in transactions:
-            entry = (t.from_bank, t.from_account, t.payment_format, t.amount_paid, averages[t.payment_format])
+            entry = (t.from_bank, t.from_account, t.payment_format, t.amount_paid, averages.get(t.payment_format, t.amount_paid)) # Acá hay veces que me explota en concreto con Wire como not in dictionary.
             entries.append(entry)
         return MergedTransactions(client_id, entries)
