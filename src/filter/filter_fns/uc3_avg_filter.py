@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from common.comms.messages import FilteredByAverage, MergedTransactions, Transactions
+from common.comms.messages import MergedTransactions, Transactions
 
 from .filter_fn import FilterFn
 
