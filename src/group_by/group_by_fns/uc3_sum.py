@@ -15,7 +15,7 @@ class UC3SumGroupByFn(GroupByFn):
     def group_by(self, msg: Transactions):  # type: ignore[reportIncompatibleMethodOverride]
         if msg.client_id not in self._state:
             self._state[msg.client_id] = SumByPaymentFormat(msg.client_id, {})
-        state = self._state[msg.client_id].sum_amounts
+        state = self._state[msg.client_id].sum_counts
 
         for t in msg.transactions:
             curr = state.get(t.payment_format)
