@@ -1,7 +1,6 @@
-import logging
 from uuid import UUID
 
-from common.comms.messages import AvgByFormat
+from common.comms.messages import AvgByFormat, SumByPaymentFormat
 
 from .aggregate_fn import AggregateFn
 
