@@ -1,4 +1,3 @@
-import logging
 from uuid import UUID
 
 from common.comms.messages import PathCounts, Response
@@ -30,5 +29,4 @@ class UC4Join(JoinFn):
 
         body += "\n"
         response = Response(client_id, body)
-        logging.info(f"got response for client: {str(client_id)}, body: {body}")
         return response
