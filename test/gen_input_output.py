@@ -139,7 +139,7 @@ def gen_uc2_results(trans_df, accounts_df):
 def gen_uc3_results(trans_df):
     """
     Source account, payment format, and amount of transactions in period [2022-09-06,
-    2022-11-06] with amount lower than AVG/100 of period [2022-09-01, 2022-09-05] for
+    2022-09-15] with amount lower than AVG/100 of period [2022-09-01, 2022-09-05] for
     the same type of transaction.
 
     Returns a `DataFrame` with the results.
