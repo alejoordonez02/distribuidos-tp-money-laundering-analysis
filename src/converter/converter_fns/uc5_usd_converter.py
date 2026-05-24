@@ -16,16 +16,14 @@ _PERIOD_A_DATES = [
 
 _USD_CURRENCY = "US Dollar"
 
-# Tasas de Bitcoin por día tomadas de investing.com, igual que en gen_input_output.
-# La API de Frankfurter no provee Bitcoin; el fallback estático de
-# FrankfurterConversionAPI no varía por día, por eso se sobreescribe aquí.
-# Nota: el valor del 2022-09-02 (199999.0) proviene del notebook de la cátedra.
+# Bitcoin rates not provided by Frankfurter API; injected from Binance BTCUSDT daily
+# closing prices (investing.com source per professor email). Same values as gen_input_output.
 _BITCOIN_RATES_USD: dict[date, float] = {
-    date(2022, 9, 1): 19793.1,
-    date(2022, 9, 2): 199999.0,
-    date(2022, 9, 3): 19831.4,
-    date(2022, 9, 4): 19952.7,
-    date(2022, 9, 5): 20126.1,
+    date(2022, 9, 1): 20131.46,
+    date(2022, 9, 2): 19951.86,
+    date(2022, 9, 3): 19831.90,
+    date(2022, 9, 4): 20000.30,
+    date(2022, 9, 5): 19796.84,
 }
 
 
