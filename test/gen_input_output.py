@@ -3,8 +3,8 @@
 # source was only modified so that it produces files with input and expected output
 # for each client.
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
@@ -20,7 +20,10 @@ from cfg import (
     TRANSACTIONS_PATH,
     TRANSACTIONS_SAMPLE_SIZE,
 )
+
 from common.conversion import FrankfurterConversionAPI
+
+RANDOM_SEED = 2026
 
 _conversion_api = FrankfurterConversionAPI()
 _rate_cache: dict[date, dict[str, float]] = {}
@@ -40,7 +43,7 @@ def main():
     # same accounts dataset for all clients
     accounts_df = pd.read_csv(ACCOUNTS_PATH)
     if ACCOUNTS_SAMPLE_SIZE is not None:
-        accounts_df = accounts_df.sample(ACCOUNTS_SAMPLE_SIZE)
+        accounts_df = accounts_df.sample(ACCOUNTS_SAMPLE_SIZE, random_state=RANDOM_SEED)
 
     for n in range(NCLIENTS):
         trans_df = gen_sampled_dataframe(
@@ -67,7 +70,9 @@ def gen_sampled_dataframe(
     """
     Samples a dataset, writes it to its corresponding path and returns it.
     """
-    sampled_df = pd.read_csv(dataframe_path).sample(sample_size)
+    sampled_df = pd.read_csv(dataframe_path).sample(
+        sample_size, random_state=RANDOM_SEED
+    )
     sampled_df.to_csv(sampled_path)
 
     return sampled_df
@@ -118,7 +123,9 @@ def gen_uc2_results(trans_df, accounts_df):
     Returns a `DataFrame` with the results.
     """
     trans_usd_df = trans_df[trans_df["Payment Currency"] == "US Dollar"]
-    max_amount_trans_usd_idx = trans_usd_df.groupby(["From Bank"])["Amount Paid"].idxmax()
+    max_amount_trans_usd_idx = trans_usd_df.groupby(["From Bank"])[
+        "Amount Paid"
+    ].idxmax()
     max_amount_trans_usd = trans_usd_df.loc[max_amount_trans_usd_idx]
     # Each bank_id maps to exactly one bank_name; deduplicate before merging
     # to avoid producing one row per account in the bank (many-to-many explosion)
@@ -219,8 +226,7 @@ def gen_uc5_results(trans_df) -> int:
     Returns an integer with the result.
     """
     trans_sept_1st_df = trans_df[
-        (trans_df["Timestamp"] >= "2022/09/01")
-        & (trans_df["Timestamp"] < "2022/09/06")
+        (trans_df["Timestamp"] >= "2022/09/01") & (trans_df["Timestamp"] < "2022/09/06")
     ]
     trans_wire_ach_df = trans_sept_1st_df[
         (trans_sept_1st_df["Payment Format"] == "Wire")
@@ -228,8 +234,10 @@ def gen_uc5_results(trans_df) -> int:
     ].copy()
 
     trans_wire_ach_df["USD Amount"] = trans_wire_ach_df.apply(
-        lambda row: row["Amount Paid"]
-        * _get_rates(row["Timestamp"][:10]).get(row["Payment Currency"], 1.0),
+        lambda row: (
+            row["Amount Paid"]
+            * _get_rates(row["Timestamp"][:10]).get(row["Payment Currency"], 1.0)
+        ),
         axis=1,
     )
     return trans_wire_ach_df[trans_wire_ach_df["USD Amount"] < 1.0].shape[0]
