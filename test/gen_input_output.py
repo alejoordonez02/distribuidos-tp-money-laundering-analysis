@@ -28,11 +28,30 @@ RANDOM_SEED = 2026
 _conversion_api = FrankfurterConversionAPI()
 _rate_cache: dict[date, dict[str, float]] = {}
 
+# Tasas de Bitcoin por día tomadas de investing.com, igual que el notebook actualizado
+# por la cátedra. La API de Frankfurter no provee Bitcoin, por eso se usan estos
+# valores fijos. Convencion: USD por 1 BTC (multiplicador), coherente con el resto
+# de tasas que devuelve FrankfurterConversionAPI.
+# Nota: el valor del 2022-09-02 (199999.0) proviene del notebook tal cual; es
+# probablemente un typo de la cátedra pero se respeta para no divergir.
+_BITCOIN_RATES_USD: dict[date, float] = {
+    date(2022, 9, 1): 19793.1,
+    date(2022, 9, 2): 199999.0,
+    date(2022, 9, 3): 19831.4,
+    date(2022, 9, 4): 19952.7,
+    date(2022, 9, 5): 20126.1,
+}
+
 
 def _get_rates(date_slash: str) -> dict[str, float]:
     day = date.fromisoformat(date_slash.replace("/", "-"))
     if day not in _rate_cache:
-        _rate_cache[day] = _conversion_api.get_rates(day)
+        rates = _conversion_api.get_rates(day)
+        # Sobreescribimos Bitcoin con la tasa diaria de investing.com si existe,
+        # porque el fallback estatico de FrankfurterConversionAPI no varía por día.
+        if day in _BITCOIN_RATES_USD:
+            rates["Bitcoin"] = _BITCOIN_RATES_USD[day]
+        _rate_cache[day] = rates
     return _rate_cache[day]
 
 
