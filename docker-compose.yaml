@@ -98,7 +98,7 @@ services:
       - MOM_PORT=5672
       - STRATEGY=uc5_amount
       - RX=uc5_converted_transactions
-      - UC5_AMOUNT_FILTERED_TX=uc5_filtered_transactions
+      - UC5_AMOUNT_FILTERED_TX=uc5_filtered_converted_transactions
 
   # --- groupbys ---
   uc2_max_amount_group_by:
@@ -202,7 +202,7 @@ services:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
       - STRATEGY=uc5_count
-      - RX=uc5_converted_transactions
+      - RX=uc5_filtered_converted_transactions
       - TX=uc5_join
 
   # --- aggregates ---
