@@ -24,8 +24,8 @@ class UC4Join(JoinFn):
             dbank = path.destination.bank
             daccount = path.destination.account
 
-            body += f"\nbank: {obank:<20} account: {oaccount:<20}"
-            body += f"\nbank: {dbank:<20} account: {daccount:<20}"
+            body += f"\nbank: {obank:<20} account: {oaccount}"
+            body += f"\nbank: {dbank:<20} account: {daccount}"
 
         body += "\n"
         response = Response(client_id, body)
