@@ -16,10 +16,25 @@ _PERIOD_A_DATES = [
 
 _USD_CURRENCY = "US Dollar"
 
+# Bitcoin rates not provided by Frankfurter API; injected from Binance BTCUSDT daily
+# closing prices (investing.com source per professor email). Same values as gen_input_output.
+_BITCOIN_RATES_USD: dict[date, float] = {
+    date(2022, 9, 1): 20131.46,
+    date(2022, 9, 2): 19951.86,
+    date(2022, 9, 3): 19831.90,
+    date(2022, 9, 4): 20000.30,
+    date(2022, 9, 5): 19796.84,
+}
+
 
 class UC5USDConverterFn(ConverterFn):
     def __init__(self, api: ConversionAPI):
-        self._cache = {d: api.get_rates(d) for d in _PERIOD_A_DATES}
+        self._cache: dict[date, dict[str, float]] = {}
+        for d in _PERIOD_A_DATES:
+            rates = api.get_rates(d)
+            if d in _BITCOIN_RATES_USD:
+                rates["Bitcoin"] = _BITCOIN_RATES_USD[d]
+            self._cache[d] = rates
 
     def convert(self, msg: Transactions) -> Transactions:
         converted = [
