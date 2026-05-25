@@ -2,16 +2,11 @@
 # `https://www.kaggle.com/code/pablodroca/money-laundering-analysis`,
 # source was only modified so that it produces files with input and expected output
 # for each client.
-import os
-import sys
-
-import numpy as np
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from datetime import date
 
-import pandas as pd  # pyright: ignore    no me toma pandas :(
+import numpy as np
+import pandas as pd
 from cfg import (
     ACCOUNTS_PATH,
     ACCOUNTS_SAMPLE_SIZE,
@@ -181,10 +176,14 @@ def gen_uc3_results(trans_df):
 
 def gen_uc4_results(trans_df):
     """
-    Accounts that match the scatter-gather pattern and where the source account has
-    transferred to more than 5 distinct accounts.
+    Accounts that match the scatter-gather pattern with a single separation account,
+    where the source account transferred to at least 5 distinct accounts in USD
+    within the period [2022-09-01, 2022-09-05].
 
-    Returns a `DataFrame` with the results.
+    For each pair (A, C), counts the distinct intermediary accounts B such that A→B
+    and B→C. Keeps pairs with at least 5 distinct B's.
+
+    Returns a `DataFrame` with columns [Bank, Account].
     """
     trans_usd_df = trans_df[trans_df["Payment Currency"] == "US Dollar"]
     trans_usd_sept_1st_df = trans_usd_df[
@@ -192,21 +191,18 @@ def gen_uc4_results(trans_df):
         & (trans_usd_df["Timestamp"] <= "2022/09/06")
     ]
 
-    # NOTE: ver doc/problema_uc4
-    # def filter_function(x):
-    #     unique_account_size = x.groupby(["To Bank", "Account.1"]).size().size
-    #     return unique_account_size > 5 and unique_account_size < 10
-    #
-    # ranged_trans_usd_sept_df = trans_usd_sept_1st_df.groupby(
-    #     ["From Bank", "Account"]
-    # ).filter(filter_function)
+    # DIFERENCIA CON EL NOTEBOOK: el notebook pre-filtraba cuentas origen con > 5
+    # destinos distintos antes del join. Ese pre-filtro no está en el enunciado —
+    # es una consecuencia implícita de la condición final (si un par (A,C) tiene >= 5
+    # intermediarios distintos, A necesariamente mandó a >= 5 cuentas). Se omite para
+    # no agregar una restricción que el enunciado no menciona explícitamente.
+    edges_df = trans_usd_sept_1st_df[["From Bank", "Account", "To Bank", "Account.1"]]
 
-    # accounts_df = ranged_trans_usd_sept_df[
-    accounts_df = trans_usd_sept_1st_df[
-        ["From Bank", "Account", "To Bank", "Account.1"]
-    ]
-    account_pairs_df = accounts_df.merge(
-        accounts_df, left_on=["To Bank", "Account.1"], right_on=["From Bank", "Account"]
+    # Self-join: construir cadenas A → B → C (una sola cuenta de separación)
+    chains_df = edges_df.merge(
+        edges_df,
+        left_on=["To Bank", "Account.1"],
+        right_on=["From Bank", "Account"],
     ).rename(
         columns={
             "From Bank_x": "From Bank",
@@ -215,23 +211,40 @@ def gen_uc4_results(trans_df):
             "Account.1_y": "To Account",
         }
     )
-    account_pairs_df = account_pairs_df[
-        (account_pairs_df["From Bank"] != account_pairs_df["To Bank"])
-        | (account_pairs_df["From Account"] != account_pairs_df["To Account"])
+
+    # Eliminar pares donde A == C
+    chains_df = chains_df[
+        (chains_df["From Bank"] != chains_df["To Bank"])
+        | (chains_df["From Account"] != chains_df["To Account"])
     ]
-    account_pairs_df = account_pairs_df.groupby(
-        ["From Bank", "From Account", "To Bank", "To Account"], as_index=False
-    ).size()
-    # NOTE: el enunciado dice que acá es 5 inclusive
-    # account_pairs_df = account_pairs_df[(account_pairs_df["size"] > 5)]
-    account_pairs_df = account_pairs_df[(account_pairs_df["size"] >= 5)]
-    from_account_pairs_df = account_pairs_df[["From Bank", "From Account"]].rename(
+
+    # DIFERENCIA CON EL NOTEBOOK: el notebook usaba .size() sobre el groupby, que
+    # cuenta filas del join (combinaciones de transacciones A→B y B→C). Si A mandó
+    # 3 transacciones a B y B mandó 4 a C, eso suma 12 — no 1 cuenta intermediaria.
+    # El enunciado dice "5 cuentas distintas", por lo que la unidad correcta son
+    # cuentas B distintas, no transacciones. Usamos nunique() sobre el identificador
+    # de B (To Bank_x + Account.1_x) para contar intermediarios distintos por par (A,C).
+    chains_df["_B"] = (
+        chains_df["To Bank_x"].astype(str) + "-" + chains_df["Account.1_x"].astype(str)
+    )
+    intermediary_counts = (
+        chains_df.groupby(["From Bank", "From Account", "To Bank", "To Account"])["_B"]
+        .nunique()
+        .reset_index(name="intermediaries")
+    )
+
+    # DIFERENCIA CON EL NOTEBOOK: el notebook filtraba con > 5 (estrictamente mayor).
+    # El enunciado dice "hacia 5 cuentas distintas", donde 5 es el mínimo que cumple
+    # el patrón, no el que se descarta. Se usa >= 5.
+    valid_pairs = intermediary_counts[intermediary_counts["intermediaries"] >= 5]
+
+    from_accounts = valid_pairs[["From Bank", "From Account"]].rename(
         columns={"From Bank": "Bank", "From Account": "Account"}
     )
-    to_account_pairs_df = account_pairs_df[["To Bank", "To Account"]].rename(
+    to_accounts = valid_pairs[["To Bank", "To Account"]].rename(
         columns={"To Bank": "Bank", "To Account": "Account"}
     )
-    return pd.concat([from_account_pairs_df, to_account_pairs_df]).drop_duplicates()
+    return pd.concat([from_accounts, to_accounts]).drop_duplicates()
 
 
 def gen_uc5_results(trans_df) -> int:

@@ -25,7 +25,7 @@ _USD_FALLBACK = {
     "Saudi Riyal": 0.27,
 }
 
-_FRANKFURTER_URL = "https://api.frankfurter.app/{date}"
+_FRANKFURTER_URL = "https://api.frankfurter.dev/v1/{date}"
 _TIMEOUT = 10
 _JSON_RATES_KEY = "rates"
 _JSON_USD_KEY = "USD"
