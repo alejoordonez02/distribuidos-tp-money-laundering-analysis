@@ -29,5 +29,9 @@ class SumByPaymentFormat(Message):
     @classmethod
     def _from_fields(cls, fields: list[Any]) -> Self:
         client_id = UUID(fields[0])
-        data = {e[0]: (float(e[1]), int(e[2])) for e in fields[1:]}
-        return cls(client_id, data)
+        sum_counts = {
+            payment_format: (total_sum, transactions_count)
+            for payment_format, total_sum, transactions_count in fields[1:]
+        }
+
+        return cls(client_id, sum_counts)
