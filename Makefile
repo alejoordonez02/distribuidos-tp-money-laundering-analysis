@@ -12,7 +12,7 @@ help:
 
 gen_input_output:
 	mkdir -p test/expected_responses
-	uv run test/gen_input_output.py # TODO: este script hay q limpiarlo después
+	PYTHONPATH=src uv run test/gen_input_output.py # TODO: este script hay q limpiarlo después
 
 up:
 	mkdir -p responses
