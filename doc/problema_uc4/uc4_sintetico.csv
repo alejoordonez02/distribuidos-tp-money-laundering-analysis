@@ -1,0 +1,13 @@
+,Timestamp,From Bank,Account,To Bank,Account,Amount Received,Receiving Currency,Amount Paid,Payment Currency,Payment Format,Is Laundering
+0,2022/09/02 00:08,1,11,2,12,100.00,US Dollar,100.00,US Dollar,Reinvestment,0
+0,2022/09/02 00:08,1,11,3,13,100.00,US Dollar,100.00,US Dollar,Reinvestment,0
+0,2022/09/02 00:08,1,11,4,14,100.00,US Dollar,100.00,US Dollar,Reinvestment,0
+0,2022/09/02 00:08,1,11,5,15,100.00,US Dollar,100.00,US Dollar,Reinvestment,0
+0,2022/09/02 00:08,1,11,6,16,100.00,US Dollar,100.00,US Dollar,Reinvestment,0
+0,2022/09/02 00:08,1,11,7,17,100.00,US Dollar,100.00,US Dollar,Reinvestment,0
+0,2022/09/02 00:08,2,12,8,18,100.00,US Dollar,100.00,US Dollar,Reinvestment,0
+0,2022/09/02 00:08,3,13,8,18,100.00,US Dollar,100.00,US Dollar,Reinvestment,0
+0,2022/09/02 00:08,4,14,8,18,100.00,US Dollar,100.00,US Dollar,Reinvestment,0
+0,2022/09/02 00:08,5,15,8,18,100.00,US Dollar,100.00,US Dollar,Reinvestment,0
+0,2022/09/02 00:08,6,16,8,18,100.00,US Dollar,100.00,US Dollar,Reinvestment,0
+0,2022/09/02 00:08,7,17,8,18,100.00,US Dollar,100.00,US Dollar,Reinvestment,0
