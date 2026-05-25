@@ -1,27 +1,28 @@
 from uuid import UUID
 
-from common.comms.messages import Graph, Node, Transactions
+from common.comms.messages import Edges, Node, Transactions
 
 from .group_by_fn import GroupByFn
+
+_BATCH_SIZE = 10_000
 
 
 class UC4ComputeGraph(GroupByFn):
     def __init__(self):
-        self.graphs: dict[UUID, Graph] = {}
+        self.client_edges: dict[UUID, set[tuple[Node, Node]]] = {}
 
     def group_by(self, msg: Transactions):  # type: ignore[reportIncompatibleMethodOverride]
-        if msg.client_id not in self.graphs:
-            self.graphs[msg.client_id] = Graph(msg.client_id, {})
+        if msg.client_id not in self.client_edges:
+            self.client_edges[msg.client_id] = set()
 
         for t in msg.transactions:
             origin = Node(t.from_bank, t.from_account)
             destination = Node(t.to_bank, t.to_account)
+            self.client_edges[msg.client_id].add((origin, destination))
 
-            self.graphs[msg.client_id].add_origin(destination, origin)
-            self.graphs[msg.client_id].add_destination(origin, destination)
-
-    def get_result(self, client_id: UUID) -> Graph:
-        if client_id not in self.graphs:
-            return Graph(client_id, {})
-
-        return self.graphs.pop(client_id)
+    def get_result(self, client_id: UUID) -> list[Edges]:
+        edges = list(self.client_edges.pop(client_id, set()))
+        return [
+            Edges(client_id, edges[i : i + _BATCH_SIZE])
+            for i in range(0, max(len(edges), 1), _BATCH_SIZE)
+        ]
