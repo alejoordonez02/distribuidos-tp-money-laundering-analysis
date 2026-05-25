@@ -6,7 +6,7 @@ from common.comms.messages import Message
 
 class GroupByFn:
     @abstractmethod
-    def aggregate(self, msg: Message):
+    def group_by(self, msg: Message):
         pass
 
     @abstractmethod

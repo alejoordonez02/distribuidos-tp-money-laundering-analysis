@@ -7,6 +7,8 @@ from common.data import Transaction
 from .message import Message
 from .message_types import MessageType
 
+DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+
 
 class Transactions(Message):
     def __init__(self, client_id: UUID, transactions: list[Transaction]):
@@ -41,6 +43,8 @@ class Transactions(Message):
     def _from_fields(cls, fields: list[Any]) -> Self:
         client_id = UUID(fields[0])
         transactions = [
-            Transaction(datetime.fromisoformat(t[0]), *t[1:]) for t in fields[1:]
+            Transaction(datetime.strptime(t_fields[0], DATETIME_FORMAT), *t_fields[1:])
+            for t_fields in fields[1:]
         ]
+
         return cls(client_id, transactions)

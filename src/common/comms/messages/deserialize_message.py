@@ -1,20 +1,23 @@
 import json
 
 from .accounts import Accounts
+from .avg_by_format import AvgByFormat
 from .bank_names import BankNames
-from .transaction_count import TransactionCount
 from .eof import EOF
 from .errors import UnknownMessageError
 from .fin import FIN
+from .graph import Graph
 from .max_by_bank import MaxByBank
 from .merged_bank_data import MergedBankData
+from .merged_transactions import MergedTransactions
 from .message import Message
 from .message_types import MessageType
+from .path_count import PathCounts
 from .response import Response
-from .transactions import Transactions
 from .sum_by_payment_format import SumByPaymentFormat
-from .avg_by_format import AvgByFormat
-from .merged_transactions import MergedTransactions
+from .transaction_count import TransactionCount
+from .transactions import Transactions
+
 
 def deserialize_message(bytes2: bytes) -> Message:
     """
@@ -47,6 +50,10 @@ def deserialize_message(bytes2: bytes) -> Message:
             return BankNames.deserialize(bytes2)
         case MessageType.MERGED_BANK_DATA:
             return MergedBankData.deserialize(bytes2)
+        case MessageType.GRAPH:
+            return Graph.deserialize(bytes2)
+        case MessageType.PATH_COUNTS:
+            return PathCounts.deserialize(bytes2)
         case MessageType.SUM_BY_PAYMENT_FORMAT:
             return SumByPaymentFormat.deserialize(bytes2)
         case MessageType.AVG_BY_FORMAT:

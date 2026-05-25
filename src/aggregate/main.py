@@ -1,13 +1,14 @@
 import logging
 import os
 
-from aggregate import Aggregate
 from aggregate_fns import (
     UC2BankNamesAggregateFn,
     UC2MaxAmountAggregateFn,
     UC3AvgAggregateFn,
+    UC4AggregatePaths,
 )
 
+from aggregate import Aggregate
 from common.comms.middleware import QueueRabbitMQ
 
 MOM_HOST = os.environ["MOM_HOST"]
@@ -27,8 +28,10 @@ def main():
             fn = UC2MaxAmountAggregateFn()
         case "uc2_bank_names":
             fn = UC2BankNamesAggregateFn()
-        case "uc3_avg":
+        case "uc3_average":
             fn = UC3AvgAggregateFn()
+        case "uc4_paths":
+            fn = UC4AggregatePaths()
         case _:
             raise ValueError(f"unknown aggregate strategy: {STRATEGY}")
 

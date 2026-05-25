@@ -11,7 +11,7 @@ class UC2BankNamesGroupByFn(GroupByFn):
     def __init__(self):
         self._state: dict[UUID, BankNames] = {}
 
-    def aggregate(self, msg: Accounts):  # type: ignore[reportIncompatibleMethodOverride]
+    def group_by(self, msg: Accounts):  # type: ignore[reportIncompatibleMethodOverride]
         if msg.client_id not in self._state:
             self._state[msg.client_id] = BankNames(msg.client_id, {})
         state = self._state[msg.client_id]

@@ -26,5 +26,9 @@ class AvgByFormat(Message):
     @classmethod
     def _from_fields(cls, fields: list[Any]) -> Self:
         client_id = UUID(fields[0])
-        data = {e[0]: float(e[1]) for e in fields[1:]}
+        data = {
+            payment_format: amount_average
+            for payment_format, amount_average in fields[1:]
+        }
+
         return cls(client_id, data)

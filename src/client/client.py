@@ -99,6 +99,7 @@ class Client:
 
         for _ in range(NRESPONSES):
             response = Response.deserialize(self.conn.recv())
+            logging.info(f"received server response:\n{response.body[:11]}")  # type: ignore[reportAttributeAccessIssue]
             responses.append(response.body)  # type: ignore[reportAttributeAccessIssue]
 
         return responses

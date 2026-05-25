@@ -17,11 +17,18 @@ class MergedBankData(Message):
     def _fields(self) -> list[Any]:
         return [
             self.client_id,
-            *[[bank_id, account, amount, bank_name] for bank_id, account, amount, bank_name in self.entries],
+            *[
+                [bank_id, account, amount, bank_name]
+                for bank_id, account, amount, bank_name in self.entries
+            ],
         ]
 
     @classmethod
     def _from_fields(cls, fields: list[Any]) -> Self:
         client_id = UUID(fields[0])
-        entries = [(e[0], e[1], float(e[2]), e[3]) for e in fields[1:]]
+        entries = [
+            (bank_id, account, amount, bank_name)
+            for bank_id, account, amount, bank_name in fields[1:]
+        ]
+
         return cls(client_id, entries)

@@ -1,15 +1,17 @@
 import logging
 import os
 
-from group_by import GroupBy
 from group_by_fns import (
     UC2BankNamesGroupByFn,
     UC2MaxAmountGroupByFn,
     UC3SumGroupByFn,
+    UC4ComputeGraph,
+    UC4CountPaths,
     UC5CountGroupByFn,
 )
 
 from common.comms.middleware import QueueRabbitMQ
+from group_by import GroupBy
 
 MOM_HOST = os.environ["MOM_HOST"]
 RX = os.environ["RX"]
@@ -30,6 +32,10 @@ def main():
             fn = UC2BankNamesGroupByFn()
         case "uc3_sum":
             fn = UC3SumGroupByFn()
+        case "uc4_compute_graph":
+            fn = UC4ComputeGraph()
+        case "uc4_count_paths":
+            fn = UC4CountPaths()
         case "uc5_count":
             fn = UC5CountGroupByFn()
         case _:

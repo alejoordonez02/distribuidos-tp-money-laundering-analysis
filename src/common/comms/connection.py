@@ -1,6 +1,8 @@
 from socket import SHUT_RDWR, socket
 
-LEN_SIZE = 2
+# TODO: mepa que vamos a tener q partir los msjs q mandamos entre
+#       controladores en el server... bajar esto cuando eso esté.
+LEN_SIZE = 4
 """
 The amount of bytes for the length of the (byte) message.
 """

@@ -1,5 +1,5 @@
-
 transactions: list[tuple[str, str]] = []
+
 
 class Node:
     def __init__(self, id2: str, predecessors: str, successors: str):
@@ -7,22 +7,22 @@ class Node:
         self.predecessors = predecessors
         self.successors = successors
 
+
 nodes: dict[str, tuple[set[str], set[str]]] = {}
 """
 The graph of nodes
-dict[key, tuple[set[key], set[key]]]
+dict[node, tuple[set[predecessors], set[successors]]]
 """
 
 # compute graph
 for origin, destination in transactions:
-    nodes[origin] = (set(), set(destination))
-    nodes[destination] = (set(origin), set())
-
+    nodes[origin][1].add(destination)
+    nodes[destination][0].add(origin)
 
 # count one length paths
-one_length_paths: dict[tuple[str,str], int] = {}
+one_length_paths: dict[tuple[str, str], int] = {}
 
 for n in nodes.values():
     for a in n[0]:
         for s in n[1]:
-            one_length_paths[(a,s)] += 1
+            one_length_paths[(a, s)] += 1

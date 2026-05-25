@@ -30,14 +30,13 @@ class Filter:
 
         if msg.type() == MessageType.EOF:
             self._handle_eof(msg)  # type: ignore
-            return
-
-        # TODO: tirar error si el tipo de msj no se corresponde con el `El`
-        # TODO: qué pasa si se cae el filter en el medio? o sea después de
-        #       haber redireccionado hacia un par de nodos
-        for destination, filter_fn in self.routes:
-            filtered = filter_fn.filter(msg)
-            destination.send(filtered.serialize())
-            logging.debug(f"filtered: {filtered.__dict__}")
+        else:
+            # TODO: tirar error si el tipo de msj no se corresponde con el `El`
+            # TODO: qué pasa si se cae el filter en el medio? o sea después de
+            #       haber redireccionado hacia un par de nodos
+            for destination, filter_fn in self.routes:
+                filtered = filter_fn.filter(msg)
+                destination.send(filtered.serialize())
+                logging.debug(f"filtered: {filtered.__dict__}")
 
         ack()
