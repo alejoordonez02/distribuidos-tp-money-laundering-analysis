@@ -36,6 +36,8 @@ class Filter:
             #       haber redireccionado hacia un par de nodos
             for destination, filter_fn in self.routes:
                 filtered = filter_fn.filter(msg)
+                if hasattr(filtered, "transactions") and not filtered.transactions:
+                    continue
                 destination.send(filtered.serialize())
                 logging.debug(f"filtered: {filtered.__dict__}")
 
