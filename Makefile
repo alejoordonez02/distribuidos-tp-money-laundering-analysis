@@ -17,7 +17,7 @@ gen_input_output:
 	PYTHONPATH=src uv run test/gen_input_output.py # TODO: este script hay q limpiarlo después
 
 gen_compose:
-	uv run gen_compose.py
+	PYTHONPATH=test uv run gen_compose.py
 
 up: gen_compose
 	mkdir -p responses
