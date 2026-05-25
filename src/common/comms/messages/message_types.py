@@ -10,4 +10,9 @@ class MessageType(IntEnum):
     MAX_BY_BANK = 5
     BANK_NAMES = 6
     MERGED_BANK_DATA = 7
-    COUNT = 8
+    GRAPH = 8
+    PATH_COUNTS = 9
+    COUNT = 10
+    SUM_BY_PAYMENT_FORMAT = 11
+    AVG_BY_FORMAT = 12
+    MERGED_TRANSACTIONS = 13

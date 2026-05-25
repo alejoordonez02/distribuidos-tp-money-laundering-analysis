@@ -1,4 +1,5 @@
 services:
+  # --- rabbitmq ---
   rabbitmq:
     build:
       context: ./src/rabbitmq
@@ -15,6 +16,8 @@ services:
     ports:
       - 5672:5672
       - 15672:15672
+
+  # --- gateway ---
   gateway:
     build:
       context: ./src/
@@ -28,9 +31,11 @@ services:
       - GATEWAY_PORT=12345
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
-      - SERVER_QUEUE_RX=server_responses
-      - TRANSACTIONS_TX=transactions
-      - ACCOUNTS_TX=accounts_tx
+      - SERVER_QUEUE_RX=responses
+      - TRANSACTIONS_TX=client_transactions
+      - ACCOUNTS_TX=client_accounts
+
+  # --- filters ---
   filter_0:
     build:
       context: ./src/
@@ -42,10 +47,13 @@ services:
     environment:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
-      - TRANSACTIONS_RX=transactions
-      - FILTERED_TX=filtered_transactions
-      - UC2_TRANSACTIONS_TX=uc2_transactions
-      - UC5_TRANSACTIONS_TX=uc5_transactions
+      - RX=client_transactions
+      - UC1_TRANSACTIONS_TX=uc1_join
+      - UC2_TRANSACTIONS_TX=uc2_filtered_transactions
+      - UC3_PERIOD_A_TRANSACTIONS_TX=uc3_transactons_period_A
+      - UC3_PERIOD_B_TRANSACTIONS_TX=uc3_transactons_period_B
+      - UC4_TRANSACTIONS_TX=uc4_filtered_transactions
+      - UC5_TRANSACTIONS_TX=uc5_filtered_transactions
       - FILTER_ID=0
       - FILTER_RING_BASE=filter_ring
       - FILTER_WORKERS=5
@@ -60,10 +68,13 @@ services:
     environment:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
-      - TRANSACTIONS_RX=transactions
-      - FILTERED_TX=filtered_transactions
-      - UC2_TRANSACTIONS_TX=uc2_transactions
-      - UC5_TRANSACTIONS_TX=uc5_transactions
+      - RX=client_transactions
+      - UC1_TRANSACTIONS_TX=uc1_join
+      - UC2_TRANSACTIONS_TX=uc2_filtered_transactions
+      - UC3_PERIOD_A_TRANSACTIONS_TX=uc3_transactons_period_A
+      - UC3_PERIOD_B_TRANSACTIONS_TX=uc3_transactons_period_B
+      - UC4_TRANSACTIONS_TX=uc4_filtered_transactions
+      - UC5_TRANSACTIONS_TX=uc5_filtered_transactions
       - FILTER_ID=1
       - FILTER_RING_BASE=filter_ring
       - FILTER_WORKERS=5
@@ -78,10 +89,13 @@ services:
     environment:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
-      - TRANSACTIONS_RX=transactions
-      - FILTERED_TX=filtered_transactions
-      - UC2_TRANSACTIONS_TX=uc2_transactions
-      - UC5_TRANSACTIONS_TX=uc5_transactions
+      - RX=client_transactions
+      - UC1_TRANSACTIONS_TX=uc1_join
+      - UC2_TRANSACTIONS_TX=uc2_filtered_transactions
+      - UC3_PERIOD_A_TRANSACTIONS_TX=uc3_transactons_period_A
+      - UC3_PERIOD_B_TRANSACTIONS_TX=uc3_transactons_period_B
+      - UC4_TRANSACTIONS_TX=uc4_filtered_transactions
+      - UC5_TRANSACTIONS_TX=uc5_filtered_transactions
       - FILTER_ID=2
       - FILTER_RING_BASE=filter_ring
       - FILTER_WORKERS=5
@@ -96,10 +110,13 @@ services:
     environment:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
-      - TRANSACTIONS_RX=transactions
-      - FILTERED_TX=filtered_transactions
-      - UC2_TRANSACTIONS_TX=uc2_transactions
-      - UC5_TRANSACTIONS_TX=uc5_transactions
+      - RX=client_transactions
+      - UC1_TRANSACTIONS_TX=uc1_join
+      - UC2_TRANSACTIONS_TX=uc2_filtered_transactions
+      - UC3_PERIOD_A_TRANSACTIONS_TX=uc3_transactons_period_A
+      - UC3_PERIOD_B_TRANSACTIONS_TX=uc3_transactons_period_B
+      - UC4_TRANSACTIONS_TX=uc4_filtered_transactions
+      - UC5_TRANSACTIONS_TX=uc5_filtered_transactions
       - FILTER_ID=3
       - FILTER_RING_BASE=filter_ring
       - FILTER_WORKERS=5
@@ -114,125 +131,53 @@ services:
     environment:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
-      - TRANSACTIONS_RX=transactions
-      - FILTERED_TX=filtered_transactions
-      - UC2_TRANSACTIONS_TX=uc2_transactions
-      - UC5_TRANSACTIONS_TX=uc5_transactions
+      - RX=client_transactions
+      - UC1_TRANSACTIONS_TX=uc1_join
+      - UC2_TRANSACTIONS_TX=uc2_filtered_transactions
+      - UC3_PERIOD_A_TRANSACTIONS_TX=uc3_transactons_period_A
+      - UC3_PERIOD_B_TRANSACTIONS_TX=uc3_transactons_period_B
+      - UC4_TRANSACTIONS_TX=uc4_filtered_transactions
+      - UC5_TRANSACTIONS_TX=uc5_filtered_transactions
       - FILTER_ID=4
       - FILTER_RING_BASE=filter_ring
       - FILTER_WORKERS=5
-  join:
+
+  uc3_average_filter:
     build:
       context: ./src/
-      dockerfile: join/Dockerfile
-    container_name: join
+      dockerfile: filter/Dockerfile
+    container_name: uc3_average_filter
     depends_on:
       rabbitmq:
         condition: service_healthy
     environment:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
-      - STRATEGY=uc1
-      - CLIENT_RESPONSES_RX=filtered_transactions
-      - CLIENT_RESPONSES_TX=server_responses
-  uc2_group_by_trans:
+      - STRATEGY=uc3_avg
+      - RX=uc3_average_merged
+      - UC3_FILTERED_TX=uc3_join
+      - FILTER_ID=0
+      - FILTER_RING_BASE=uc3_avg_filter_ring
+      - FILTER_WORKERS=1
+
+  uc4_path_filter:
     build:
       context: ./src/
-      dockerfile: group_by/Dockerfile
-    container_name: uc2_group_by_trans
+      dockerfile: filter/Dockerfile
+    container_name: uc4_path_filter
     depends_on:
       rabbitmq:
         condition: service_healthy
     environment:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
-      - STRATEGY=uc2_max_amount
-      - RX=uc2_transactions
-      - TX=partial_max_amounts
-  uc2_aggregate_trans:
-    build:
-      context: ./src/
-      dockerfile: aggregate/Dockerfile
-    container_name: uc2_aggregate_trans
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - STRATEGY=uc2_max_amount
-      - RX=partial_max_amounts
-      - TX=max_amounts_by_bank
-  uc2_group_by_accs:
-    build:
-      context: ./src/
-      dockerfile: group_by/Dockerfile
-    container_name: uc2_group_by_accs
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - STRATEGY=uc2_bank_names
-      - RX=accounts_tx
-      - TX=partial_bank_names
-  uc2_aggregate_accs:
-    build:
-      context: ./src/
-      dockerfile: aggregate/Dockerfile
-    container_name: uc2_aggregate_accs
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - STRATEGY=uc2_bank_names
-      - RX=partial_bank_names
-      - TX=bank_id_name_mappings
-  uc2_merge:
-    build:
-      context: ./src/
-      dockerfile: merge/Dockerfile
-    container_name: uc2_merge
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - LEFT_RX=max_amounts_by_bank
-      - RIGHT_RX=bank_id_name_mappings
-      - TX=max_amounts_w_name
-  uc2_join:
-    build:
-      context: ./src/
-      dockerfile: join/Dockerfile
-    container_name: uc2_join
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - STRATEGY=uc2
-      - CLIENT_RESPONSES_RX=max_amounts_w_name
-      - CLIENT_RESPONSES_TX=server_responses
-  uc5_converter:
-    build:
-      context: ./src/
-      dockerfile: converter/Dockerfile
-    container_name: uc5_converter
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - STRATEGY=uc5_usd
-      - RX=uc5_transactions
-      - TX=uc5_converted
+      - STRATEGY=uc4_path
+      - RX=uc4_aggregated_paths
+      - UC4_FILTERED_PATHS_TX=uc4_join
+      - FILTER_ID=0
+      - FILTER_RING_BASE=uc4_path_filter_ring
+      - FILTER_WORKERS=1
+
   uc5_amount_filter:
     build:
       context: ./src/
@@ -245,16 +190,107 @@ services:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
       - STRATEGY=uc5_amount
+      - RX=uc5_converted_transactions
+      - UC5_AMOUNT_FILTERED_TX=uc5_filtered_converted_transactions
       - FILTER_ID=0
       - FILTER_RING_BASE=uc5_amount_filter_ring
       - FILTER_WORKERS=1
-      - TRANSACTIONS_RX=uc5_converted
-      - UC5_AMOUNT_FILTERED_TX=uc5_filtered
-  uc5_group_by_count:
+
+  # --- groupbys ---
+  uc2_max_amount_group_by:
     build:
       context: ./src/
       dockerfile: group_by/Dockerfile
-    container_name: uc5_group_by_count
+    container_name: uc2_max_amount_group_by
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc2_max_amount
+      - RX=uc2_filtered_transactions
+      - TX=uc2_partial_max_amount
+
+  uc2_bank_names_group_by:
+    build:
+      context: ./src/
+      dockerfile: group_by/Dockerfile
+    container_name: uc2_bank_names_group_by
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc2_bank_names
+      - RX=client_accounts
+      - TX=uc2_partial_bank_names
+
+  uc3_group_by_format:
+    build:
+      context: ./src/
+      dockerfile: group_by/Dockerfile
+    container_name: uc3_group_by_format
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc3_sum
+      - RX=uc3_transactons_period_A
+      - TX=uc3_sum_by_format
+
+  uc4_compute_graph_group_by:
+    build:
+      context: ./src/
+      dockerfile: group_by/Dockerfile
+    container_name: uc4_compute_graph_group_by
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc4_compute_graph
+      - RX=uc4_filtered_transactions
+      - TX=uc4_graphs
+
+  uc4_count_paths_group_by:
+    build:
+      context: ./src/
+      dockerfile: group_by/Dockerfile
+    container_name: uc4_count_paths_group_by
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc4_count_paths
+      - RX=uc4_graphs
+      - TX=uc4_paths
+
+  uc5_converter:
+    build:
+      context: ./src/
+      dockerfile: converter/Dockerfile
+    container_name: uc5_converter
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - RX=uc5_filtered_transactions
+      - TX=uc5_converted_transactions
+
+  uc5_count_group_by:
+    build:
+      context: ./src/
+      dockerfile: group_by/Dockerfile
+    container_name: uc5_count_group_by
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -262,22 +298,123 @@ services:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
       - STRATEGY=uc5_count
-      - RX=uc5_filtered
-      - TX=uc5_partial_counts
-  uc5_join:
+      - RX=uc5_filtered_converted_transactions
+      - TX=uc5_join
+
+  # --- aggregates ---
+  uc2_max_amount_aggregate:
     build:
       context: ./src/
-      dockerfile: join/Dockerfile
-    container_name: uc5_join
+      dockerfile: aggregate/Dockerfile
+    container_name: uc2_max_amount_aggregate
     depends_on:
       rabbitmq:
         condition: service_healthy
     environment:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
-      - STRATEGY=uc5
-      - CLIENT_RESPONSES_RX=uc5_partial_counts
-      - CLIENT_RESPONSES_TX=server_responses
+      - STRATEGY=uc2_max_amount
+      - RX=uc2_partial_max_amount
+      - TX=uc2_max_amounts_by_bank
+
+  uc2_bank_names_aggregate:
+    build:
+      context: ./src/
+      dockerfile: aggregate/Dockerfile
+    container_name: uc2_bank_names_aggregate
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc2_bank_names
+      - RX=uc2_partial_bank_names
+      - TX=uc2_bank_id_name_mappings
+
+  uc3_average_aggregate:
+    build:
+      context: ./src/
+      dockerfile: aggregate/Dockerfile
+    container_name: uc3_average_aggregate
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc3_average
+      - RX=uc3_sum_by_format
+      - TX=uc3_avg
+
+  uc4_paths_aggregate:
+    build:
+      context: ./src/
+      dockerfile: aggregate/Dockerfile
+    container_name: uc4_paths_aggregate
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc4_paths
+      - RX=uc4_paths
+      - TX=uc4_aggregated_paths
+
+  # --- merges ---
+  uc2_merge:
+    build:
+      context: ./src/
+      dockerfile: merge/Dockerfile
+    container_name: uc2_merge
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - LEFT_RX=uc2_max_amounts_by_bank
+      - RIGHT_RX=uc2_bank_id_name_mappings
+      - TX=uc2_join
+      - STRATEGY=uc2_merge
+
+  uc3_merge:
+    build:
+      context: ./src/
+      dockerfile: merge/Dockerfile
+    container_name: uc3_merge
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - LEFT_RX=uc3_avg
+      - RIGHT_RX=uc3_transactons_period_B
+      - TX=uc3_average_merged
+      - STRATEGY=uc3_merge
+
+  # --- join ---
+  join:
+    build:
+      context: ./src/
+      dockerfile: join/Dockerfile
+    container_name: join
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - UC1_RX=uc1_join
+      - UC2_RX=uc2_join
+      - UC3_RX=uc3_join
+      - UC4_RX=uc4_join
+      - UC5_RX=uc5_join
+      - RESPONSES_TX=responses
+
+  # --- clients ---
   client_0:
     build:
       context: ./src/
@@ -291,10 +428,12 @@ services:
       - RESPONSES_PATH=/responses/responses_0.csv
       - GATEWAY_HOST=gateway
       - GATEWAY_PORT=12345
-      - NRESPONSES=3
+      - NRESPONSES=5
+      - BATCH_SIZE=500
     volumes:
       - ./datasets:/datasets
       - ./responses:/responses
+
   client_1:
     build:
       context: ./src/
@@ -308,7 +447,8 @@ services:
       - RESPONSES_PATH=/responses/responses_1.csv
       - GATEWAY_HOST=gateway
       - GATEWAY_PORT=12345
-      - NRESPONSES=3
+      - NRESPONSES=5
+      - BATCH_SIZE=500
     volumes:
       - ./datasets:/datasets
       - ./responses:/responses
