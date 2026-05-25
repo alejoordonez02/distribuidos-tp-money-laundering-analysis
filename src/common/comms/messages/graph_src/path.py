@@ -13,7 +13,7 @@ class Path:
         return (self.origin.fields(), self.destination.fields())
 
     def __hash__(self) -> int:
-        return hash(self.origin.key + self.destination.key)
+        return hash(self.key)
 
     def __eq__(self, other) -> bool:
         return other.key == self.key
