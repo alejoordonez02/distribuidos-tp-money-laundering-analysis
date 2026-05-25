@@ -2,9 +2,10 @@
 # `https://www.kaggle.com/code/pablodroca/money-laundering-analysis`,
 # source was only modified so that it produces files with input and expected output
 # for each client.
-
 import os
 import sys
+
+import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
@@ -40,16 +41,24 @@ def main():
     """
     Generate the input and expected output for each client.
     """
+    rng = np.random.default_rng(seed=RANDOM_SEED)
+
     # same accounts dataset for all clients
     accounts_df = pd.read_csv(ACCOUNTS_PATH)
     if ACCOUNTS_SAMPLE_SIZE is not None:
-        accounts_df = accounts_df.sample(ACCOUNTS_SAMPLE_SIZE, random_state=RANDOM_SEED)
+        accounts_df = gen_sampled_dataframe(
+            ACCOUNTS_SAMPLE_SIZE,
+            ACCOUNTS_PATH,
+            CLIENT_DATASETS_PATH + "accounts.csv",
+            rng,
+        )
 
     for n in range(NCLIENTS):
         trans_df = gen_sampled_dataframe(
             TRANSACTIONS_SAMPLE_SIZE,
             TRANSACTIONS_PATH,
             CLIENT_DATASETS_PATH + f"transactions_{n}.csv",
+            rng,
         )
         gen_results(
             trans_df,
@@ -66,14 +75,16 @@ def gen_sampled_dataframe(
     sample_size: int | None,
     dataframe_path: str,
     sampled_path: str,
+    rng: np.random.Generator,
 ):
     """
     Samples a dataset, writes it to its corresponding path and returns it.
     """
-    sampled_df = pd.read_csv(dataframe_path).sample(
-        sample_size, random_state=RANDOM_SEED
-    )
-    sampled_df.to_csv(sampled_path)
+    sampled_df = pd.read_csv(dataframe_path)
+    if sample_size:
+        sampled_df = sampled_df.sample(sample_size, random_state=rng)
+
+    sampled_df.to_csv(sampled_path, index=False)
 
     return sampled_df
 
