@@ -186,20 +186,23 @@ def gen_uc4_results(trans_df):
 
     Returns a `DataFrame` with the results.
     """
-
-    def filter_function(x):
-        unique_account_size = x.groupby(["To Bank", "Account.1"]).size().size
-        return unique_account_size > 5 and unique_account_size < 10
-
     trans_usd_df = trans_df[trans_df["Payment Currency"] == "US Dollar"]
     trans_usd_sept_1st_df = trans_usd_df[
         (trans_usd_df["Timestamp"] >= "2022/09/01")
         & (trans_usd_df["Timestamp"] <= "2022/09/06")
     ]
-    ranged_trans_usd_sept_df = trans_usd_sept_1st_df.groupby(
-        ["From Bank", "Account"]
-    ).filter(filter_function)
-    accounts_df = ranged_trans_usd_sept_df[
+
+    # NOTE: ver doc/problema_uc4
+    # def filter_function(x):
+    #     unique_account_size = x.groupby(["To Bank", "Account.1"]).size().size
+    #     return unique_account_size > 5 and unique_account_size < 10
+    #
+    # ranged_trans_usd_sept_df = trans_usd_sept_1st_df.groupby(
+    #     ["From Bank", "Account"]
+    # ).filter(filter_function)
+
+    # accounts_df = ranged_trans_usd_sept_df[
+    accounts_df = trans_usd_sept_1st_df[
         ["From Bank", "Account", "To Bank", "Account.1"]
     ]
     account_pairs_df = accounts_df.merge(
@@ -219,7 +222,9 @@ def gen_uc4_results(trans_df):
     account_pairs_df = account_pairs_df.groupby(
         ["From Bank", "From Account", "To Bank", "To Account"], as_index=False
     ).size()
-    account_pairs_df = account_pairs_df[(account_pairs_df["size"] > 5)]
+    # NOTE: el enunciado dice que acá es 5 inclusive
+    # account_pairs_df = account_pairs_df[(account_pairs_df["size"] > 5)]
+    account_pairs_df = account_pairs_df[(account_pairs_df["size"] >= 5)]
     from_account_pairs_df = account_pairs_df[["From Bank", "From Account"]].rename(
         columns={"From Bank": "Bank", "From Account": "Account"}
     )
