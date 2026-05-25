@@ -3,17 +3,11 @@
 # source was only modified so that it produces files with input and expected output
 # for each client.
 
-from datetime import date, datetime
 import gc
-import sys
+from datetime import date, datetime
 
 import numpy as np
 import pandas as pd
-
-
-def _log(msg: str):
-    ts = datetime.now().strftime("%H:%M:%S")
-    print(f"[{ts}] {msg}", flush=True)
 from cfg import (
     ACCOUNTS_PATH,
     ACCOUNTS_SAMPLE_SIZE,
@@ -23,6 +17,7 @@ from cfg import (
     TRANSACTIONS_PATH,
     TRANSACTIONS_SAMPLE_SIZE,
 )
+from pandas.core.generic import DtypeArg
 
 from common.conversion import FrankfurterConversionAPI
 
@@ -32,7 +27,7 @@ _CHUNK_SIZE = 50_000
 
 # Optimized dtypes: categories for low-cardinality strings, int32/int8 for integers.
 # Amount Paid stays float64 to preserve precision in expected output comparisons.
-_TRANS_DTYPE = {
+_TRANS_DTYPE: DtypeArg = {
     "From Bank": "int32",
     "To Bank": "int32",
     "Account": "category",
@@ -42,7 +37,7 @@ _TRANS_DTYPE = {
     "Is Laundering": "int8",
 }
 
-_ACCOUNTS_DTYPE = {
+_ACCOUNTS_DTYPE: DtypeArg = {
     "Bank ID": "int32",
 }
 
@@ -59,6 +54,11 @@ _conversion_api = FrankfurterConversionAPI()
 _rate_cache: dict[date, dict[str, float]] = {}
 
 
+def _log(msg: str):
+    ts = datetime.now().strftime("%H:%M:%S")
+    print(f"[{ts}] {msg}", flush=True)
+
+
 def _get_rates(date_slash: str) -> dict[str, float]:
     day = date.fromisoformat(date_slash.replace("/", "-"))
     if day not in _rate_cache:
@@ -73,8 +73,10 @@ def main():
     """
     Generate the input and expected output for each client.
     """
-    _log(f"=== gen_input_output START ===")
-    _log(f"NCLIENTS={NCLIENTS}, TRANSACTIONS_SAMPLE_SIZE={TRANSACTIONS_SAMPLE_SIZE}, ACCOUNTS_SAMPLE_SIZE={ACCOUNTS_SAMPLE_SIZE}")
+    _log("=== gen_input_output START ===")
+    _log(
+        f"NCLIENTS={NCLIENTS}, TRANSACTIONS_SAMPLE_SIZE={TRANSACTIONS_SAMPLE_SIZE}, ACCOUNTS_SAMPLE_SIZE={ACCOUNTS_SAMPLE_SIZE}"
+    )
     rng = np.random.default_rng(seed=RANDOM_SEED)
 
     # same accounts dataset for all clients
@@ -92,7 +94,7 @@ def main():
     _log(f"Accounts loaded: {len(accounts_df)} rows")
 
     for n in range(NCLIENTS):
-        _log(f"--- Client {n+1}/{NCLIENTS} ---")
+        _log(f"--- Client {n + 1}/{NCLIENTS} ---")
         _log(f"Sampling transactions from {TRANSACTIONS_PATH} ...")
         trans_df = gen_sampled_dataframe(
             TRANSACTIONS_SAMPLE_SIZE,
@@ -101,7 +103,9 @@ def main():
             rng,
             dtype=_TRANS_DTYPE,
         )
-        _log(f"Transactions sampled: {len(trans_df)} rows → wrote datasets/transactions_{n}.csv")
+        _log(
+            f"Transactions sampled: {len(trans_df)} rows → wrote datasets/transactions_{n}.csv"
+        )
         gen_results(
             trans_df,
             accounts_df,
@@ -113,7 +117,9 @@ def main():
         )
         del trans_df
         gc.collect()
-        _log(f"Client {n+1} done — expected responses written to {CLIENT_EXPECTED_RESPONSES_PATH}")
+        _log(
+            f"Client {n + 1} done — expected responses written to {CLIENT_EXPECTED_RESPONSES_PATH}"
+        )
 
     _log("=== gen_input_output DONE — all files ready ===")
 
@@ -122,7 +128,7 @@ def _chunked_sample(
     path: str,
     n: int,
     rng: np.random.Generator,
-    dtype: dict | None = None,
+    dtype: DtypeArg | None = None,
 ) -> pd.DataFrame:
     """Read CSV in chunks, returning n randomly sampled rows without loading the full file."""
     with open(path, "rb") as f:
@@ -154,7 +160,7 @@ def gen_sampled_dataframe(
     dataframe_path: str,
     sampled_path: str,
     rng: np.random.Generator,
-    dtype: dict | None = None,
+    dtype: DtypeArg | None = None,
 ):
     """
     Samples a dataset, writes it to its corresponding path and returns it.
@@ -351,8 +357,7 @@ def gen_uc5_results(trans_df) -> int:
     currencies = trans_wire_ach_df["Payment Currency"].tolist()
     amounts = trans_wire_ach_df["Amount Paid"].tolist()
     trans_wire_ach_df["USD Amount"] = [
-        amt * _get_rates(d).get(c, 1.0)
-        for amt, d, c in zip(amounts, dates, currencies)
+        amt * _get_rates(d).get(c, 1.0) for amt, d, c in zip(amounts, dates, currencies)
     ]
     return trans_wire_ach_df[trans_wire_ach_df["USD Amount"] < 1.0].shape[0]
 
