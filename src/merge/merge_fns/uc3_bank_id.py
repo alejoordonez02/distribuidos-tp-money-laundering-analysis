@@ -1,9 +1,7 @@
-import logging
 from uuid import UUID
 
 from common.comms.messages import MergedTransactions, AvgByFormat, Transactions
 from common.data.transaction import Transaction
-from common.pipeline_config import UC3_MERGE_BATCH_SIZE
 
 from .merge_fn import MergeFn
 
@@ -35,29 +33,8 @@ class UC3BankIdMergeFn(MergeFn):
         else:
             self._transactions_to_merge[msg.client_id].extend(msg.transactions)
 
-    def get_result(self, client_id: UUID) -> list[MergedTransactions]:
+    def get_result(self, client_id: UUID) -> MergedTransactions:
         averages = self._averages.pop(client_id, {})
         transactions = self._transactions_to_merge.pop(client_id, [])
-
-        batches: list[MergedTransactions] = []
-        batch: list[Transaction] = []
-
-        for t in transactions:
-            if t.payment_format not in averages:
-                continue
-            batch.append(t)
-            if len(batch) >= UC3_MERGE_BATCH_SIZE:
-                batches.append(MergedTransactions(client_id, batch, averages))
-                batch = []
-
-        if batch:
-            batches.append(MergedTransactions(client_id, batch, averages))
-
-        if not batches:
-            batches.append(MergedTransactions(client_id, [], averages))
-
-        logging.info(
-            f"uc3 merge: emitting {len(batches)} batch(es) "
-            f"({sum(len(b.transactions) for b in batches)} transactions)"
-        )
-        return batches
+        entries = [t for t in transactions if t.payment_format in averages]
+        return MergedTransactions(client_id, entries, averages)

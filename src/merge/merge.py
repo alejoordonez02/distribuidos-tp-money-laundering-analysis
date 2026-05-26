@@ -50,8 +50,7 @@ class Merge:
         s = self._state[client_id]
         if not (s.left_done and s.right_done):
             return
-        for r in self._fn.get_result(client_id):
-            self._tx.send(r.serialize())
+        self._tx.send(self._fn.get_result(client_id).serialize())
         self._tx.send(EOF(client_id).serialize())
         logging.info(f"merge complete for client {client_id}")
 

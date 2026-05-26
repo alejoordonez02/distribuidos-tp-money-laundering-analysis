@@ -25,14 +25,10 @@ class GroupBy:
         msg = deserialize_message(bytes2)
 
         if msg.type() == MessageType.EOF:
-            for r in self.fn.get_result(msg.client_id):
-                self.tx.send(r.serialize())
+            self.tx.send(self.fn.get_result(msg.client_id).serialize())
             self.tx.send(EOF(msg.client_id).serialize())
             logging.info(f"forwarded eof for client {msg.client_id}")
         else:
-            results = self.fn.group_by(msg)
-            if results:
-                for r in results:
-                    self.tx.send(r.serialize())
+            self.fn.group_by(msg)
 
         ack()
