@@ -12,6 +12,7 @@ from .middleware import MessageMiddlewareExchange, MessageMiddlewareQueue
 
 class QueueRabbitMQ(MessageMiddlewareQueue):
     def __init__(self, host: str, queue_name: str):
+        self.host = host
         self.queue_name = queue_name
         self.conn = BlockingConnection(ConnectionParameters(host))
         self.chan = self.conn.channel()
