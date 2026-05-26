@@ -4,15 +4,15 @@ from typing import Callable
 from aggregate_fns import AggregateFn
 
 from common.comms.messages import EOF, MessageType, deserialize_message
-from common.comms.middleware import MessageMiddlewareQueue
+from common.comms.middleware import MOMQueue
 
 
 class Aggregate:
     def __init__(
         self,
-        rx: MessageMiddlewareQueue,
+        rx: MOMQueue,
         fn: AggregateFn,
-        tx: MessageMiddlewareQueue,
+        tx: MOMQueue,
     ):
         self.rx = rx
         self.fn = fn

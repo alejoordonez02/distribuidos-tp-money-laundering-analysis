@@ -4,7 +4,7 @@ from typing import Callable
 from join_fns import JoinFn
 
 from common.comms.messages import EOF, MessageType, deserialize_message
-from common.comms.middleware import MessageMiddlewareQueue
+from common.comms.middleware import MOMQueue
 
 
 class JoinRouteHandler:
@@ -17,8 +17,8 @@ class JoinRouteHandler:
 
     def __init__(
         self,
-        responses_tx_factory: Callable[[], MessageMiddlewareQueue],
-        mom_factory: Callable[[], MessageMiddlewareQueue],
+        responses_tx_factory: Callable[[], MOMQueue],
+        mom_factory: Callable[[], MOMQueue],
         join_fn: JoinFn,
     ):
         """
@@ -30,7 +30,7 @@ class JoinRouteHandler:
         * join_fn: the join function to be used.
         """
         self.responses_tx_factory = responses_tx_factory
-        self.responses_tx: MessageMiddlewareQueue
+        self.responses_tx: MOMQueue
         self.mom_factory = mom_factory
         self.join_fn = join_fn
 

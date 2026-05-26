@@ -17,7 +17,9 @@ class UC1Join(JoinFn):
 
     def get_response(self, client_id: UUID) -> Response:  # type: ignore[reportIncompatibleMethodOverride]
         body = "--- UC1 ---"
-        for t in self.client_responses[client_id].transactions:
+        for t in self.client_responses.pop(
+            client_id, Transactions(client_id, [])
+        ).transactions:
             origin = f"{t.from_bank}-{t.from_account}"
             destination = f"{t.to_bank}-{t.to_account}"
             amount = f"{t.amount_paid}"
@@ -26,4 +28,5 @@ class UC1Join(JoinFn):
 
         body += "\n"
         response = Response(client_id, body)
+
         return response
