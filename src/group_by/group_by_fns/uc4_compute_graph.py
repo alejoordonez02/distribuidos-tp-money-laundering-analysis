@@ -1,27 +1,44 @@
+from collections import defaultdict
 from uuid import UUID
 
-from common.comms.messages import Edges, Node, Transactions
-from common.pipeline_config import UC4_EDGES_BATCH_SIZE
+from common.comms.messages import Graph, Node, Transactions
+from common.pipeline_config import UC4_NODES_PER_BATCH
 
 from .group_by_fn import GroupByFn
 
 
 class UC4ComputeGraph(GroupByFn):
     def __init__(self):
-        self.client_edges: dict[UUID, set[tuple[Node, Node]]] = {}
+        self._succs: dict[UUID, dict[Node, set[Node]]] = {}
+        self._preds: dict[UUID, dict[Node, set[Node]]] = {}
 
     def group_by(self, msg: Transactions):  # type: ignore[reportIncompatibleMethodOverride]
-        if msg.client_id not in self.client_edges:
-            self.client_edges[msg.client_id] = set()
+        if msg.client_id not in self._succs:
+            self._succs[msg.client_id] = defaultdict(set)
+            self._preds[msg.client_id] = defaultdict(set)
+
+        succs = self._succs[msg.client_id]
+        preds = self._preds[msg.client_id]
 
         for t in msg.transactions:
             origin = Node(t.from_bank, t.from_account)
-            destination = Node(t.to_bank, t.to_account)
-            self.client_edges[msg.client_id].add((origin, destination))
+            dest = Node(t.to_bank, t.to_account)
+            succs[origin].add(dest)
+            preds[dest].add(origin)
 
-    def get_result(self, client_id: UUID) -> list[Edges]:
-        edges = list(self.client_edges.pop(client_id, set()))
-        return [
-            Edges(client_id, edges[i : i + UC4_EDGES_BATCH_SIZE])
-            for i in range(0, max(len(edges), 1), UC4_EDGES_BATCH_SIZE)
-        ]
+    def get_result(self, client_id: UUID) -> list[Graph]:
+        succs = self._succs.pop(client_id, {})
+        preds = self._preds.pop(client_id, {})
+
+        all_nodes = list(succs.keys() | preds.keys())
+        if not all_nodes:
+            return [Graph(client_id, {})]
+
+        batches = []
+        for i in range(0, len(all_nodes), UC4_NODES_PER_BATCH):
+            chunk = all_nodes[i : i + UC4_NODES_PER_BATCH]
+            batches.append(Graph(client_id, {
+                node: (preds.get(node, set()), succs.get(node, set()))
+                for node in chunk
+            }))
+        return batches

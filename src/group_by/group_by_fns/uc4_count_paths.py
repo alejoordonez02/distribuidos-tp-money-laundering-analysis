@@ -2,7 +2,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from uuid import UUID
 
-from common.comms.messages import Edges, Node, Path, PathCounts
+from common.comms.messages import Graph, Node, Path, PathCounts
 from common.pipeline_config import UC4_PATHS_BATCH_SIZE
 
 from .group_by_fn import GroupByFn
@@ -10,8 +10,6 @@ from .group_by_fn import GroupByFn
 
 @dataclass
 class _ClientState:
-    succs: dict[int, set[int]] = field(default_factory=lambda: defaultdict(set))
-    preds: dict[int, set[int]] = field(default_factory=lambda: defaultdict(set))
     node_ids: dict[str, int] = field(default_factory=dict)
     nodes: list[Node] = field(default_factory=list)
     counts: dict[tuple[int, int], int] = field(default_factory=lambda: defaultdict(int))
@@ -27,28 +25,22 @@ class UC4CountPaths(GroupByFn):
             state.nodes.append(node)
         return state.node_ids[node.key]
 
-    def group_by(self, msg: Edges):  # type: ignore[reportIncompatibleMethodOverride]
+    def group_by(self, msg: Graph):  # type: ignore[reportIncompatibleMethodOverride]
         if msg.client_id not in self._clients:
             self._clients[msg.client_id] = _ClientState()
 
         state = self._clients[msg.client_id]
 
-        for from_node, to_node in msg.edges:
-            a = self._node_id(state, from_node)
-            b = self._node_id(state, to_node)
-
-            # a→b: b gains a as predecessor → count a→b→c for each c already in succs[b]
-            for c in state.succs[b]:
-                if a != c:
-                    state.counts[(a, c)] += 1
-
-            # a→b: a gains b as successor → count x→a→b for each x already in preds[a]
-            for x in state.preds[a]:
-                if x != b:
-                    state.counts[(x, b)] += 1
-
-            state.succs[a].add(b)
-            state.preds[b].add(a)
+        for node_b, (preds, succs) in msg.nodes.items():
+            if not preds or not succs:
+                continue
+            b_id = self._node_id(state, node_b)
+            pred_ids = [self._node_id(state, p) for p in preds]
+            succ_ids = [self._node_id(state, s) for s in succs]
+            for a in pred_ids:
+                for c in succ_ids:
+                    if a != c:
+                        state.counts[(a, c)] += 1
 
     def get_result(self, client_id: UUID) -> list[PathCounts]:  # type: ignore[reportIncompatibleMethodOverride]
         state = self._clients.pop(client_id, None)

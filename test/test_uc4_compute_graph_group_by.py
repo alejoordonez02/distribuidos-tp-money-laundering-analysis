@@ -1,4 +1,4 @@
-from common.comms.messages import Edges, Node, Transactions
+from common.comms.messages import Graph, Node, Transactions
 from common.data import Transaction
 from group_by.group_by_fns import UC4ComputeGraph
 
@@ -18,11 +18,14 @@ def _transaction(from_bank: str, from_account: str, to_bank: str, to_account: st
     )
 
 
-def _all_edges(batches: list[Edges]) -> set[tuple[Node, Node]]:
+def _all_edges(batches: list[Graph]) -> set[tuple[Node, Node]]:
     result = set()
     for batch in batches:
-        for a, b in batch.edges:
-            result.add((a, b))
+        for node, (preds, succs) in batch.nodes.items():
+            for p in preds:
+                result.add((p, node))
+            for s in succs:
+                result.add((node, s))
     return result
 
 
