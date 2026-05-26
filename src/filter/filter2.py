@@ -7,7 +7,7 @@ from uuid import UUID
 from filter_fns import FilterFn
 
 from common.comms.messages import EOF, MessageType, deserialize_message
-from common.comms.middleware import MessageMiddlewareQueue
+from common.comms.middleware import MessageMiddleware
 
 
 @dataclass
@@ -27,10 +27,10 @@ class Filter:
     def __init__(
         self,
         worker_id: int,
-        messages_rx: MessageMiddlewareQueue,
-        ring_rx: MessageMiddlewareQueue,
-        ring_tx: MessageMiddlewareQueue,
-        routes: list[tuple[MessageMiddlewareQueue, FilterFn]],
+        messages_rx: MessageMiddleware,
+        ring_rx: MessageMiddleware,
+        ring_tx: MessageMiddleware,
+        routes: list[tuple[MessageMiddleware, FilterFn]],
     ):
         self.worker_id = worker_id
         self.messages_rx = messages_rx
@@ -49,7 +49,7 @@ class Filter:
         t.start()
         self.messages_rx.start_consuming(self._handle_message)
 
-    def _ring_thread(self, ring_tx: MessageMiddlewareQueue, eof_destinations: list[MessageMiddlewareQueue]):
+    def _ring_thread(self, ring_tx: MessageMiddleware, eof_destinations: list[MessageMiddleware]):
         try:
             self.ring_rx.start_consuming(
                 lambda b, ack, nack: self._handle_ring_eof(b, ack, nack, ring_tx, eof_destinations)
@@ -94,7 +94,7 @@ class Filter:
         logging.info(f"starting ring for client {eof.client_id}")
         self.ring_tx.send(eof.serialize())
 
-    def _handle_ring_eof(self, bytes2: bytes, ack: Callable, nack: Callable, ring_tx: MessageMiddlewareQueue, eof_destinations: list[MessageMiddlewareQueue]):
+    def _handle_ring_eof(self, bytes2: bytes, ack: Callable, nack: Callable, ring_tx: MessageMiddleware, eof_destinations: list[MessageMiddleware]):
         """Received ring EOF from the previous worker."""
         eof = EOF.deserialize(bytes2)
         logging.debug(f"received ring eof: {eof.__dict__}")

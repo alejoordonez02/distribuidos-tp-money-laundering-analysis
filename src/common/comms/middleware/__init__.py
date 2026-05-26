@@ -4,5 +4,5 @@ from .errors import (
     MessageMiddlewareDisconnectedError,
     MessageMiddlewareMessageError,
 )
-from .middleware import MessageMiddlewareExchange, MessageMiddlewareQueue
+from .middleware import MessageMiddleware, MessageMiddlewareExchange, MessageMiddlewareQueue
 from .middleware_rabbitmq import ExchangeRabbitMQ, QueueRabbitMQ

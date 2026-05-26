@@ -36,6 +36,10 @@ class MessageMiddleware(ABC):
     def close(self):
         pass
 
+    @abstractmethod
+    def clone(self) -> "MessageMiddleware":
+        pass
+
 
 class MessageMiddlewareExchange(MessageMiddleware):
     @abstractmethod
@@ -46,9 +50,5 @@ class MessageMiddlewareExchange(MessageMiddleware):
 class MessageMiddlewareQueue(MessageMiddleware):
     @abstractmethod
     def __init__(self, host: str, queue_name: str):
-        pass
-
-    @abstractmethod
-    def clone(self) -> "MessageMiddlewareQueue":
         pass
 
