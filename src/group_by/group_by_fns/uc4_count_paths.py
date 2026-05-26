@@ -39,7 +39,7 @@ class UC4CountPaths(GroupByFn):
             succs[o_id].add(m_id)
             preds[m_id].add(o_id)
 
-    def get_result(self, client_id: UUID) -> list[PathCounts]:
+    def get_result(self, client_id: UUID) -> list[PathCounts]: # type: ignore
         if client_id not in self.client_succs:
             return [PathCounts(client_id, {})]
 

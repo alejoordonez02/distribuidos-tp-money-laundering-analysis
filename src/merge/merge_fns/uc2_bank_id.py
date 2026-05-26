@@ -25,11 +25,11 @@ class UC2BankIdMergeFn(MergeFn):
             self._bank_names[msg.client_id] = BankNames(msg.client_id, {})
         self._bank_names[msg.client_id].data.update(msg.data)
 
-    def get_result(self, client_id: UUID) -> MergedBankData:
+    def get_result(self, client_id: UUID) -> list[MergedBankData]:  # type: ignore[reportIncompatibleMethodOverride]
         max_amounts = self._max_amounts.get(client_id, MaxByBank(client_id, {})).data
         bank_names = self._bank_names.get(client_id, BankNames(client_id, {})).data
         entries = [
             (bank_id, account, amount, bank_names.get(bank_id, bank_id))
             for bank_id, (account, amount) in max_amounts.items()
         ]
-        return MergedBankData(client_id, entries)
+        return [MergedBankData(client_id, entries)]

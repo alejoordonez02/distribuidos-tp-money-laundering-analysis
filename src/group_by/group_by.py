@@ -25,12 +25,8 @@ class GroupBy:
         msg = deserialize_message(bytes2)
 
         if msg.type() == MessageType.EOF:
-            result = self.fn.get_result(msg.client_id)
-            if isinstance(result, list):
-                for r in result:
-                    self.tx.send(r.serialize())
-            else:
-                self.tx.send(result.serialize())
+            for r in self.fn.get_result(msg.client_id):
+                self.tx.send(r.serialize())
             self.tx.send(EOF(msg.client_id).serialize())
             logging.info(f"forwarded eof for client {msg.client_id}")
         else:
