@@ -2,6 +2,9 @@
 datasets/
 responses/
 
+# generated compose override
+docker-compose.clients.yaml
+
 # tests input and expected output
 test/datasets
 test/expected_responses
