@@ -2,11 +2,11 @@ from common.comms.messages import Graph, Node, Path, PathCounts
 from group_by.group_by_fns import UC4CountPaths
 
 
-def _combine_batches(batches: list[PathCounts]) -> PathCounts | None:
-    if not batches:
-        return None
-    combined = PathCounts(batches[0].client_id, {})
+def _combine_batches(batches) -> PathCounts | None:
+    combined = None
     for batch in batches:
+        if combined is None:
+            combined = PathCounts(batch.client_id, {})
         for path, count in batch.counts.items():
             combined.add(path, count)
     return combined
