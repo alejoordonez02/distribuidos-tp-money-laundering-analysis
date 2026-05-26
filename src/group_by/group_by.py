@@ -30,6 +30,9 @@ class GroupBy:
             self.tx.send(EOF(msg.client_id).serialize())
             logging.info(f"forwarded eof for client {msg.client_id}")
         else:
-            self.fn.group_by(msg)
+            results = self.fn.group_by(msg)
+            if results:
+                for r in results:
+                    self.tx.send(r.serialize())
 
         ack()

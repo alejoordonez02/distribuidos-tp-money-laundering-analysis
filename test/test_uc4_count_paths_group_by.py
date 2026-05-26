@@ -2,9 +2,9 @@ from common.comms.messages import Graph, Node, Path, PathCounts
 from group_by.group_by_fns import UC4CountPaths
 
 
-def _combine_batches(batches: list[PathCounts]) -> PathCounts:
+def _combine_batches(batches: list[PathCounts]) -> PathCounts | None:
     if not batches:
-        raise ValueError("empty batch list")
+        return None
     combined = PathCounts(batches[0].client_id, {})
     for batch in batches:
         for path, count in batch.counts.items():
@@ -33,9 +33,9 @@ def test_single_path_graph():
     )
 
     fn = UC4CountPaths()
-    fn.group_by(graph)
+    result = fn.group_by(graph)
 
-    assert _combine_batches(fn.get_result(some_uuid)) == expected  # type: ignore[reportArgumentType]
+    assert _combine_batches(result) == expected  # type: ignore[reportArgumentType]
 
 
 def test_five_path_graph():
@@ -59,6 +59,6 @@ def test_five_path_graph():
     )
 
     fn = UC4CountPaths()
-    fn.group_by(graph)
+    result = fn.group_by(graph)
 
-    assert _combine_batches(fn.get_result(some_uuid)) == expected  # type: ignore[reportArgumentType]
+    assert _combine_batches(result) == expected  # type: ignore[reportArgumentType]
