@@ -3,7 +3,6 @@ import json
 from .accounts import Accounts
 from .avg_by_format import AvgByFormat
 from .bank_names import BankNames
-from .edges import Edges
 from .eof import EOF
 from .errors import UnknownMessageError
 from .fin import FIN
@@ -61,8 +60,6 @@ def deserialize_message(bytes2: bytes) -> Message:
             return AvgByFormat.deserialize(bytes2)
         case MessageType.MERGED_TRANSACTIONS:
             return MergedTransactions.deserialize(bytes2)
-        case MessageType.EDGES:
-            return Edges.deserialize(bytes2)
         case MessageType.COUNT:
             return TransactionCount.deserialize(bytes2)
         case _:

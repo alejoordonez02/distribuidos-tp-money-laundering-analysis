@@ -16,4 +16,3 @@ class MessageType(IntEnum):
     SUM_BY_PAYMENT_FORMAT = 11
     AVG_BY_FORMAT = 12
     MERGED_TRANSACTIONS = 13
-    EDGES = 14
