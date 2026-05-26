@@ -10,23 +10,25 @@ def _get_front_back_ids(self_id: int, peer_ids: list[int]) -> tuple[int, int]:
     if self_id in peer_ids:
         raise MOMRingError("invalid peer ids list, self's id should not be included")
 
+    peer_ids.sort()
     npeers = len(peer_ids)
+
     if not npeers:
         return self_id, self_id
     elif npeers == 1:
         return peer_ids[0], peer_ids[0]
 
-    for idx, p in enumerate(sorted(peer_ids)):
-        if p > self_id:
-            back_idx = (npeers + idx - 1) % npeers
-            front_id = peer_ids[idx]
-            back_id = peer_ids[back_idx]
+    front_idx = 0
+    for idx, p in enumerate(peer_ids):
+        if self_id < p:
+            front_idx = idx
+            break
 
-            return front_id, back_id
+    back_idx = (npeers + front_idx - 1) % npeers
+    front_id = peer_ids[front_idx]
+    back_id = peer_ids[back_idx]
 
-    raise MOMRingError(
-        "invalid peer ids list, could not find proper back and next peers"
-    )
+    return front_id, back_id
 
 
 class RingRabbitMQ(MOMRing):
@@ -57,6 +59,7 @@ class RingRabbitMQ(MOMRing):
         A new `RingRabbitMQ` middleware.
         """
         self.id = self_id
+        self.peer_ids = peer_ids
         self.front_id, self.back_id = _get_front_back_ids(self.id, peer_ids)
 
         self.exchange_front = exchange_factory(host, ring_name, [str(self.front_id)])
