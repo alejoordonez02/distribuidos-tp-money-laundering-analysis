@@ -25,5 +25,5 @@ class UC3SumGroupByFn(GroupByFn):
                 curr = (curr[0] + t.amount_paid, curr[1] + 1)
             state[t.payment_format] = curr
 
-    def get_result(self, client_id: UUID) -> SumByPaymentFormat:
+    def get_result(self, client_id: UUID) -> SumByPaymentFormat:  # type: ignore[reportIncompatibleMethodOverride]
         return self._state.get(client_id, SumByPaymentFormat(client_id, {}))

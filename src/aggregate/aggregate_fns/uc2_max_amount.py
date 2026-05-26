@@ -19,5 +19,5 @@ class UC2MaxAmountAggregateFn(AggregateFn):
             if curr is None or amount > curr[1]:
                 state[bank_id] = (account, amount)
 
-    def get_result(self, client_id: UUID) -> MaxByBank:
-        return self._state.get(client_id, MaxByBank(client_id, {}))
+    def get_result(self, client_id: UUID) -> MaxByBank:  # type: ignore[reportIncompatibleMethodOverride]
+        return self._state.pop(client_id, MaxByBank(client_id, {}))

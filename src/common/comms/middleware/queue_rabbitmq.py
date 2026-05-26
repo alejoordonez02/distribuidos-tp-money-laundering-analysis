@@ -13,9 +13,11 @@ from .queue_mom import MOMQueue
 class QueueRabbitMQ(MOMQueue):
     def __init__(self, host: str, queue_name: str):
         self.queue_name = queue_name
-        self.conn = BlockingConnection(ConnectionParameters(host))
+        # TODO: heartbeat=600 may be starved by blocking callbacks in start_consuming — revisit
+        self.conn = BlockingConnection(ConnectionParameters(host, heartbeat=600))
         self.chan = self.conn.channel()
         self.chan.queue_declare(queue=queue_name)
+        self.chan.basic_qos(prefetch_count=1)
 
     def start_consuming(
         self, on_message_callback: Callable[[bytes, Callable, Callable], None]

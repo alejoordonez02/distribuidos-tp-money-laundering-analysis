@@ -27,6 +27,7 @@ class Converter:
         if msg.type() == MessageType.EOF:
             self.tx.send(msg.serialize())
             logging.info(f"forwarded eof for client {msg.client_id}")
+            ack()
             return
 
         self.tx.send(self.fn.convert(msg).serialize())  # type: ignore[reportAttributeAccessIssue]
