@@ -50,6 +50,9 @@ class QueueRabbitMQ(MessageMiddlewareQueue):
         except Exception as e:
             raise MessageMiddlewareMessageError(str(e)) from e
 
+    def clone(self) -> "QueueRabbitMQ":
+        return QueueRabbitMQ(self.host, self.queue_name)
+
     def close(self) -> None:
         try:
             self.conn.close()

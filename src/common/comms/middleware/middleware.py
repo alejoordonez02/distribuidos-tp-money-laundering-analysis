@@ -48,3 +48,7 @@ class MessageMiddlewareQueue(MessageMiddleware):
     def __init__(self, host: str, queue_name: str):
         pass
 
+    @abstractmethod
+    def clone(self) -> "MessageMiddlewareQueue":
+        pass
+
