@@ -1,26 +1,32 @@
 from uuid import UUID
 
-from common.comms.messages import Graph, Path, PathCounts
+from common.comms.messages import Graph, Node, Path, PathCounts
 
 from .group_by_fn import GroupByFn
 
 
 class UC4CountPaths(GroupByFn):
     def __init__(self):
-        self.client_counts: dict[UUID, PathCounts] = {}
+        self._preds: dict[UUID, dict[Node, set[Node]]] = {}
+        self._succs: dict[UUID, dict[Node, set[Node]]] = {}
 
     def group_by(self, msg: Graph):  # type: ignore[reportIncompatibleMethodOverride]
-        if msg.client_id not in self.client_counts:
-            self.client_counts[msg.client_id] = PathCounts(msg.client_id, {})
+        if msg.client_id not in self._preds:
+            self._preds[msg.client_id] = {}
+            self._succs[msg.client_id] = {}
 
-        for predecessors, successors in msg.nodes.values():
-            for p in predecessors:
-                for s in successors:
-                    path = Path(p, s)
-                    self.client_counts[msg.client_id].add(path, 1)
+        for node, (p, s) in msg.nodes.items():
+            self._preds[msg.client_id].setdefault(node, set()).update(p)
+            self._succs[msg.client_id].setdefault(node, set()).update(s)
 
     def get_result(self, client_id: UUID) -> PathCounts:
-        if client_id not in self.client_counts:
-            return PathCounts(client_id, {})
+        preds = self._preds.pop(client_id, {})
+        succs = self._succs.pop(client_id, {})
 
-        return self.client_counts.pop(client_id)
+        result = PathCounts(client_id, {})
+        for node, node_preds in preds.items():
+            for a in node_preds:
+                for c in succs.get(node, set()):
+                    if a != c:
+                        result.add(Path(a, c), 1)
+        return result

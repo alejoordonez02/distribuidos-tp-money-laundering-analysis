@@ -7,6 +7,7 @@ services:
     container_name: rabbitmq
     environment:
       - RABBITMQ_LOG_LEVELS=error
+      - RABBITMQ_CONFIG_FILE=rabbitmq.conf
     healthcheck:
       interval: 5s
       retries: 10
@@ -154,6 +155,7 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+    mem_limit: 2500m
     environment:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
@@ -169,6 +171,7 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+    mem_limit: 3g
     environment:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
@@ -291,6 +294,7 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+    mem_limit: 1500m
     environment:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672

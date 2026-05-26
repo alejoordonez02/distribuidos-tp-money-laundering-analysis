@@ -4,27 +4,20 @@ from group_by.group_by_fns import UC4CountPaths
 
 def test_single_path_graph():
     some_uuid = "some_uuid"
-    origin_bank = "origin_bank"
-    origin_account = "origin_account"
-    middle_bank = "middle_bank"
-    middle_account = "middle_account"
-    destination_bank = "destination_bank"
-    destination_account = "destination_account"
-
-    origin_node = Node(origin_bank, origin_account)
-    middle_node = Node(middle_bank, middle_account)
-    destination_node = Node(destination_bank, destination_account)
+    origin_node = Node("origin_bank", "origin_account")
+    middle_node = Node("middle_bank", "middle_account")
+    destination_node = Node("destination_bank", "destination_account")
 
     graph = Graph(
         some_uuid,  # type: ignore[reportArgumentType]
         {
-            origin_node: (set(), set([middle_node])),
-            destination_node: (set([middle_node]), set()),
-            middle_node: (set([origin_node]), set([destination_node])),
+            origin_node: (set(), {middle_node}),
+            middle_node: ({origin_node}, {destination_node}),
+            destination_node: ({middle_node}, set()),
         },
     )
 
-    expected_path_count = PathCounts(
+    expected = PathCounts(
         some_uuid,  # type: ignore[reportArgumentType]
         {Path(origin_node, destination_node): 1},
     )
@@ -32,72 +25,25 @@ def test_single_path_graph():
     fn = UC4CountPaths()
     fn.group_by(graph)
 
-    path_count = fn.get_result(some_uuid)  # type: ignore[reportArgumentType]
-
-    assert path_count == expected_path_count
+    assert fn.get_result(some_uuid) == expected  # type: ignore[reportArgumentType]
 
 
 def test_five_path_graph():
     some_uuid = "some_uuid"
-    origin_bank = "origin_bank"
-    origin_account = "origin_account"
-    middle_bank = "middle_bank"
-    middle_account = "middle_account"
-    middle_bank2 = "middle_bank2"
-    middle_account2 = "middle_account2"
-    middle_bank3 = "middle_bank3"
-    middle_account3 = "middle_account3"
-    middle_bank4 = "middle_bank4"
-    middle_account4 = "middle_account4"
-    middle_bank5 = "middle_bank5"
-    middle_account5 = "middle_account5"
-    destination_bank = "destination_bank"
-    destination_account = "destination_account"
+    origin_node = Node("origin_bank", "origin_account")
+    destination_node = Node("destination_bank", "destination_account")
+    middles = [Node(f"middle_bank{i}", f"middle_account{i}") for i in range(5)]
 
-    origin_node = Node(origin_bank, origin_account)
-    middle_node = Node(middle_bank, middle_account)
-    middle_node2 = Node(middle_bank2, middle_account2)
-    middle_node3 = Node(middle_bank3, middle_account3)
-    middle_node4 = Node(middle_bank4, middle_account4)
-    middle_node5 = Node(middle_bank5, middle_account5)
-    destination_node = Node(destination_bank, destination_account)
+    nodes = {
+        origin_node: (set(), set(middles)),
+        destination_node: (set(middles), set()),
+    }
+    for m in middles:
+        nodes[m] = ({origin_node}, {destination_node})
 
-    graph = Graph(
-        some_uuid,  # type: ignore[reportArgumentType]
-        {
-            origin_node: (
-                set(),
-                set(
-                    [
-                        middle_node,
-                        middle_node2,
-                        middle_node3,
-                        middle_node4,
-                        middle_node5,
-                    ]
-                ),
-            ),
-            destination_node: (
-                set(
-                    [
-                        middle_node,
-                        middle_node2,
-                        middle_node3,
-                        middle_node4,
-                        middle_node5,
-                    ]
-                ),
-                set(),
-            ),
-            middle_node: (set([origin_node]), set([destination_node])),
-            middle_node2: (set([origin_node]), set([destination_node])),
-            middle_node3: (set([origin_node]), set([destination_node])),
-            middle_node4: (set([origin_node]), set([destination_node])),
-            middle_node5: (set([origin_node]), set([destination_node])),
-        },
-    )
+    graph = Graph(some_uuid, nodes)  # type: ignore[reportArgumentType]
 
-    expected_path_count = PathCounts(
+    expected = PathCounts(
         some_uuid,  # type: ignore[reportArgumentType]
         {Path(origin_node, destination_node): 5},
     )
@@ -105,6 +51,4 @@ def test_five_path_graph():
     fn = UC4CountPaths()
     fn.group_by(graph)
 
-    path_count = fn.get_result(some_uuid)  # type: ignore[reportArgumentType]
-
-    assert path_count == expected_path_count
+    assert fn.get_result(some_uuid) == expected  # type: ignore[reportArgumentType]

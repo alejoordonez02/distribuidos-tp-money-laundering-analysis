@@ -17,7 +17,4 @@ class UC4AggregatePaths(AggregateFn):
             self.counts[msg.client_id].add(path, count)
 
     def get_result(self, client_id: UUID) -> PathCounts:
-        if client_id not in self.counts:
-            return PathCounts(client_id, {})
-
-        return self.counts.pop(client_id)
+        return self.counts.pop(client_id, PathCounts(client_id, {}))
