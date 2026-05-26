@@ -46,6 +46,8 @@ class ClientHandler:
 
     def _handle_transactions(self):
         transactions_tx = self.trans_tx_factory()
+        count = 0
+
         while True:
             msg = deserialize_message(self.conn.recv())
             logging.debug(f"received message from client: {msg.__dict__}")
@@ -53,11 +55,13 @@ class ClientHandler:
             match msg.type():
                 case MessageType.EOF:
                     msg.client_id = self.id
+                    msg.expected_count = count  # type: ignore[reportAttributeAccessIssue]
                     transactions_tx.send(msg.serialize())
                     break
                 case MessageType.TRANSACTIONS:
                     msg.client_id = self.id
                     transactions_tx.send(msg.serialize())
+                    count += 1
                 case _:
                     raise UnexpectedMessageError(
                         "client handler received unexpected msg: {msg.__dict__}"
@@ -65,6 +69,8 @@ class ClientHandler:
 
     def _handle_accounts(self):
         accounts_tx = self.accs_tx_factory()
+        count = 0
+
         while True:
             msg = deserialize_message(self.conn.recv())
             logging.debug(f"received message from client: {msg.__dict__}")
@@ -72,11 +78,13 @@ class ClientHandler:
             match msg.type():
                 case MessageType.EOF:
                     msg.client_id = self.id
+                    msg.expected_count = count  # type: ignore[reportAttributeAccessIssue]
                     accounts_tx.send(msg.serialize())
                     break
                 case MessageType.ACCOUNTS:
                     msg.client_id = self.id
                     accounts_tx.send(msg.serialize())
+                    count += 1
                 case _:
                     raise UnexpectedMessageError(
                         "client handler received unexpected msg: {msg.__dict__}"
