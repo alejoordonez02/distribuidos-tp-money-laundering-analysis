@@ -37,11 +37,11 @@ services:
       - ACCOUNTS_TX=client_accounts
 
   # --- filters ---
-  default_filter:
+  default_filter_0:
     build:
       context: ./src/
       dockerfile: filter/Dockerfile
-    container_name: default_filter
+    container_name: default_filter_0
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -55,12 +55,59 @@ services:
       - UC3_PERIOD_B_TRANSACTIONS_TX=uc3_transactons_period_B
       - UC4_TRANSACTIONS_TX=uc4_filtered_transactions
       - UC5_TRANSACTIONS_TX=uc5_filtered_transactions
+      - IDX=0
+      - NPEERS=3
+      - RING_NAME=default_filter_ring
 
-  uc3_average_filter:
+  default_filter_1:
     build:
       context: ./src/
       dockerfile: filter/Dockerfile
-    container_name: uc3_average_filter
+    container_name: default_filter_1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - RX=client_transactions
+      - UC1_TRANSACTIONS_TX=uc1_join
+      - UC2_TRANSACTIONS_TX=uc2_filtered_transactions
+      - UC3_PERIOD_A_TRANSACTIONS_TX=uc3_transactons_period_A
+      - UC3_PERIOD_B_TRANSACTIONS_TX=uc3_transactons_period_B
+      - UC4_TRANSACTIONS_TX=uc4_filtered_transactions
+      - UC5_TRANSACTIONS_TX=uc5_filtered_transactions
+      - IDX=1
+      - NPEERS=3
+      - RING_NAME=default_filter_ring
+
+  default_filter_2:
+    build:
+      context: ./src/
+      dockerfile: filter/Dockerfile
+    container_name: default_filter_2
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - RX=client_transactions
+      - UC1_TRANSACTIONS_TX=uc1_join
+      - UC2_TRANSACTIONS_TX=uc2_filtered_transactions
+      - UC3_PERIOD_A_TRANSACTIONS_TX=uc3_transactons_period_A
+      - UC3_PERIOD_B_TRANSACTIONS_TX=uc3_transactons_period_B
+      - UC4_TRANSACTIONS_TX=uc4_filtered_transactions
+      - UC5_TRANSACTIONS_TX=uc5_filtered_transactions
+      - IDX=2
+      - NPEERS=3
+      - RING_NAME=default_filter_ring
+
+  uc3_average_filter_0:
+    build:
+      context: ./src/
+      dockerfile: filter/Dockerfile
+    container_name: uc3_average_filter_0
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -70,12 +117,15 @@ services:
       - STRATEGY=uc3_avg
       - RX=uc3_average_merged
       - UC3_FILTERED_TX=uc3_join
+      - IDX=0
+      - NPEERS=1
+      - RING_NAME=uc3_average_filter_ring
 
-  uc4_path_filter:
+  uc4_path_filter_0:
     build:
       context: ./src/
       dockerfile: filter/Dockerfile
-    container_name: uc4_path_filter
+    container_name: uc4_path_filter_0
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -85,12 +135,51 @@ services:
       - STRATEGY=uc4_path
       - RX=uc4_aggregated_paths
       - UC4_FILTERED_PATHS_TX=uc4_join
+      - IDX=0
+      - NPEERS=3
+      - RING_NAME=uc4_path_filter_ring
 
-  uc5_amount_filter:
+  uc4_path_filter_1:
     build:
       context: ./src/
       dockerfile: filter/Dockerfile
-    container_name: uc5_amount_filter
+    container_name: uc4_path_filter_1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc4_path
+      - RX=uc4_aggregated_paths
+      - UC4_FILTERED_PATHS_TX=uc4_join
+      - IDX=1
+      - NPEERS=3
+      - RING_NAME=uc4_path_filter_ring
+
+  uc4_path_filter_2:
+    build:
+      context: ./src/
+      dockerfile: filter/Dockerfile
+    container_name: uc4_path_filter_2
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc4_path
+      - RX=uc4_aggregated_paths
+      - UC4_FILTERED_PATHS_TX=uc4_join
+      - IDX=2
+      - NPEERS=3
+      - RING_NAME=uc4_path_filter_ring
+
+  uc5_amount_filter_0:
+    build:
+      context: ./src/
+      dockerfile: filter/Dockerfile
+    container_name: uc5_amount_filter_0
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -100,6 +189,45 @@ services:
       - STRATEGY=uc5_amount
       - RX=uc5_converted_transactions
       - UC5_AMOUNT_FILTERED_TX=uc5_filtered_converted_transactions
+      - IDX=0
+      - NPEERS=3
+      - RING_NAME=uc5_amount_filter_ring
+
+  uc5_amount_filter_1:
+    build:
+      context: ./src/
+      dockerfile: filter/Dockerfile
+    container_name: uc5_amount_filter_1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc5_amount
+      - RX=uc5_converted_transactions
+      - UC5_AMOUNT_FILTERED_TX=uc5_filtered_converted_transactions
+      - IDX=1
+      - NPEERS=3
+      - RING_NAME=uc5_amount_filter_ring
+
+  uc5_amount_filter_2:
+    build:
+      context: ./src/
+      dockerfile: filter/Dockerfile
+    container_name: uc5_amount_filter_2
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc5_amount
+      - RX=uc5_converted_transactions
+      - UC5_AMOUNT_FILTERED_TX=uc5_filtered_converted_transactions
+      - IDX=2
+      - NPEERS=3
+      - RING_NAME=uc5_amount_filter_ring
 
   # --- groupbys ---
   uc2_max_amount_group_by:
