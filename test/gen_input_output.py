@@ -3,8 +3,7 @@
 # source was only modified so that it produces files with input and expected output
 # for each client.
 
-import gc
-from datetime import date, datetime
+from datetime import date
 
 import numpy as np
 import pandas as pd
@@ -17,55 +16,19 @@ from cfg import (
     TRANSACTIONS_PATH,
     TRANSACTIONS_SAMPLE_SIZE,
 )
-from pandas.core.generic import DtypeArg # type: ignore
 
 from common.conversion import FrankfurterConversionAPI
 
 RANDOM_SEED = 2026
 
-_CHUNK_SIZE = 50_000
-
-# Optimized dtypes: categories for low-cardinality strings, int32/int8 for integers.
-# Amount Paid stays float64 to preserve precision in expected output comparisons.
-_TRANS_DTYPE: DtypeArg = {
-    "From Bank": "int32",
-    "To Bank": "int32",
-    "Account": "category",
-    "Account.1": "category",
-    "Payment Currency": "category",
-    "Payment Format": "category",
-    "Is Laundering": "int8",
-}
-
-_ACCOUNTS_DTYPE: DtypeArg = {
-    "Bank ID": "int32",
-}
-
-# Binance BTCUSDT daily closing prices (same as UC5USDConverterFn)
-_BITCOIN_RATES_USD: dict[date, float] = {
-    date(2022, 9, 1): 20131.46,
-    date(2022, 9, 2): 19951.86,
-    date(2022, 9, 3): 19831.90,
-    date(2022, 9, 4): 20000.30,
-    date(2022, 9, 5): 19796.84,
-}
-
 _conversion_api = FrankfurterConversionAPI()
 _rate_cache: dict[date, dict[str, float]] = {}
-
-
-def _log(msg: str):
-    ts = datetime.now().strftime("%H:%M:%S")
-    print(f"[{ts}] {msg}", flush=True)
 
 
 def _get_rates(date_slash: str) -> dict[str, float]:
     day = date.fromisoformat(date_slash.replace("/", "-"))
     if day not in _rate_cache:
-        rates = _conversion_api.get_rates(day)
-        if day in _BITCOIN_RATES_USD:
-            rates["Bitcoin"] = _BITCOIN_RATES_USD[day]
-        _rate_cache[day] = rates
+        _rate_cache[day] = _conversion_api.get_rates(day)
     return _rate_cache[day]
 
 
@@ -73,38 +36,24 @@ def main():
     """
     Generate the input and expected output for each client.
     """
-    _log("=== gen_input_output START ===")
-    _log(
-        f"NCLIENTS={NCLIENTS}, TRANSACTIONS_SAMPLE_SIZE={TRANSACTIONS_SAMPLE_SIZE}, ACCOUNTS_SAMPLE_SIZE={ACCOUNTS_SAMPLE_SIZE}"
-    )
     rng = np.random.default_rng(seed=RANDOM_SEED)
 
     # same accounts dataset for all clients
-    _log(f"Loading accounts from {ACCOUNTS_PATH} ...")
+    accounts_df = pd.read_csv(ACCOUNTS_PATH)
     if ACCOUNTS_SAMPLE_SIZE is not None:
         accounts_df = gen_sampled_dataframe(
             ACCOUNTS_SAMPLE_SIZE,
             ACCOUNTS_PATH,
             CLIENT_DATASETS_PATH + "accounts.csv",
             rng,
-            dtype=_ACCOUNTS_DTYPE,
         )
-    else:
-        accounts_df = pd.read_csv(ACCOUNTS_PATH, dtype=_ACCOUNTS_DTYPE)
-    _log(f"Accounts loaded: {len(accounts_df)} rows")
 
     for n in range(NCLIENTS):
-        _log(f"--- Client {n + 1}/{NCLIENTS} ---")
-        _log(f"Sampling transactions from {TRANSACTIONS_PATH} ...")
         trans_df = gen_sampled_dataframe(
             TRANSACTIONS_SAMPLE_SIZE,
             TRANSACTIONS_PATH,
             CLIENT_DATASETS_PATH + f"transactions_{n}.csv",
             rng,
-            dtype=_TRANS_DTYPE,
-        )
-        _log(
-            f"Transactions sampled: {len(trans_df)} rows → wrote datasets/transactions_{n}.csv"
         )
         gen_results(
             trans_df,
@@ -115,44 +64,6 @@ def main():
             CLIENT_EXPECTED_RESPONSES_PATH + f"uc4_{n}.csv",
             CLIENT_EXPECTED_RESPONSES_PATH + f"uc5_{n}.csv",
         )
-        del trans_df
-        gc.collect()
-        _log(
-            f"Client {n + 1} done — expected responses written to {CLIENT_EXPECTED_RESPONSES_PATH}"
-        )
-
-    _log("=== gen_input_output DONE — all files ready ===")
-
-
-def _chunked_sample(
-    path: str,
-    n: int,
-    rng: np.random.Generator,
-    dtype: DtypeArg | None = None,
-) -> pd.DataFrame:
-    """Read CSV in chunks, returning n randomly sampled rows without loading the full file."""
-    with open(path, "rb") as f:
-        n_total = sum(1 for _ in f) - 1  # exclude header
-
-    if n >= n_total:
-        return pd.read_csv(path, dtype=dtype)
-
-    chosen = set(int(i) for i in rng.choice(n_total, size=n, replace=False))
-    chunks = []
-    global_row = 0
-
-    for chunk in pd.read_csv(path, chunksize=_CHUNK_SIZE, dtype=dtype):
-        chunk_len = len(chunk)
-        local_indices = [
-            i - global_row
-            for i in range(global_row, global_row + chunk_len)
-            if i in chosen
-        ]
-        if local_indices:
-            chunks.append(chunk.iloc[local_indices])
-        global_row += chunk_len
-
-    return pd.concat(chunks, ignore_index=True) if chunks else pd.DataFrame()
 
 
 def gen_sampled_dataframe(
@@ -160,19 +71,16 @@ def gen_sampled_dataframe(
     dataframe_path: str,
     sampled_path: str,
     rng: np.random.Generator,
-    dtype: DtypeArg | None = None,
 ):
     """
     Samples a dataset, writes it to its corresponding path and returns it.
-    When sample_size is None, loads the full file with dtype optimization.
-    When sample_size is set, uses chunked reading to avoid loading the full file.
     """
-    if sample_size is None:
-        sampled_df = pd.read_csv(dataframe_path, dtype=dtype)
-    else:
-        sampled_df = _chunked_sample(dataframe_path, sample_size, rng, dtype=dtype)
+    sampled_df = pd.read_csv(dataframe_path)
+    if sample_size:
+        sampled_df = sampled_df.sample(sample_size, random_state=rng)
 
     sampled_df.to_csv(sampled_path, index=False)
+
     return sampled_df
 
 
@@ -188,31 +96,21 @@ def gen_results(
     """
     Generates the results for all use cases and writes them to the specified files.
     """
-    _log("  UC1: generating results ...")
     uc1_results = gen_uc1_results(trans_df)
     uc1_results.to_csv(uc1_results_path)
-    _log(f"  UC1: {len(uc1_results)} rows → {uc1_results_path}")
 
-    _log("  UC2: generating results ...")
     uc2_results = gen_uc2_results(trans_df, accounts_df)
     uc2_results.to_csv(uc2_results_path)
-    _log(f"  UC2: {len(uc2_results)} rows → {uc2_results_path}")
 
-    _log("  UC3: generating results ...")
     uc3_results = gen_uc3_results(trans_df)
     uc3_results.to_csv(uc3_results_path)
-    _log(f"  UC3: {len(uc3_results)} rows → {uc3_results_path}")
 
-    _log("  UC4: generating results (graph computation) ...")
     uc4_results = gen_uc4_results(trans_df)
     uc4_results.to_csv(uc4_results_path)
-    _log(f"  UC4: {len(uc4_results)} rows → {uc4_results_path}")
 
-    _log("  UC5: generating results (Frankfurter API calls) ...")
     uc5_results = gen_uc5_results(trans_df)
     with open(uc5_results_path, "w") as f:
         f.write(str(uc5_results))
-    _log(f"  UC5: result={uc5_results} → {uc5_results_path}")
 
 
 def gen_uc1_results(trans_df):
@@ -264,7 +162,7 @@ def gen_uc3_results(trans_df):
     )
     trans_usd_sept_2nd_df = trans_usd_df[
         (trans_usd_df["Timestamp"] >= "2022/09/06")
-        & (trans_usd_df["Timestamp"] < "2022/09/16")
+        & (trans_usd_df["Timestamp"] <= "2022/09/15")
     ]
     trans_usd_sept_2nd_with_avg_df = trans_usd_sept_2nd_df.merge(
         avg_amounts_per_type, left_on=["Payment Format"], right_on=["Payment Format"]
@@ -287,55 +185,66 @@ def gen_uc4_results(trans_df):
 
     Returns a `DataFrame` with columns [Bank, Account].
     """
-    from collections import defaultdict
-
     trans_usd_df = trans_df[trans_df["Payment Currency"] == "US Dollar"]
     trans_usd_sept_1st_df = trans_usd_df[
         (trans_usd_df["Timestamp"] >= "2022/09/01")
         & (trans_usd_df["Timestamp"] <= "2022/09/06")
     ]
 
-    edges_df = trans_usd_sept_1st_df[
-        ["From Bank", "Account", "To Bank", "Account.1"]
-    ].drop_duplicates()
+    # DIFERENCIA CON EL NOTEBOOK: el notebook pre-filtraba cuentas origen con > 5
+    # destinos distintos antes del join. Ese pre-filtro no está en el enunciado —
+    # es una consecuencia implícita de la condición final (si un par (A,C) tiene >= 5
+    # intermediarios distintos, A necesariamente mandó a >= 5 cuentas). Se omite para
+    # no agregar una restricción que el enunciado no menciona explícitamente.
+    edges_df = trans_usd_sept_1st_df[["From Bank", "Account", "To Bank", "Account.1"]]
 
-    # Encode each (bank, account) node as an integer to minimize memory usage
-    node_to_id: dict[tuple, int] = {}
-    id_to_node: list[tuple] = []
-
-    def node_id(bank, account) -> int:
-        key = (bank, account)
-        if key not in node_to_id:
-            node_to_id[key] = len(id_to_node)
-            id_to_node.append(key)
-        return node_to_id[key]
-
-    edges: list[tuple[int, int]] = [
-        (node_id(row[0], row[1]), node_id(row[2], row[3]))
-        for row in edges_df.itertuples(index=False)
-    ]
-    del edges_df
-
-    succs_of: dict[int, set[int]] = defaultdict(set)
-    for a, b in edges:
-        succs_of[a].add(b)
-
-    pair_intermediaries: dict[tuple[int, int], set[int]] = defaultdict(set)
-    for a, b in edges:
-        for c in succs_of.get(b, set()):
-            if a != c:
-                pair_intermediaries[(a, c)].add(b)
-
-    accounts: set[tuple] = set()
-    for (a, c), bs in pair_intermediaries.items():
-        if len(bs) >= 5:
-            accounts.add(id_to_node[a])
-            accounts.add(id_to_node[c])
-
-    return pd.DataFrame(
-        [(bank, acc) for bank, acc in accounts],
-        columns=["Bank", "Account"],
+    # Self-join: construir cadenas A → B → C (una sola cuenta de separación)
+    chains_df = edges_df.merge(
+        edges_df,
+        left_on=["To Bank", "Account.1"],
+        right_on=["From Bank", "Account"],
+    ).rename(
+        columns={
+            "From Bank_x": "From Bank",
+            "Account_x": "From Account",
+            "To Bank_y": "To Bank",
+            "Account.1_y": "To Account",
+        }
     )
+
+    # Eliminar pares donde A == C
+    chains_df = chains_df[
+        (chains_df["From Bank"] != chains_df["To Bank"])
+        | (chains_df["From Account"] != chains_df["To Account"])
+    ]
+
+    # DIFERENCIA CON EL NOTEBOOK: el notebook usaba .size() sobre el groupby, que
+    # cuenta filas del join (combinaciones de transacciones A→B y B→C). Si A mandó
+    # 3 transacciones a B y B mandó 4 a C, eso suma 12 — no 1 cuenta intermediaria.
+    # El enunciado dice "5 cuentas distintas", por lo que la unidad correcta son
+    # cuentas B distintas, no transacciones. Usamos nunique() sobre el identificador
+    # de B (To Bank_x + Account.1_x) para contar intermediarios distintos por par (A,C).
+    chains_df["_B"] = (
+        chains_df["To Bank_x"].astype(str) + "-" + chains_df["Account.1_x"].astype(str)
+    )
+    intermediary_counts = (
+        chains_df.groupby(["From Bank", "From Account", "To Bank", "To Account"])["_B"]
+        .nunique()
+        .reset_index(name="intermediaries")
+    )
+
+    # DIFERENCIA CON EL NOTEBOOK: el notebook filtraba con > 5 (estrictamente mayor).
+    # El enunciado dice "hacia 5 cuentas distintas", donde 5 es el mínimo que cumple
+    # el patrón, no el que se descarta. Se usa >= 5.
+    valid_pairs = intermediary_counts[intermediary_counts["intermediaries"] >= 5]
+
+    from_accounts = valid_pairs[["From Bank", "From Account"]].rename(
+        columns={"From Bank": "Bank", "From Account": "Account"}
+    )
+    to_accounts = valid_pairs[["To Bank", "To Account"]].rename(
+        columns={"To Bank": "Bank", "To Account": "Account"}
+    )
+    return pd.concat([from_accounts, to_accounts]).drop_duplicates()
 
 
 def gen_uc5_results(trans_df) -> int:
@@ -353,12 +262,13 @@ def gen_uc5_results(trans_df) -> int:
         | (trans_sept_1st_df["Payment Format"] == "ACH")
     ].copy()
 
-    dates = trans_wire_ach_df["Timestamp"].str[:10].tolist()
-    currencies = trans_wire_ach_df["Payment Currency"].tolist()
-    amounts = trans_wire_ach_df["Amount Paid"].tolist()
-    trans_wire_ach_df["USD Amount"] = [
-        amt * _get_rates(d).get(c, 1.0) for amt, d, c in zip(amounts, dates, currencies)
-    ]
+    trans_wire_ach_df["USD Amount"] = trans_wire_ach_df.apply(
+        lambda row: (
+            row["Amount Paid"]
+            * _get_rates(row["Timestamp"][:10]).get(row["Payment Currency"], 1.0)
+        ),
+        axis=1,
+    )
     return trans_wire_ach_df[trans_wire_ach_df["USD Amount"] < 1.0].shape[0]
 
 
