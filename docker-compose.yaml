@@ -7,6 +7,7 @@ services:
     container_name: rabbitmq
     environment:
       - RABBITMQ_LOG_LEVELS=error
+      - RABBITMQ_CONFIG_FILE=rabbitmq.conf
     healthcheck:
       interval: 5s
       retries: 10
