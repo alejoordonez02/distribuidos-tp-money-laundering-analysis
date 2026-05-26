@@ -13,7 +13,7 @@ from .middleware import MessageMiddlewareExchange, MessageMiddlewareQueue
 class QueueRabbitMQ(MessageMiddlewareQueue):
     def __init__(self, host: str, queue_name: str):
         self.queue_name = queue_name
-        self.conn = BlockingConnection(ConnectionParameters(host, heartbeat=0))
+        self.conn = BlockingConnection(ConnectionParameters(host, heartbeat=600))
         self.chan = self.conn.channel()
         self.chan.queue_declare(queue=queue_name)
         self.chan.basic_qos(prefetch_count=1)
@@ -66,7 +66,7 @@ class QueueRabbitMQ(MessageMiddlewareQueue):
 class ExchangeRabbitMQ(MessageMiddlewareExchange):
     def __init__(self, host: str, exchange_name: str, routing_keys: list[str]):
         self.exchange_name = exchange_name
-        self.conn = BlockingConnection(ConnectionParameters(host, heartbeat=0))
+        self.conn = BlockingConnection(ConnectionParameters(host, heartbeat=600))
         self.chan = self.conn.channel()
         self.chan.exchange_declare(exchange=exchange_name)
 
