@@ -1,10 +1,9 @@
 from uuid import UUID
 
 from common.comms.messages import Edges, Node, Transactions
+from common.pipeline_config import UC4_EDGES_BATCH_SIZE
 
 from .group_by_fn import GroupByFn
-
-_BATCH_SIZE = 10_000
 
 
 class UC4ComputeGraph(GroupByFn):
@@ -23,6 +22,6 @@ class UC4ComputeGraph(GroupByFn):
     def get_result(self, client_id: UUID) -> list[Edges]:
         edges = list(self.client_edges.pop(client_id, set()))
         return [
-            Edges(client_id, edges[i : i + _BATCH_SIZE])
-            for i in range(0, max(len(edges), 1), _BATCH_SIZE)
+            Edges(client_id, edges[i : i + UC4_EDGES_BATCH_SIZE])
+            for i in range(0, max(len(edges), 1), UC4_EDGES_BATCH_SIZE)
         ]

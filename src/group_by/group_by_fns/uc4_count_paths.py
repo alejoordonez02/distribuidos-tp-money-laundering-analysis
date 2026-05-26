@@ -1,77 +1,68 @@
 from collections import defaultdict
+from dataclasses import dataclass, field
 from uuid import UUID
 
 from common.comms.messages import Edges, Node, Path, PathCounts
+from common.pipeline_config import UC4_PATHS_BATCH_SIZE
 
 from .group_by_fn import GroupByFn
 
-_BATCH_SIZE = 50_000
+
+@dataclass
+class _ClientState:
+    succs: dict[int, set[int]] = field(default_factory=lambda: defaultdict(set))
+    preds: dict[int, set[int]] = field(default_factory=lambda: defaultdict(set))
+    node_ids: dict[str, int] = field(default_factory=dict)
+    nodes: list[Node] = field(default_factory=list)
+    counts: dict[tuple[int, int], int] = field(default_factory=lambda: defaultdict(int))
 
 
 class UC4CountPaths(GroupByFn):
     def __init__(self):
-        self.client_succs: dict[UUID, dict[int, set[int]]] = {}
-        self.client_preds: dict[UUID, dict[int, set[int]]] = {}
-        self.client_node_ids: dict[UUID, dict[str, int]] = {}
-        self.client_nodes: dict[UUID, list[Node]] = {}
+        self._clients: dict[UUID, _ClientState] = {}
 
-    def _node_id(self, client_id: UUID, node: Node) -> int:
-        node_ids = self.client_node_ids[client_id]
-        if node.key not in node_ids:
-            nodes = self.client_nodes[client_id]
-            node_ids[node.key] = len(nodes)
-            nodes.append(node)
-        return node_ids[node.key]
+    def _node_id(self, state: _ClientState, node: Node) -> int:
+        if node.key not in state.node_ids:
+            state.node_ids[node.key] = len(state.nodes)
+            state.nodes.append(node)
+        return state.node_ids[node.key]
 
     def group_by(self, msg: Edges):  # type: ignore[reportIncompatibleMethodOverride]
-        if msg.client_id not in self.client_succs:
-            self.client_succs[msg.client_id] = defaultdict(set)
-            self.client_preds[msg.client_id] = defaultdict(set)
-            self.client_node_ids[msg.client_id] = {}
-            self.client_nodes[msg.client_id] = []
+        if msg.client_id not in self._clients:
+            self._clients[msg.client_id] = _ClientState()
 
-        succs = self.client_succs[msg.client_id]
-        preds = self.client_preds[msg.client_id]
+        state = self._clients[msg.client_id]
 
-        for origin_node, middle_node in msg.edges:
-            o_id = self._node_id(msg.client_id, origin_node)
-            m_id = self._node_id(msg.client_id, middle_node)
-            succs[o_id].add(m_id)
-            preds[m_id].add(o_id)
+        for from_node, to_node in msg.edges:
+            a = self._node_id(state, from_node)
+            b = self._node_id(state, to_node)
 
-    def get_result(self, client_id: UUID) -> list[PathCounts]: # type: ignore
-        if client_id not in self.client_succs:
-            return [PathCounts(client_id, {})]
+            # a→b: b gains a as predecessor → count a→b→c for each c already in succs[b]
+            for c in state.succs[b]:
+                if a != c:
+                    state.counts[(a, c)] += 1
 
-        succs = self.client_succs.pop(client_id)
-        preds = self.client_preds.pop(client_id)
-        nodes = self.client_nodes.pop(client_id)
-        self.client_node_ids.pop(client_id)
+            # a→b: a gains b as successor → count x→a→b for each x already in preds[a]
+            for x in state.preds[a]:
+                if x != b:
+                    state.counts[(x, b)] += 1
 
-        # For each middle node B: for each origin A in preds[B] and each end C in succs[B],
-        # count B as one intermediary for the pair (A, C).
-        # Using int counts avoids the memory overhead of storing intermediary sets.
-        counts: dict[tuple[int, int], int] = defaultdict(int)
-        for b, origins in preds.items():
-            ends = succs.get(b)
-            if not ends:
-                continue
-            for a in origins:
-                for c in ends:
-                    if a != c:
-                        counts[(a, c)] += 1
+            state.succs[a].add(b)
+            state.preds[b].add(a)
 
-        if not counts:
+    def get_result(self, client_id: UUID) -> list[PathCounts]:  # type: ignore[reportIncompatibleMethodOverride]
+        state = self._clients.pop(client_id, None)
+        if state is None or not state.counts:
             return [PathCounts(client_id, {})]
 
         batches: list[PathCounts] = []
         batch = PathCounts(client_id, {})
         batch_size = 0
 
-        for (origin_id, end_id), count in counts.items():
-            batch.add(Path(nodes[origin_id], nodes[end_id]), count)
+        for (origin_id, end_id), count in state.counts.items():
+            batch.add(Path(state.nodes[origin_id], state.nodes[end_id]), count)
             batch_size += 1
-            if batch_size >= _BATCH_SIZE:
+            if batch_size >= UC4_PATHS_BATCH_SIZE:
                 batches.append(batch)
                 batch = PathCounts(client_id, {})
                 batch_size = 0

@@ -15,4 +15,4 @@ class UC5CountGroupByFn(GroupByFn):
         self._state[msg.client_id].count += len(msg.transactions)
 
     def get_result(self, client_id: UUID) -> list[TransactionCount]:  # type: ignore[reportIncompatibleMethodOverride]
-        return [self._state.get(client_id, TransactionCount(client_id, 0))]
+        return [self._state.pop(client_id, TransactionCount(client_id, 0))]

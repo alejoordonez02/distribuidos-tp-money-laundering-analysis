@@ -1,10 +1,9 @@
 from uuid import UUID
 
 from common.comms.messages import PathCounts
+from common.pipeline_config import UC4_PATHS_BATCH_SIZE
 
 from .aggregate_fn import AggregateFn
-
-_BATCH_SIZE = 50_000
 
 
 class UC4AggregatePaths(AggregateFn):
@@ -19,12 +18,8 @@ class UC4AggregatePaths(AggregateFn):
             self.counts[msg.client_id].add(path, count)
 
     def get_result(self, client_id: UUID) -> list[PathCounts]:
-        if client_id not in self.counts:
-            return [PathCounts(client_id, {})]
-
-        full = self.counts.pop(client_id)
-
-        if not full.counts:
+        full = self.counts.pop(client_id, None)
+        if not full or not full.counts:
             return [PathCounts(client_id, {})]
 
         batches: list[PathCounts] = []
@@ -34,7 +29,7 @@ class UC4AggregatePaths(AggregateFn):
         for path, count in full.counts.items():
             batch.add(path, count)
             batch_size += 1
-            if batch_size >= _BATCH_SIZE:
+            if batch_size >= UC4_PATHS_BATCH_SIZE:
                 batches.append(batch)
                 batch = PathCounts(client_id, {})
                 batch_size = 0

@@ -19,4 +19,4 @@ class UC2BankNamesGroupByFn(GroupByFn):
             state.data[a.bank_id] = a.bank_name
 
     def get_result(self, client_id: UUID) -> list[BankNames]:  # type: ignore[reportIncompatibleMethodOverride]
-        return [self._state.get(client_id, BankNames(client_id, {}))]
+        return [self._state.pop(client_id, BankNames(client_id, {}))]

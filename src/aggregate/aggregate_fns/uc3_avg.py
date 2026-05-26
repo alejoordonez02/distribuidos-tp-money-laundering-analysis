@@ -21,12 +21,9 @@ class UC3AvgAggregateFn(AggregateFn):
             client_sum_counts[format2] = new
 
     def get_result(self, client_id: UUID) -> list[AvgByFormat]:  # type: ignore[reportIncompatibleMethodOverride]
-        if client_id not in self.sum_counts:
+        sc = self.sum_counts.pop(client_id, None)
+        if sc is None:
             return [AvgByFormat(client_id, {})]
 
-        averages = {}
-        for format2, (sum2, count) in self.sum_counts[client_id].sum_counts.items():
-            avg = sum2 / count
-            averages[format2] = avg
-
+        averages = {fmt: s / c for fmt, (s, c) in sc.sum_counts.items()}
         return [AvgByFormat(client_id, averages)]

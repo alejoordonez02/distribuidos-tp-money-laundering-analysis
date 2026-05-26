@@ -16,4 +16,4 @@ class UC2BankNamesAggregateFn(AggregateFn):
         self._state[msg.client_id].data.update(msg.data)
 
     def get_result(self, client_id: UUID) -> list[BankNames]:  # type: ignore[reportIncompatibleMethodOverride]
-        return [self._state.get(client_id, BankNames(client_id, {}))]
+        return [self._state.pop(client_id, BankNames(client_id, {}))]
