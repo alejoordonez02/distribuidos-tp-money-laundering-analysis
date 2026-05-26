@@ -2,16 +2,6 @@ from common.comms.messages import Graph, Node, Path, PathCounts
 from group_by.group_by_fns import UC4CountPaths
 
 
-def _combine_batches(batches) -> PathCounts | None:
-    combined = None
-    for batch in batches:
-        if combined is None:
-            combined = PathCounts(batch.client_id, {})
-        for path, count in batch.counts.items():
-            combined.add(path, count)
-    return combined
-
-
 def test_single_path_graph():
     some_uuid = "some_uuid"
     origin_node = Node("origin_bank", "origin_account")
@@ -33,9 +23,9 @@ def test_single_path_graph():
     )
 
     fn = UC4CountPaths()
-    result = fn.group_by(graph)
+    fn.group_by(graph)
 
-    assert _combine_batches(result) == expected  # type: ignore[reportArgumentType]
+    assert fn.get_result(some_uuid) == expected  # type: ignore[reportArgumentType]
 
 
 def test_five_path_graph():
@@ -59,6 +49,6 @@ def test_five_path_graph():
     )
 
     fn = UC4CountPaths()
-    result = fn.group_by(graph)
+    fn.group_by(graph)
 
-    assert _combine_batches(result) == expected  # type: ignore[reportArgumentType]
+    assert fn.get_result(some_uuid) == expected  # type: ignore[reportArgumentType]

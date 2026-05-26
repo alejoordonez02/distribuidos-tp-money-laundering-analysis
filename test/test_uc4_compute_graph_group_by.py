@@ -18,14 +18,13 @@ def _transaction(from_bank: str, from_account: str, to_bank: str, to_account: st
     )
 
 
-def _all_edges(batches: list[Graph]) -> set[tuple[Node, Node]]:
+def _all_edges(graph: Graph) -> set[tuple[Node, Node]]:
     result = set()
-    for batch in batches:
-        for node, (preds, succs) in batch.nodes.items():
-            for p in preds:
-                result.add((p, node))
-            for s in succs:
-                result.add((node, s))
+    for node, (preds, succs) in graph.nodes.items():
+        for p in preds:
+            result.add((p, node))
+        for s in succs:
+            result.add((node, s))
     return result
 
 
