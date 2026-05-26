@@ -22,7 +22,7 @@ class UC3AvgAggregateFn(AggregateFn):
 
     def get_result(self, client_id: UUID) -> AvgByFormat:  # type: ignore[reportIncompatibleMethodOverride]
         sc = self.sum_counts.pop(client_id, None)
-        if sc is None:
+        if not sc:
             return AvgByFormat(client_id, {})
 
         averages = {fmt: s / c for fmt, (s, c) in sc.sum_counts.items()}

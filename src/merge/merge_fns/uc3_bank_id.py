@@ -25,7 +25,7 @@ class UC3BankIdMergeFn(MergeFn):
             self._transactions_to_merge[msg.client_id] = []
 
         avgs = self._averages.get(msg.client_id)
-        if avgs is not None:
+        if avgs:
             # averages already arrived: filter on the way in, don't buffer discards
             self._transactions_to_merge[msg.client_id].extend(
                 t for t in msg.transactions if t.payment_format in avgs
