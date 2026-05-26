@@ -31,10 +31,7 @@ class UC4CountPaths(GroupByFn):
 
         state = self._clients[msg.client_id]
 
-        for node_b, (preds, succs) in msg.nodes.items():
-            if not preds or not succs:
-                continue
-            b_id = self._node_id(state, node_b)
+        for _node_b, (preds, succs) in msg.nodes.items():
             pred_ids = [self._node_id(state, p) for p in preds]
             succ_ids = [self._node_id(state, s) for s in succs]
             for a in pred_ids:

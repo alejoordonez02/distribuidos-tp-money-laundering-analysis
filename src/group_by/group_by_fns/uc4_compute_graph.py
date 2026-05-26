@@ -37,8 +37,13 @@ class UC4ComputeGraph(GroupByFn):
         batches = []
         for i in range(0, len(all_nodes), UC4_NODES_PER_BATCH):
             chunk = all_nodes[i : i + UC4_NODES_PER_BATCH]
-            batches.append(Graph(client_id, {
-                node: (preds.get(node, set()), succs.get(node, set()))
+            batch = {
+                node: (p, s)
                 for node in chunk
-            }))
+                if (p := preds.get(node, set())) and (s := succs.get(node, set()))
+            }
+            if batch:
+                batches.append(Graph(client_id, batch))
+        if not batches:
+            return [Graph(client_id, {})]
         return batches
