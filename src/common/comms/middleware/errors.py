@@ -1,14 +1,14 @@
-class MessageMiddlewareMessageError(Exception):
+class MOMMessageError(Exception):
     pass
 
 
-class MessageMiddlewareDisconnectedError(Exception):
+class MOMDisconnectedError(Exception):
     pass
 
 
-class MessageMiddlewareCloseError(Exception):
+class MOMCloseError(Exception):
     pass
 
 
-class MessageMiddlewareDeleteError(Exception):
+class MOMDeleteError(Exception):
     pass

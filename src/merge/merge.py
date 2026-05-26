@@ -7,7 +7,7 @@ from uuid import UUID
 from merge_fns import MergeFn
 
 from common.comms.messages import EOF, MessageType, deserialize_message
-from common.comms.middleware import MessageMiddlewareQueue
+from common.comms.middleware import MOMQueue
 
 
 @dataclass
@@ -19,10 +19,10 @@ class _ClientState:
 class Merge:
     def __init__(
         self,
-        left_rx: MessageMiddlewareQueue,
-        right_rx: MessageMiddlewareQueue,
+        left_rx: MOMQueue,
+        right_rx: MOMQueue,
         fn: MergeFn,
-        tx: MessageMiddlewareQueue,
+        tx: MOMQueue,
     ):
         self._left_rx = left_rx
         self._right_rx = right_rx

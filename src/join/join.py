@@ -4,14 +4,14 @@ from typing import Callable
 from join_fns import JoinFn
 from join_route_handler import JoinRouteHandler
 
-from common.comms.middleware import MessageMiddlewareQueue
+from common.comms.middleware import MOMQueue
 
 
 class Join:
     def __init__(
         self,
-        partial_res_handlers: list[tuple[Callable[[], MessageMiddlewareQueue], JoinFn]],
-        responses_tx_factory: Callable[[], MessageMiddlewareQueue],
+        partial_res_handlers: list[tuple[Callable[[], MOMQueue], JoinFn]],
+        responses_tx_factory: Callable[[], MOMQueue],
     ):
         self.partial_res_handlers = partial_res_handlers
         self.responses_tx_factory = responses_tx_factory

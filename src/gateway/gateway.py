@@ -13,7 +13,7 @@ from common.comms.messages import (
 )
 from common.comms.messages.errors import UnexpectedMessageError
 from common.comms.middleware import (
-    MessageMiddlewareQueue,
+    MOMQueue,
 )
 
 
@@ -22,9 +22,9 @@ class Gateway:
         self,
         listener: socket,
         addr: tuple[str, int],
-        server_rx: MessageMiddlewareQueue,
-        trans_tx_factory: Callable[[], MessageMiddlewareQueue],
-        accs_tx_factory: Callable[[], MessageMiddlewareQueue],
+        server_rx: MOMQueue,
+        trans_tx_factory: Callable[[], MOMQueue],
+        accs_tx_factory: Callable[[], MOMQueue],
     ):
         """
         Create a new `Gateway`.

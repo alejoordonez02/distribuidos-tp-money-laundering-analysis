@@ -18,7 +18,9 @@ class UC4Join(JoinFn):
 
     def get_response(self, client_id: UUID) -> Response:  # type: ignore[reportIncompatibleMethodOverride]
         body = "--- UC4 ---"
-        for path in self.client_responses[client_id].counts.keys():
+        for path in self.client_responses.pop(
+            client_id, PathCounts(client_id, {})
+        ).counts.keys():
             obank = path.origin.bank
             oaccount = path.origin.account
             dbank = path.destination.bank
@@ -29,4 +31,5 @@ class UC4Join(JoinFn):
 
         body += "\n"
         response = Response(client_id, body)
+
         return response

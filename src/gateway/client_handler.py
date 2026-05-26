@@ -10,7 +10,7 @@ from common.comms.messages import (
     deserialize_message,
 )
 from common.comms.messages.errors import UnexpectedMessageError
-from common.comms.middleware import MessageMiddlewareQueue
+from common.comms.middleware import MOMQueue
 
 UUID = uuid4
 
@@ -19,8 +19,8 @@ class ClientHandler:
     def __init__(
         self,
         conn: Connection,
-        trans_tx_factory: Callable[[], MessageMiddlewareQueue],
-        accs_tx_factory: Callable[[], MessageMiddlewareQueue],
+        trans_tx_factory: Callable[[], MOMQueue],
+        accs_tx_factory: Callable[[], MOMQueue],
     ):
         self.id = UUID()
         self.conn = conn

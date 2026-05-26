@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from common.comms.messages import TransactionCount, Response
+from common.comms.messages import Response, TransactionCount
 
 from .join_fn import JoinFn
 
@@ -15,6 +15,9 @@ class UC5Join(JoinFn):
         self._state[el.client_id].count += el.count
 
     def get_response(self, client_id: UUID) -> Response:
-        count = self._state.get(client_id, TransactionCount(client_id, 0)).count
+        count = self._state.pop(client_id, TransactionCount(client_id, 0)).count
+
         body = f"--- UC5 ---\ncount: {count}\n"
-        return Response(client_id, body)
+        response = Response(client_id, body)
+
+        return response

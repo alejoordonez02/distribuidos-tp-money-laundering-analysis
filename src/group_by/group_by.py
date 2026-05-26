@@ -4,15 +4,15 @@ from typing import Callable
 from group_by_fns import GroupByFn
 
 from common.comms.messages import EOF, MessageType, deserialize_message
-from common.comms.middleware import MessageMiddlewareQueue
+from common.comms.middleware import MOMQueue
 
 
 class GroupBy:
     def __init__(
         self,
-        rx: MessageMiddlewareQueue,
+        rx: MOMQueue,
         fn: GroupByFn,
-        tx: MessageMiddlewareQueue,
+        tx: MOMQueue,
     ):
         self.rx = rx
         self.fn = fn
