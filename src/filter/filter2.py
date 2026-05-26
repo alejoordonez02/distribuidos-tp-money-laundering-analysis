@@ -41,17 +41,21 @@ class Filter:
         self._lock = Lock()
 
     def start(self):
-        # pika BlockingConnection is NOT thread-safe. Both threads write to ring_tx,
-        # so we give the ring thread its own connection to the same queue.
+        # pika BlockingConnection is NOT thread-safe. The ring thread must own all
+        # connections it writes to — ring_tx and every route destination (EOF sends).
         ring_tx_thread = QueueRabbitMQ(self.ring_tx.host, self.ring_tx.queue_name)
-        t = Thread(target=self._ring_thread, args=(ring_tx_thread,), daemon=True)
+        eof_destinations = [
+            QueueRabbitMQ(dest.host, dest.queue_name)  # type: ignore[union-attr]
+            for dest, _ in self.routes
+        ]
+        t = Thread(target=self._ring_thread, args=(ring_tx_thread, eof_destinations), daemon=True)
         t.start()
         self.messages_rx.start_consuming(self._handle_message)
 
-    def _ring_thread(self, ring_tx: QueueRabbitMQ):
+    def _ring_thread(self, ring_tx: QueueRabbitMQ, eof_destinations: list[QueueRabbitMQ]):
         try:
             self.ring_rx.start_consuming(
-                lambda b, ack, nack: self._handle_ring_eof(b, ack, nack, ring_tx)
+                lambda b, ack, nack: self._handle_ring_eof(b, ack, nack, ring_tx, eof_destinations)
             )
         except Exception as e:
             logging.error(f"ring thread crashed: {e}", exc_info=True)
@@ -93,7 +97,7 @@ class Filter:
         logging.info(f"starting ring for client {eof.client_id}")
         self.ring_tx.send(eof.serialize())
 
-    def _handle_ring_eof(self, bytes2: bytes, ack: Callable, nack: Callable, ring_tx: QueueRabbitMQ):
+    def _handle_ring_eof(self, bytes2: bytes, ack: Callable, nack: Callable, ring_tx: QueueRabbitMQ, eof_destinations: list[QueueRabbitMQ]):
         """Received ring EOF from the previous worker."""
         eof = EOF.deserialize(bytes2)
         logging.debug(f"received ring eof: {eof.__dict__}")
@@ -121,7 +125,7 @@ class Filter:
                 forward_eof = EOF(eof.client_id, accumulated, eof.expected_count, origin)
 
         if ring_done:
-            for destination, _ in self.routes:
+            for destination in eof_destinations:
                 destination.send(EOF(eof.client_id).serialize())
             logging.info(f"ring complete for client {eof.client_id}")
         else:
