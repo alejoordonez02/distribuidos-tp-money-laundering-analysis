@@ -21,6 +21,15 @@ from common.conversion import FrankfurterConversionAPI
 
 RANDOM_SEED = 2026
 
+# Binance BTCUSDT daily closing prices — per professor email; must match uc5_usd_converter.py
+_BITCOIN_RATES_USD: dict[date, float] = {
+    date(2022, 9, 1): 20131.46,
+    date(2022, 9, 2): 19951.86,
+    date(2022, 9, 3): 19831.90,
+    date(2022, 9, 4): 20000.30,
+    date(2022, 9, 5): 19796.84,
+}
+
 _conversion_api = FrankfurterConversionAPI()
 _rate_cache: dict[date, dict[str, float]] = {}
 
@@ -28,7 +37,10 @@ _rate_cache: dict[date, dict[str, float]] = {}
 def _get_rates(date_slash: str) -> dict[str, float]:
     day = date.fromisoformat(date_slash.replace("/", "-"))
     if day not in _rate_cache:
-        _rate_cache[day] = _conversion_api.get_rates(day)
+        rates = _conversion_api.get_rates(day)
+        if day in _BITCOIN_RATES_USD:
+            rates["Bitcoin"] = _BITCOIN_RATES_USD[day]
+        _rate_cache[day] = rates
     return _rate_cache[day]
 
 
