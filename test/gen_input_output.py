@@ -17,7 +17,7 @@ from cfg import (
     TRANSACTIONS_PATH,
     TRANSACTIONS_SAMPLE_SIZE,
 )
-from pandas.core.generic import DtypeArg
+from pandas.core.generic import DtypeArg # type: ignore
 
 from common.conversion import FrankfurterConversionAPI
 

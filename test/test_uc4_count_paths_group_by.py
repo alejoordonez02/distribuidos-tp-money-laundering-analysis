@@ -1,12 +1,12 @@
-from common.comms.messages import Edges, Node, Path, PathCounts
+from common.comms.messages import Graph, Node, Path, PathCounts
 from group_by.group_by_fns import UC4CountPaths
 
 
-def _combine_batches(batches: list[PathCounts]) -> PathCounts:
-    if not batches:
-        raise ValueError("empty batch list")
-    combined = PathCounts(batches[0].client_id, {})
+def _combine_batches(batches) -> PathCounts | None:
+    combined = None
     for batch in batches:
+        if combined is None:
+            combined = PathCounts(batch.client_id, {})
         for path, count in batch.counts.items():
             combined.add(path, count)
     return combined
@@ -18,9 +18,13 @@ def test_single_path_graph():
     middle_node = Node("middle_bank", "middle_account")
     destination_node = Node("destination_bank", "destination_account")
 
-    edges = Edges(
+    graph = Graph(
         some_uuid,  # type: ignore[reportArgumentType]
-        [(origin_node, middle_node), (middle_node, destination_node)],
+        {
+            origin_node: (set(), {middle_node}),
+            middle_node: ({origin_node}, {destination_node}),
+            destination_node: ({middle_node}, set()),
+        },
     )
 
     expected = PathCounts(
@@ -29,9 +33,9 @@ def test_single_path_graph():
     )
 
     fn = UC4CountPaths()
-    fn.group_by(edges)
+    result = fn.group_by(graph)
 
-    assert _combine_batches(fn.get_result(some_uuid)) == expected  # type: ignore[reportArgumentType]
+    assert _combine_batches(result) == expected  # type: ignore[reportArgumentType]
 
 
 def test_five_path_graph():
@@ -40,12 +44,14 @@ def test_five_path_graph():
     destination_node = Node("destination_bank", "destination_account")
     middles = [Node(f"middle_bank{i}", f"middle_account{i}") for i in range(5)]
 
-    edge_list = []
+    nodes = {
+        origin_node: (set(), set(middles)),
+        destination_node: (set(middles), set()),
+    }
     for m in middles:
-        edge_list.append((origin_node, m))
-        edge_list.append((m, destination_node))
+        nodes[m] = ({origin_node}, {destination_node})
 
-    edges = Edges(some_uuid, edge_list)  # type: ignore[reportArgumentType]
+    graph = Graph(some_uuid, nodes)  # type: ignore[reportArgumentType]
 
     expected = PathCounts(
         some_uuid,  # type: ignore[reportArgumentType]
@@ -53,6 +59,6 @@ def test_five_path_graph():
     )
 
     fn = UC4CountPaths()
-    fn.group_by(edges)
+    result = fn.group_by(graph)
 
-    assert _combine_batches(fn.get_result(some_uuid)) == expected  # type: ignore[reportArgumentType]
+    assert _combine_batches(result) == expected  # type: ignore[reportArgumentType]

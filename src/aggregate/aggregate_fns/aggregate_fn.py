@@ -10,5 +10,5 @@ class AggregateFn:
         pass
 
     @abstractmethod
-    def get_result(self, client_id: UUID) -> Message:
+    def get_result(self, client_id: UUID) -> list[Message]:
         pass
