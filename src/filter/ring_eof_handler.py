@@ -23,14 +23,18 @@ class RingEOFHandler(EOFHandler):
         )
         self.thread_handle.start()
 
-    def stop(self):
+    def stop_consuming(self):
         self.mom_ring.stop_consuming()
+
+    def stop(self):
+        self.stop_consuming()
         self.thread_handle.join()
+
+    def close(self):
+        self.mom_ring.close()
 
     def handle(self, eof: EOF):
         with self.mtx:
-            # TODO: estoy lockeando porq no estoy manejando pika
-            # thread-safetyness todavía
             eof.processed_count = 0
             self.mom_ring.send(eof.serialize())
 

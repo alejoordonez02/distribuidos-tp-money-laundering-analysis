@@ -5,6 +5,7 @@ from group_by_fns import GroupByFn
 
 from common.comms.messages import EOF, MessageType, deserialize_message
 from common.comms.middleware import MOMQueue
+from common.graceful_shutdown import setup_graceful_shutdown
 
 
 class GroupBy:
@@ -19,7 +20,13 @@ class GroupBy:
         self.tx = tx
 
     def start(self):
+        setup_graceful_shutdown(self.stop)
         self.rx.start_consuming(self._handle_message)
+        self.rx.close()
+        self.tx.close()
+
+    def stop(self):
+        self.rx.stop_consuming()
 
     def _handle_message(self, bytes2: bytes, ack: Callable, nack: Callable):
         msg = deserialize_message(bytes2)

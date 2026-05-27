@@ -8,6 +8,7 @@ from merge_fns import MergeFn
 
 from common.comms.messages import EOF, MessageType, deserialize_message
 from common.comms.middleware import MOMQueue
+from common.graceful_shutdown import setup_graceful_shutdown
 
 
 @dataclass
@@ -32,14 +33,25 @@ class Merge:
         self._lock = Lock()
 
     def start(self):
-        t = Thread(
+        setup_graceful_shutdown(self.stop)
+        self._left_thread = Thread(
             target=self._left_rx.start_consuming,
             args=[self._handle_left],
             daemon=True,
         )
-        t.start()
+        self._left_thread.start()
         self._right_rx.start_consuming(self._handle_right)
-        t.join()
+        self._left_thread.join()
+        self._close()
+
+    def stop(self):
+        self._right_rx.stop_consuming()
+        self._left_rx.stop_consuming()
+
+    def _close(self):
+        self._left_rx.close()
+        self._right_rx.close()
+        self._tx.close()
 
     def _get_state(self, client_id: UUID) -> _ClientState:
         if client_id not in self._state:

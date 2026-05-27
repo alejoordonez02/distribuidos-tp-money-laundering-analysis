@@ -1,5 +1,5 @@
 import logging
-from socket import socket
+from socket import SHUT_RDWR, socket
 from threading import Thread
 from typing import Callable
 
@@ -15,6 +15,7 @@ from common.comms.messages.errors import UnexpectedMessageError
 from common.comms.middleware import (
     MOMQueue,
 )
+from common.graceful_shutdown import setup_graceful_shutdown
 
 
 class Gateway:
@@ -26,18 +27,6 @@ class Gateway:
         trans_tx_factory: Callable[[], MOMQueue],
         accs_tx_factory: Callable[[], MOMQueue],
     ):
-        """
-        Create a new `Gateway`.
-
-        This method will bind the passed listener to the passed address.
-
-        # Args
-        * `listener`: A new connections stream.
-        * `addr`: the address to which the listener is to be bound.
-
-        # Returns
-        A new `Gateway` instance.
-        """
         self._keep_running = False
         self.listener = listener
         self.listener.bind(addr)
@@ -49,13 +38,19 @@ class Gateway:
         self.clients = ClientMonitor()
 
     def start(self):
-        """
-        Starts listening for new client requests and server responses.
-        """
         self._keep_running = True
         self.listener.listen()
-
+        setup_graceful_shutdown(self.stop)
         self._run()
+
+    def stop(self):
+        self._keep_running = False
+        try:
+            self.listener.shutdown(SHUT_RDWR)
+            self.listener.close()
+        except OSError:
+            pass
+        self.server_rx.stop_consuming()
 
     def _handle_server_response(self, bytes2: bytes, ack: Callable, nack: Callable):
         try:
@@ -85,15 +80,14 @@ class Gateway:
         self.server_handle.start()
 
         while self._keep_running:
-            skt, _ = self.listener.accept()
+            try:
+                skt, _ = self.listener.accept()
+            except OSError:
+                break
             conn = Connection(skt)
-
             client = ClientHandler(conn, self.trans_tx_factory, self.accs_tx_factory)
             client.start()
-
             self.clients.add(client)
 
         self.server_handle.join()
-
-    def stop(self):
-        self._keep_running = False
+        self.server_rx.close()

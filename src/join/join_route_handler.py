@@ -21,28 +21,25 @@ class JoinRouteHandler:
         mom_factory: Callable[[], MOMQueue],
         join_fn: JoinFn,
     ):
-        """
-        Create a new `JoinRouteHandler`.
-
-        # Args
-        * reponses_tx_factory: a factory for the write half queue.
-        * mom_factory: a factory for the read half queue.
-        * join_fn: the join function to be used.
-        """
         self.responses_tx_factory = responses_tx_factory
         self.responses_tx: MOMQueue
         self.mom_factory = mom_factory
         self.join_fn = join_fn
+        self._mom: MOMQueue | None = None
 
     def start(self):
-        """
-        Starts consuming from its read half queue and sending the corresponding through
-        its write half results queue as they are complete.
-        """
         self.responses_tx = self.responses_tx_factory()
-        mom = self.mom_factory()
-        mom.start_consuming(lambda b, ack, nack,: self._handle_message(b, ack, nack))
-        mom.stop_consuming()
+        self._mom = self.mom_factory()
+        self._mom.start_consuming(lambda b, ack, nack: self._handle_message(b, ack, nack))
+
+    def stop(self):
+        if self._mom is not None:
+            self._mom.stop_consuming()
+
+    def close(self):
+        if self._mom is not None:
+            self._mom.close()
+        self.responses_tx.close()
 
     def _handle_eof(self, eof: EOF):
         response = self.join_fn.get_response(eof.client_id)

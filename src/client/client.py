@@ -9,6 +9,7 @@ from common.comms.connection import Connection
 from common.comms.messages import EOF, Accounts, Transactions
 from common.comms.messages.deserialize_message import Response
 from common.data import Account, Transaction
+from common.graceful_shutdown import setup_graceful_shutdown
 
 # TODO: this should be dynamic (use some fin msg protocol)
 NRESPONSES = int(os.getenv("NRESPONSES", "1"))
@@ -35,12 +36,18 @@ class Client:
         self.account_parser = account_parser
 
     def start(self):
+        setup_graceful_shutdown(self.stop)
         # TODO: esto lo dejo acá porque me trabé haciendo q se ejecute bien el script de healthcheck
         time.sleep(10)
         self._run()
 
+    def stop(self):
+        try:
+            self.conn.close()
+        except OSError:
+            pass
+
     def _run(self):
-        # read and send datasets in batches
         self._send_transactions_batched()
         self._send_eof()
 
@@ -51,7 +58,6 @@ class Client:
 
         logging.info("sent accounts eof to server")
 
-        # receive and write responses
         logging.info("waiting for server responses")
 
         responses = self._receive_responses()
