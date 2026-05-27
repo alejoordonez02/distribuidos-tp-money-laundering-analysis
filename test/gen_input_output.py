@@ -96,8 +96,13 @@ def main():
     for n in range(NCLIENTS):
         _log(f"--- Client {n + 1}/{NCLIENTS} ---")
         _log(f"Sampling transactions from {TRANSACTIONS_PATH} ...")
+        per_client_size = (
+            TRANSACTIONS_SAMPLE_SIZE // NCLIENTS
+            if TRANSACTIONS_SAMPLE_SIZE is not None
+            else None
+        )
         trans_df = gen_sampled_dataframe(
-            TRANSACTIONS_SAMPLE_SIZE,
+            per_client_size,
             TRANSACTIONS_PATH,
             CLIENT_DATASETS_PATH + f"transactions_{n}.csv",
             rng,
