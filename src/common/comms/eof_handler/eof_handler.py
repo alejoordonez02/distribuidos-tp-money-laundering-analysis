@@ -53,4 +53,6 @@ class StatelessEOFHandler(EOFHandler):
 
 
 class StatefulEOFHandler(EOFHandler):
-    pass
+    @abstractmethod
+    def downstream(self, eof: EOF):
+        pass
