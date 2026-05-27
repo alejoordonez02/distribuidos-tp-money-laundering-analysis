@@ -1,6 +1,6 @@
 TRANSACTIONS_PATH = "datasets/LI-Small_Trans.csv"
 ACCOUNTS_PATH = "datasets/LI-Small_accounts.csv"
-TRANSACTIONS_SAMPLE_SIZE = 3000000
+TRANSACTIONS_SAMPLE_SIZE = 1000000
 ACCOUNTS_SAMPLE_SIZE = None  # whole dataset
 
 NCLIENTS = 1
