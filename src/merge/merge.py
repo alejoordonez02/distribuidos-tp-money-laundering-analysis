@@ -27,18 +27,19 @@ class Merge:
         self._left_rx = left_rx
         self._right_rx = right_rx
         self._fn = fn
-        self._right_tx = tx_factory()
-        self._left_tx = tx_factory()
+        self._tx_factory = tx_factory
+
         self._state: dict[UUID, _ClientState] = {}
         self._lock = Lock()
 
     def start(self):
         t = Thread(
-            target=self._left_rx.start_consuming,
-            args=[self._handle_left],
+            target=self._handle_side, args=(self._left_rx, self._handle_left_message)
         )
         t.start()
-        self._right_rx.start_consuming(self._handle_right)
+
+        self._handle_side(self._right_rx, self._handle_right_message)
+
         t.join()
 
     def _get_state(self, client_id: UUID) -> _ClientState:
@@ -56,22 +57,42 @@ class Merge:
         tx.send(EOF(client_id).serialize())
         logging.info(f"merge complete for client {client_id}")
 
-    def _handle_left(self, bytes2: bytes, ack: Callable, _: Callable):
+    def _handle_side(
+        self,
+        side_rx: MOMQueue,
+        _handle_side_message: Callable[[bytes, Callable, Callable, MOMQueue]],
+    ):
+        tx = self._tx_factory()
+        side_rx.start_consuming(
+            lambda bytes2, ack, nack: _handle_side_message(bytes2, ack, nack, tx)
+        )
+
+    def _handle_left_message(
+        self, bytes2: bytes, ack: Callable, _: Callable, tx: MOMQueue
+    ):
         msg = deserialize_message(bytes2)
+
         with self._lock:
             if msg.type() == MessageType.EOF:
                 self._get_state(msg.client_id).left_done = True
-                self._try_emit_result(self._left_tx, msg.client_id)
+                self._try_emit_result(tx, msg.client_id)
+
             else:
                 self._fn.left(msg)
+
         ack()
 
-    def _handle_right(self, bytes2: bytes, ack: Callable, _: Callable):
+    def _handle_right_message(
+        self, bytes2: bytes, ack: Callable, _: Callable, tx: MOMQueue
+    ):
         msg = deserialize_message(bytes2)
+
         with self._lock:
             if msg.type() == MessageType.EOF:
                 self._get_state(msg.client_id).right_done = True
-                self._try_emit_result(self._right_tx, msg.client_id)
+                self._try_emit_result(tx, msg.client_id)
+
             else:
                 self._fn.right(msg)
+
         ack()
