@@ -1,11 +1,10 @@
 import logging
-from threading import Lock, Thread
 from typing import Callable
 
 from eof_handler import EOFHandler
 from filter_fns import FilterFn
 
-from common.comms.messages import EOF, MessageType, deserialize_message
+from common.comms.messages import MessageType, deserialize_message
 from common.comms.middleware import MOMQueue
 
 
