@@ -1,9 +1,17 @@
 import logging
 import os
 
+from eof_handler import EOFHandler
 from filter2 import Filter
+from filter_fns import FilterFn
+from ring_eof_handler import RingEOFHandler
+from single_node_eof_handler import SingleNodeEOFHandler
 
-from common.comms.middleware import QueueRabbitMQ
+from common.comms.middleware import MOMQueue, QueueRabbitMQ, RingRabbitMQ
+
+IDX = int(os.getenv("IDX", "0"))
+NPEERS = int(os.getenv("NPEERS", "0"))
+RING_NAME: str = os.getenv("RING_NAME", "")
 
 MOM_HOST = os.environ["MOM_HOST"]
 RX = os.environ["RX"]
@@ -15,7 +23,7 @@ STRATEGY = os.getenv("STRATEGY", "default")
 LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
 
 
-def make_default_filter():
+def make_default_filter() -> tuple[MOMQueue, list[tuple[MOMQueue, FilterFn]]]:
     from filter_fns import (
         UC1Filter,
         UC2Filter,
@@ -48,10 +56,10 @@ def make_default_filter():
         (QueueRabbitMQ(MOM_HOST, UC5_TRANSACTIONS_TX), UC5Filter()),
     ]
 
-    return Filter(transactions_rx, routes)
+    return transactions_rx, routes
 
 
-def make_uc3_average_filter():
+def make_uc3_average_filter() -> tuple[MOMQueue, list[tuple[MOMQueue, FilterFn]]]:
     from filter_fns import UC3AvgFilter
 
     UC3_FILTERED_TX = os.environ["UC3_FILTERED_TX"]
@@ -59,10 +67,10 @@ def make_uc3_average_filter():
     transactions_rx = QueueRabbitMQ(MOM_HOST, RX)
     routes = [(QueueRabbitMQ(MOM_HOST, UC3_FILTERED_TX), UC3AvgFilter())]
 
-    return Filter(transactions_rx, routes)  # type: ignore[reportArgumentType]
+    return transactions_rx, routes  # type: ignore[reportReturnType]
 
 
-def make_uc4_path_filter():
+def make_uc4_path_filter() -> tuple[MOMQueue, list[tuple[MOMQueue, FilterFn]]]:
     from filter_fns import UC4PathFilter
 
     UC4_FILTERED_PATHS_TX = os.environ["UC4_FILTERED_PATHS_TX"]
@@ -72,10 +80,10 @@ def make_uc4_path_filter():
         (QueueRabbitMQ(MOM_HOST, UC4_FILTERED_PATHS_TX), UC4PathFilter()),
     ]
 
-    return Filter(transactions_rx, routes)  # type: ignore[reportArgumentType]
+    return transactions_rx, routes  # type: ignore[reportReturnType]
 
 
-def make_uc5_amount_filter():
+def make_uc5_amount_filter() -> tuple[MOMQueue, list[tuple[MOMQueue, FilterFn]]]:
     from filter_fns import UC5AmountFilter
 
     UC5_AMOUNT_FILTERED_TX = os.environ["UC5_AMOUNT_FILTERED_TX"]
@@ -85,7 +93,17 @@ def make_uc5_amount_filter():
         (QueueRabbitMQ(MOM_HOST, UC5_AMOUNT_FILTERED_TX), UC5AmountFilter()),
     ]
 
-    return Filter(transactions_rx, routes)  # type: ignore[reportArgumentType]
+    return transactions_rx, routes  # type: ignore[reportReturnType]
+
+
+def make_eof_handler(txs: list[MOMQueue]) -> EOFHandler:
+    if NPEERS == 1:
+        return SingleNodeEOFHandler(txs)
+
+    peer_ids = [idx for idx in range(NPEERS) if idx != IDX]
+    mom_ring = RingRabbitMQ(MOM_HOST, RING_NAME, IDX, peer_ids)
+
+    return RingEOFHandler(mom_ring, txs)
 
 
 def main():
@@ -94,16 +112,19 @@ def main():
 
     match STRATEGY:
         case "default":
-            filter2 = make_default_filter()
+            transactions_rx, routes = make_default_filter()
         case "uc3_avg":
-            filter2 = make_uc3_average_filter()
+            transactions_rx, routes = make_uc3_average_filter()
         case "uc4_path":
-            filter2 = make_uc4_path_filter()
+            transactions_rx, routes = make_uc4_path_filter()
         case "uc5_amount":
-            filter2 = make_uc5_amount_filter()
+            transactions_rx, routes = make_uc5_amount_filter()
         case _:
             raise ValueError(f"unknown filter strategy: {STRATEGY}")
 
+    eof_handler = make_eof_handler([tx for (tx, _) in routes])
+
+    filter2 = Filter(transactions_rx, routes, eof_handler)
     filter2.start()
 
 

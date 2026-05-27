@@ -1,6 +1,10 @@
-from typing import Hashable
+from abc import abstractmethod
 
 from .mom import MOM
+
+
+class MOMRingError(Exception):
+    pass
 
 
 class MOMRing(MOM):
@@ -9,5 +13,6 @@ class MOMRing(MOM):
     communication among a cluster of nodes.
     """
 
-    def __init__(self, self_id: Hashable, peer_ids: list[Hashable]):
+    @abstractmethod
+    def __init__(self, host: str, ring_name: str, self_id: int, peer_ids: list[int]):
         pass
