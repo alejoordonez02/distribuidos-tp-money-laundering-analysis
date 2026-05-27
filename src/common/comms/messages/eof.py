@@ -11,10 +11,12 @@ class EOF(Message):
         client_id: UUID,
         processed_count: int = 0,
         expected_count: int = 0,
+        origin: int = -1,
     ):
         self.client_id = client_id
         self.processed_count = processed_count
         self.expected_count = expected_count
+        self.origin = origin
 
     @classmethod
     def _type(cls):
