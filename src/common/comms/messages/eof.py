@@ -23,7 +23,7 @@ class EOF(Message):
         return MessageType.EOF
 
     def _fields(self) -> list[Any]:
-        return [self.client_id, self.processed_count, self.expected_count]
+        return [self.client_id, self.processed_count, self.expected_count, self.origin]
 
     @classmethod
     def _from_fields(cls, fields: list[Any]) -> Self:
