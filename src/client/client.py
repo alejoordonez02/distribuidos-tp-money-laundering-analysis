@@ -48,6 +48,7 @@ class Client:
             pass
 
     def _run(self):
+        # read and send datasets in batches
         self._send_transactions_batched()
         self._send_eof()
 
@@ -58,6 +59,7 @@ class Client:
 
         logging.info("sent accounts eof to server")
 
+        # receive and write responses
         logging.info("waiting for server responses")
 
         responses = self._receive_responses()
