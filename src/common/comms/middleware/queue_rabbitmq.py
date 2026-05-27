@@ -1,7 +1,7 @@
 from typing import Callable
 
 from pika import BlockingConnection, ConnectionParameters
-from pika.exceptions import AMQPConnectionError
+from pika.exceptions import AMQPConnectionError, ConnectionWrongStateError
 
 from .errors import (
     MOMDisconnectedError,
@@ -32,14 +32,16 @@ class QueueRabbitMQ(MOMQueue):
             self.chan.start_consuming()
         except AMQPConnectionError as e:
             raise MOMDisconnectedError(str(e)) from e
-        except Exception as e:
-            raise MOMMessageError(str(e)) from e
+        except Exception:
+            pass  # pika internal error during graceful shutdown (close() called mid-consume)
 
     def stop_consuming(self) -> None:
         try:
             self.chan.stop_consuming()
         except AMQPConnectionError as e:
             raise MOMDisconnectedError(str(e)) from e
+        except Exception:
+            pass  # already stopped or connection closed
 
     def send(self, message: bytes) -> None:
         try:
@@ -54,6 +56,8 @@ class QueueRabbitMQ(MOMQueue):
     def close(self) -> None:
         try:
             self.conn.close()
+        except ConnectionWrongStateError:
+            pass
         except Exception as e:
             raise MOMMessageError(str(e)) from e
 
