@@ -15,7 +15,7 @@ from cfg import (
     CLIENT_EXPECTED_RESPONSES_PATH,
     NCLIENTS,
     TRANSACTIONS_PATH,
-    TRANSACTIONS_SAMPLE_SIZE,
+    TRANSACTIONS_SAMPLE_FRAC,
 )
 from pandas.core.generic import DtypeArg # type: ignore
 
@@ -75,7 +75,7 @@ def main():
     """
     _log("=== gen_input_output START ===")
     _log(
-        f"NCLIENTS={NCLIENTS}, TRANSACTIONS_SAMPLE_SIZE={TRANSACTIONS_SAMPLE_SIZE}, ACCOUNTS_SAMPLE_SIZE={ACCOUNTS_SAMPLE_SIZE}"
+        f"NCLIENTS={NCLIENTS}, TRANSACTIONS_SAMPLE_FRAC={TRANSACTIONS_SAMPLE_FRAC}, ACCOUNTS_SAMPLE_SIZE={ACCOUNTS_SAMPLE_SIZE}"
     )
     rng = np.random.default_rng(seed=RANDOM_SEED)
 
@@ -93,14 +93,17 @@ def main():
         accounts_df = pd.read_csv(ACCOUNTS_PATH, dtype=_ACCOUNTS_DTYPE)
     _log(f"Accounts loaded: {len(accounts_df)} rows")
 
+    if TRANSACTIONS_SAMPLE_FRAC is not None:
+        with open(TRANSACTIONS_PATH, "rb") as f:
+            n_total = sum(1 for _ in f) - 1
+        per_client_size = max(1, int(n_total * TRANSACTIONS_SAMPLE_FRAC / NCLIENTS))
+        _log(f"Total rows: {n_total}, per_client_size={per_client_size} ({TRANSACTIONS_SAMPLE_FRAC*100:.1f}% / {NCLIENTS} clients)")
+    else:
+        per_client_size = None
+
     for n in range(NCLIENTS):
         _log(f"--- Client {n + 1}/{NCLIENTS} ---")
         _log(f"Sampling transactions from {TRANSACTIONS_PATH} ...")
-        per_client_size = (
-            TRANSACTIONS_SAMPLE_SIZE // NCLIENTS
-            if TRANSACTIONS_SAMPLE_SIZE is not None
-            else None
-        )
         trans_df = gen_sampled_dataframe(
             per_client_size,
             TRANSACTIONS_PATH,
