@@ -14,7 +14,7 @@ class RingEOFHandler(EOFHandler):
         self.mom_ring = mom_ring
         self.txs = txs
         self.processed_counts: dict[UUID, int] = {}
-        self.thread_handle: Thread
+        self.thread_handle: Thread | None = None
         self.mtx = Lock()
 
     def start(self):
@@ -23,18 +23,16 @@ class RingEOFHandler(EOFHandler):
         )
         self.thread_handle.start()
 
-    def stop_consuming(self):
-        self.mom_ring.stop_consuming()
-
     def stop(self):
-        self.stop_consuming()
-        self.thread_handle.join()
-
-    def close(self):
+        self.mom_ring.stop_consuming()
+        if self.thread_handle is not None:
+            self.thread_handle.join()
         self.mom_ring.close()
 
     def handle(self, eof: EOF):
         with self.mtx:
+            # TODO: estoy lockeando porq no estoy manejando pika
+            # thread-safetyness todavía
             eof.processed_count = 0
             self.mom_ring.send(eof.serialize())
 
@@ -49,8 +47,6 @@ class RingEOFHandler(EOFHandler):
         eof: EOF = EOF.deserialize(bytes2)  # type: ignore[reportAssignmentType]
 
         with self.mtx:
-            # TODO: estoy lockeando porq no estoy manejando pika
-            # thread-safetyness todavía
             eof.processed_count += self.processed_counts.get(eof.client_id, 0)
             self.processed_counts[eof.client_id] = 0
 
