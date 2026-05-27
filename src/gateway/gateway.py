@@ -27,6 +27,18 @@ class Gateway:
         trans_tx_factory: Callable[[], MOMQueue],
         accs_tx_factory: Callable[[], MOMQueue],
     ):
+        """
+        Create a new `Gateway`.
+
+        This method will bind the passed listener to the passed address.
+
+        # Args
+        * `listener`: A new connections stream.
+        * `addr`: the address to which the listener is to be bound.
+
+        # Returns
+        A new `Gateway` instance.
+        """
         self._keep_running = False
         self.listener = listener
         self.listener.bind(addr)
@@ -38,6 +50,9 @@ class Gateway:
         self.clients = ClientMonitor()
 
     def start(self):
+        """
+        Starts listening for new client requests and server responses.
+        """
         self._keep_running = True
         self.listener.listen()
         setup_graceful_shutdown(self.stop)

@@ -28,6 +28,10 @@ class JoinRouteHandler:
         self._mom: MOMQueue | None = None
 
     def start(self):
+        """
+        Starts consuming from its read half queue and sending the corresponding through
+        its write half results queue as they are complete.
+        """
         self.responses_tx = self.responses_tx_factory()
         self._mom = self.mom_factory()
         self._mom.start_consuming(lambda b, ack, nack: self._handle_message(b, ack, nack))

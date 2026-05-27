@@ -49,6 +49,8 @@ class RingEOFHandler(EOFHandler):
         eof: EOF = EOF.deserialize(bytes2)  # type: ignore[reportAssignmentType]
 
         with self.mtx:
+            # TODO: estoy lockeando porq no estoy manejando pika
+            # thread-safetyness todavía
             eof.processed_count += self.processed_counts.get(eof.client_id, 0)
             self.processed_counts[eof.client_id] = 0
 

@@ -44,6 +44,9 @@ class Filter:
         if msg.type() == MessageType.EOF:
             self.eof_handler.handle(msg)  # type: ignore[reportUndefinedVariable]
         else:
+            # TODO: tirar error si el tipo de msj no se corresponde con el `El`
+            # TODO: qué pasa si se cae el filter en el medio? o sea después de
+            #       haber redireccionado hacia un par de nodos
             for destination, filter_fn in self.routes:
                 filtered = filter_fn.filter(msg)
                 destination.send(filtered.serialize())
