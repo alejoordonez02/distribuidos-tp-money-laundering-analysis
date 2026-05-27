@@ -21,7 +21,9 @@ def main():
 
     left_rx = QueueRabbitMQ(MOM_HOST, LEFT_RX)
     right_rx = QueueRabbitMQ(MOM_HOST, RIGHT_RX)
-    tx = QueueRabbitMQ(MOM_HOST, TX)
+
+    def tx_factory():
+        return QueueRabbitMQ(MOM_HOST, TX)
 
     match STRATEGY:
         case "uc2_merge":
@@ -31,7 +33,7 @@ def main():
         case _:
             raise ValueError(f"unknown group_by strategy: {STRATEGY}")
 
-    Merge(left_rx, right_rx, fn, tx).start()
+    Merge(left_rx, right_rx, fn, tx_factory).start()
 
 
 if __name__ == "__main__":
