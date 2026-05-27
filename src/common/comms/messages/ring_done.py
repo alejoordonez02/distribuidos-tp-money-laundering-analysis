@@ -12,7 +12,7 @@ class RingDone(Message):
 
     @classmethod
     def _type(cls):
-        return MessageType.EOF
+        return MessageType.RING_DONE
 
     def _fields(self) -> list[Any]:
         return [self.client_id, self.origin]
