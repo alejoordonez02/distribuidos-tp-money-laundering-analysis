@@ -24,21 +24,24 @@ class Join:
         for mom_factory, join_fn in self.partial_res_handlers[1:]:
             rh = JoinRouteHandler(self.responses_tx_factory, mom_factory, join_fn)
             self._route_handlers.append(rh)
-            t = Thread(target=rh.start)
+            t = Thread(target=rh.start, daemon=True)
             t.start()
             handles.append(t)
 
         mom_factory, join_fn = self.partial_res_handlers[0]
         main_rh = JoinRouteHandler(self.responses_tx_factory, mom_factory, join_fn)
         self._route_handlers.append(main_rh)
-        main_rh.start()
+        try:
+            main_rh.start()
+        except Exception:
+            pass
 
         for t in handles:
             t.join()
 
-        for rh in self._route_handlers:
-            rh.close()
+        self.stop()
 
     def stop(self):
         for rh in self._route_handlers:
             rh.stop()
+            rh.close()

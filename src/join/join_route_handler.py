@@ -21,6 +21,14 @@ class JoinRouteHandler:
         mom_factory: Callable[[], MOMQueue],
         join_fn: JoinFn,
     ):
+        """
+        Create a new `JoinRouteHandler`.
+
+        # Args
+        * reponses_tx_factory: a factory for the write half queue.
+        * mom_factory: a factory for the read half queue.
+        * join_fn: the join function to be used.
+        """
         self.responses_tx_factory = responses_tx_factory
         self.responses_tx: MOMQueue
         self.mom_factory = mom_factory
