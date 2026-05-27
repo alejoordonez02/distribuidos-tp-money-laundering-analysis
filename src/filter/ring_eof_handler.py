@@ -6,22 +6,27 @@ from uuid import UUID
 from eof_handler import EOFHandler
 
 from common.comms.messages import EOF
-from common.comms.middleware import MOMQueue, MOMRing
+from common.comms.middleware import MOMQueue, MOMRing, QueueRabbitMQ
 
 
 class RingEOFHandler(EOFHandler):
-    def __init__(self, mom_ring: MOMRing, txs: list[MOMQueue]):
+    def __init__(self, mom_ring: MOMRing, mom_host: str, queue_names: list[str]):
         self.mom_ring = mom_ring
-        self.txs = txs
+        self.mom_host = mom_host
+        self.queue_names = queue_names
+        self.txs: list[MOMQueue] = []
         self.processed_counts: dict[UUID, int] = {}
         self.thread_handle: Thread
         self.mtx = Lock()
 
     def start(self):
-        self.thread_handle = Thread(
-            target=self.mom_ring.start_consuming, args=(self._handle_ring_eof,)
-        )
+        self.thread_handle = Thread(target=self._ring_worker)
         self.thread_handle.start()
+
+    def _ring_worker(self):
+        # Connections must be created on the thread that uses them — pika is not thread-safe.
+        self.txs = [QueueRabbitMQ(self.mom_host, name) for name in self.queue_names]
+        self.mom_ring.start_consuming(self._handle_ring_eof)
 
     def stop(self):
         self.mom_ring.stop_consuming()
@@ -29,8 +34,6 @@ class RingEOFHandler(EOFHandler):
 
     def handle(self, eof: EOF):
         with self.mtx:
-            # TODO: estoy lockeando porq no estoy manejando pika
-            # thread-safetyness todavía
             eof.processed_count = 0
             self.mom_ring.send(eof.serialize())
 

@@ -96,14 +96,16 @@ def make_uc5_amount_filter() -> tuple[MOMQueue, list[tuple[MOMQueue, FilterFn]]]
     return transactions_rx, routes  # type: ignore[reportReturnType]
 
 
-def make_eof_handler(txs: list[MOMQueue]) -> EOFHandler:
-    if NPEERS == 1:
+def make_eof_handler(queue_names: list[str]) -> EOFHandler:
+    txs = [QueueRabbitMQ(MOM_HOST, name) for name in queue_names]
+
+    if NPEERS <= 1:
         return SingleNodeEOFHandler(txs)
 
     peer_ids = [idx for idx in range(NPEERS) if idx != IDX]
     mom_ring = RingRabbitMQ(MOM_HOST, RING_NAME, IDX, peer_ids)
 
-    return RingEOFHandler(mom_ring, txs)
+    return RingEOFHandler(mom_ring, MOM_HOST, queue_names)
 
 
 def main():
@@ -122,7 +124,7 @@ def main():
         case _:
             raise ValueError(f"unknown filter strategy: {STRATEGY}")
 
-    eof_handler = make_eof_handler([tx for (tx, _) in routes])
+    eof_handler = make_eof_handler([tx.queue_name for tx, _ in routes])  # type: ignore[reportAttributeAccessIssue]
 
     filter2 = Filter(transactions_rx, routes, eof_handler)
     filter2.start()
