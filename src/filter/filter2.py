@@ -1,11 +1,10 @@
 import logging
-from threading import Lock, Thread
 from typing import Callable
 
-from eof_handler import EOFHandler
 from filter_fns import FilterFn
 
-from common.comms.messages import EOF, MessageType, deserialize_message
+from common.comms.eof_handler import StatelessEOFHandler
+from common.comms.messages import MessageType, deserialize_message
 from common.comms.middleware import MOMQueue
 
 
@@ -14,7 +13,7 @@ class Filter:
         self,
         messages_rx: MOMQueue,
         routes: list[tuple[MOMQueue, FilterFn]],
-        eof_handler: EOFHandler,
+        eof_handler: StatelessEOFHandler,
     ):
         self.messages_rx = messages_rx
         self.routes = routes

@@ -1,13 +1,13 @@
 import logging
 from uuid import UUID
 
-from eof_handler import EOFHandler
-
 from common.comms.messages import EOF
 from common.comms.middleware import MOMQueue
 
+from .eof_handler import StatelessEOFHandler
 
-class SingleNodeEOFHandler(EOFHandler):
+
+class SingleNodeEOFHandler(StatelessEOFHandler):
     def __init__(self, txs: list[MOMQueue]):
         self.txs = txs
 

@@ -3,13 +3,13 @@ from threading import Lock, Thread
 from typing import Callable
 from uuid import UUID
 
-from eof_handler import EOFHandler
-
 from common.comms.messages import EOF
 from common.comms.middleware import MOMQueue, MOMRing
 
+from .eof_handler import StatelessEOFHandler
 
-class RingEOFHandler(EOFHandler):
+
+class RingEOFHandler(StatelessEOFHandler):
     def __init__(self, mom_ring: MOMRing, txs: list[MOMQueue]):
         self.mom_ring = mom_ring
         self.txs = txs
