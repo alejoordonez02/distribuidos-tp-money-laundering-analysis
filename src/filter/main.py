@@ -5,8 +5,9 @@ from eof_handler import EOFHandler
 from filter2 import Filter
 from filter_fns import FilterFn
 from ring_eof_handler import RingEOFHandler
+from single_node_eof_handler import SingleNodeEOFHandler
 
-from common.comms.middleware import MOMQueue, MOMRing, QueueRabbitMQ, RingRabbitMQ
+from common.comms.middleware import MOMQueue, QueueRabbitMQ, RingRabbitMQ
 
 IDX = int(os.getenv("IDX", "0"))
 NPEERS = int(os.getenv("NPEERS", "0"))
@@ -96,11 +97,13 @@ def make_uc5_amount_filter() -> tuple[MOMQueue, list[tuple[MOMQueue, FilterFn]]]
 
 
 def make_eof_handler(txs: list[MOMQueue]) -> EOFHandler:
+    if NPEERS == 1:
+        return SingleNodeEOFHandler(txs)
+
     peer_ids = [idx for idx in range(NPEERS) if idx != IDX]
     mom_ring = RingRabbitMQ(MOM_HOST, RING_NAME, IDX, peer_ids)
-    eof_handler = RingEOFHandler(mom_ring, txs)
 
-    return eof_handler
+    return RingEOFHandler(mom_ring, txs)
 
 
 def main():

@@ -28,13 +28,6 @@ class RingEOFHandler(EOFHandler):
         self.thread_handle.join()
 
     def handle(self, eof: EOF):
-        # TODO: este if es claramente un temp
-        if not self.mom_ring.peer_ids:  # type: ignore[reportAttributeAccessIssue]
-            logging.info(f"downstreaming eof: {eof.__dict__}")
-            for destination in self.txs:
-                destination.send(eof.serialize())
-            return
-
         with self.mtx:
             # TODO: estoy lockeando porq no estoy manejando pika
             # thread-safetyness todavía
@@ -57,10 +50,11 @@ class RingEOFHandler(EOFHandler):
 
             if eof.processed_count == eof.expected_count:
                 logging.info(f"downstreaming eof: {eof.__dict__}")
-                for destination in self.txs:
-                    destination.send(eof.serialize())
+                for tx in self.txs:
+                    tx.send(eof.serialize())
 
             else:
+                logging.info(f"sending internal eof: {eof.__dict__}")
                 self.mom_ring.send(eof.serialize())
 
             ack()
