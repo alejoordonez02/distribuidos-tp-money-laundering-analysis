@@ -1,8 +1,10 @@
 import logging
 import os
 
+from eof_handler import EOFHandler
 from filter2 import Filter
 from filter_fns import FilterFn
+from ring_eof_handler import RingEOFHandler
 
 from common.comms.middleware import MOMQueue, MOMRing, QueueRabbitMQ, RingRabbitMQ
 
@@ -93,11 +95,12 @@ def make_uc5_amount_filter() -> tuple[MOMQueue, list[tuple[MOMQueue, FilterFn]]]
     return transactions_rx, routes  # type: ignore[reportReturnType]
 
 
-def make_mom_ring() -> MOMRing:
+def make_eof_handler(txs: list[MOMQueue]) -> EOFHandler:
     peer_ids = [idx for idx in range(NPEERS) if idx != IDX]
     mom_ring = RingRabbitMQ(MOM_HOST, RING_NAME, IDX, peer_ids)
+    eof_handler = RingEOFHandler(mom_ring, txs)
 
-    return mom_ring
+    return eof_handler
 
 
 def main():
@@ -116,9 +119,9 @@ def main():
         case _:
             raise ValueError(f"unknown filter strategy: {STRATEGY}")
 
-    mom_ring = make_mom_ring()
+    eof_handler = make_eof_handler([tx for (tx, _) in routes])
 
-    filter2 = Filter(mom_ring, transactions_rx, routes)
+    filter2 = Filter(transactions_rx, routes, eof_handler)
     filter2.start()
 
 
