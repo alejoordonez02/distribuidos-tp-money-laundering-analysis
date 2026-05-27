@@ -22,11 +22,12 @@ class GroupBy:
     def start(self):
         setup_graceful_shutdown(self.stop)
         self.rx.start_consuming(self._handle_message)
-        self.rx.close()
-        self.tx.close()
+        self.stop()
 
     def stop(self):
         self.rx.stop_consuming()
+        self.rx.close()
+        self.tx.close()
 
     def _handle_message(self, bytes2: bytes, ack: Callable, nack: Callable):
         msg = deserialize_message(bytes2)

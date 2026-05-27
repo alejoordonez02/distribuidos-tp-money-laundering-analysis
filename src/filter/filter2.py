@@ -24,16 +24,12 @@ class Filter:
         setup_graceful_shutdown(self.stop)
         self.eof_handler.start()
         self.messages_rx.start_consuming(self._handle_message)
-        self.eof_handler.stop()
-        self._close()
+        self.stop()
 
     def stop(self):
         self.messages_rx.stop_consuming()
-        self.eof_handler.stop_consuming()
-
-    def _close(self):
+        self.eof_handler.stop()
         self.messages_rx.close()
-        self.eof_handler.close()
         for tx, _ in self.routes:
             tx.close()
 

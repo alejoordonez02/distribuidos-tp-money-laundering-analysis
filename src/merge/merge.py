@@ -42,13 +42,11 @@ class Merge:
         self._left_thread.start()
         self._right_rx.start_consuming(self._handle_right)
         self._left_thread.join()
-        self._close()
+        self.stop()
 
     def stop(self):
         self._right_rx.stop_consuming()
         self._left_rx.stop_consuming()
-
-    def _close(self):
         self._left_rx.close()
         self._right_rx.close()
         self._tx.close()
