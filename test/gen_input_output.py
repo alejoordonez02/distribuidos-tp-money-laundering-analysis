@@ -93,13 +93,10 @@ def main():
         accounts_df = pd.read_csv(ACCOUNTS_PATH, dtype=_ACCOUNTS_DTYPE)
     _log(f"Accounts loaded: {len(accounts_df)} rows")
 
-    if TRANSACTIONS_SAMPLE_FRAC is not None:
-        with open(TRANSACTIONS_PATH, "rb") as f:
-            n_total = sum(1 for _ in f) - 1
-        per_client_size = max(1, int(n_total * TRANSACTIONS_SAMPLE_FRAC / NCLIENTS))
-        _log(f"Total rows: {n_total}, per_client_size={per_client_size} ({TRANSACTIONS_SAMPLE_FRAC*100:.1f}% / {NCLIENTS} clients)")
-    else:
-        per_client_size = None
+    with open(TRANSACTIONS_PATH, "rb") as f:
+        n_total = sum(1 for _ in f) - 1
+    per_client_size = max(1, int(n_total * TRANSACTIONS_SAMPLE_FRAC))
+    _log(f"Total rows: {n_total}, per_client_size={per_client_size} ({TRANSACTIONS_SAMPLE_FRAC*100:.1f}% per client)")
 
     for n in range(NCLIENTS):
         _log(f"--- Client {n + 1}/{NCLIENTS} ---")
