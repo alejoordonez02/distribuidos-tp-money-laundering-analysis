@@ -79,6 +79,14 @@ def main():
     )
     rng = np.random.default_rng(seed=RANDOM_SEED)
 
+    if TRANSACTIONS_SAMPLE_SIZE is not None:
+        per_client_size = TRANSACTIONS_SAMPLE_SIZE // NCLIENTS
+    else:
+        with open(TRANSACTIONS_PATH, "rb") as f:
+            n_total = sum(1 for _ in f) - 1
+        per_client_size = n_total // NCLIENTS
+        _log(f"TRANSACTIONS_SAMPLE_SIZE=None → full dataset ({n_total} rows) divided by {NCLIENTS} clients = {per_client_size} rows/client")
+
     # same accounts dataset for all clients
     _log(f"Loading accounts from {ACCOUNTS_PATH} ...")
     if ACCOUNTS_SAMPLE_SIZE is not None:
@@ -96,11 +104,6 @@ def main():
     for n in range(NCLIENTS):
         _log(f"--- Client {n + 1}/{NCLIENTS} ---")
         _log(f"Sampling transactions from {TRANSACTIONS_PATH} ...")
-        per_client_size = (
-            TRANSACTIONS_SAMPLE_SIZE // NCLIENTS
-            if TRANSACTIONS_SAMPLE_SIZE is not None
-            else None
-        )
         trans_df = gen_sampled_dataframe(
             per_client_size,
             TRANSACTIONS_PATH,
