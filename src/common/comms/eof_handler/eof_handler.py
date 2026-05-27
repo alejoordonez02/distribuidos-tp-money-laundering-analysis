@@ -50,3 +50,7 @@ class EOFHandler(ABC):
 
 class StatelessEOFHandler(EOFHandler):
     pass
+
+
+class StatefulEOFHandler(EOFHandler):
+    pass

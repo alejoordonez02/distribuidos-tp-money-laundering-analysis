@@ -3,8 +3,8 @@ import os
 from common.comms.middleware import MOMQueue, RingRabbitMQ
 
 from .eof_handler import StatelessEOFHandler
-from .ring_eof_handler import RingEOFHandler
 from .single_node_eof_handler import SingleNodeEOFHandler
+from .stateless_ring_eof_handler import StatelessRingEOFHandler
 
 
 def make_stateless_eof_handler(
@@ -33,4 +33,4 @@ def make_stateless_eof_handler(
     peer_ids = [idx for idx in range(NPEERS) if idx != IDX]
     mom_ring = RingRabbitMQ(mom_host, RING_NAME, IDX, peer_ids)
 
-    return RingEOFHandler(mom_ring, txs)
+    return StatelessRingEOFHandler(mom_ring, txs)
