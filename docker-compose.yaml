@@ -244,52 +244,45 @@ services:
       - STRATEGY=uc2_max_amount
       - RX=uc2_filtered_transactions
       - TX=uc2_partial_max_amount
-  # TODO: no me estaría dando cuenta de por qué
-  #       no puedo escalar esto ahora mismo.
-  #       Algún dato se desincroniza en el merge
-  #       y hace que al gateway le llegue una
-  #       response de un cliente que ya cerró
-  #       entonces tira broken pipe del socket.
-  #
-  #     - IDX=0
-  #     - NPEERS=3
-  #     - RING_NAME=uc2_max_amount_group_by_ring
-  #
-  # uc2_max_amount_group_by_1:
-  #   build:
-  #     context: ./src/
-  #     dockerfile: group_by/Dockerfile
-  #   container_name: uc2_max_amount_group_by_1
-  #   depends_on:
-  #     rabbitmq:
-  #       condition: service_healthy
-  #   environment:
-  #     - MOM_HOST=rabbitmq
-  #     - MOM_PORT=5672
-  #     - STRATEGY=uc2_max_amount
-  #     - RX=uc2_filtered_transactions
-  #     - TX=uc2_partial_max_amount
-  #     - IDX=1
-  #     - NPEERS=3
-  #     - RING_NAME=uc2_max_amount_group_by_ring
-  #
-  # uc2_max_amount_group_by_2:
-  #   build:
-  #     context: ./src/
-  #     dockerfile: group_by/Dockerfile
-  #   container_name: uc2_max_amount_group_by_2
-  #   depends_on:
-  #     rabbitmq:
-  #       condition: service_healthy
-  #   environment:
-  #     - MOM_HOST=rabbitmq
-  #     - MOM_PORT=5672
-  #     - STRATEGY=uc2_max_amount
-  #     - RX=uc2_filtered_transactions
-  #     - TX=uc2_partial_max_amount
-  #     - IDX=2
-  #     - NPEERS=3
-  #     - RING_NAME=uc2_max_amount_group_by_ring
+      - IDX=0
+      - NPEERS=3
+      - RING_NAME=uc2_max_amount_group_by_ring
+
+  uc2_max_amount_group_by_1:
+    build:
+      context: ./src/
+      dockerfile: group_by/Dockerfile
+    container_name: uc2_max_amount_group_by_1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc2_max_amount
+      - RX=uc2_filtered_transactions
+      - TX=uc2_partial_max_amount
+      - IDX=1
+      - NPEERS=3
+      - RING_NAME=uc2_max_amount_group_by_ring
+
+  uc2_max_amount_group_by_2:
+    build:
+      context: ./src/
+      dockerfile: group_by/Dockerfile
+    container_name: uc2_max_amount_group_by_2
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc2_max_amount
+      - RX=uc2_filtered_transactions
+      - TX=uc2_partial_max_amount
+      - IDX=2
+      - NPEERS=3
+      - RING_NAME=uc2_max_amount_group_by_ring
 
   uc2_bank_names_group_by_0:
     build:
@@ -305,51 +298,51 @@ services:
       - STRATEGY=uc2_bank_names
       - RX=client_accounts
       - TX=uc2_partial_bank_names
-  #     - IDX=0
-  #     - NPEERS=3
-  #     - RING_NAME=uc2_bank_names_group_by_ring
-  #
-  # uc2_bank_names_group_by_1:
-  #   build:
-  #     context: ./src/
-  #     dockerfile: group_by/Dockerfile
-  #   container_name: uc2_bank_names_group_by_1
-  #   depends_on:
-  #     rabbitmq:
-  #       condition: service_healthy
-  #   environment:
-  #     - MOM_HOST=rabbitmq
-  #     - MOM_PORT=5672
-  #     - STRATEGY=uc2_bank_names
-  #     - RX=client_accounts
-  #     - TX=uc2_partial_bank_names
-  #     - IDX=1
-  #     - NPEERS=3
-  #     - RING_NAME=uc2_bank_names_group_by_ring
-  #
-  # uc2_bank_names_group_by_2:
-  #   build:
-  #     context: ./src/
-  #     dockerfile: group_by/Dockerfile
-  #   container_name: uc2_bank_names_group_by_2
-  #   depends_on:
-  #     rabbitmq:
-  #       condition: service_healthy
-  #   environment:
-  #     - MOM_HOST=rabbitmq
-  #     - MOM_PORT=5672
-  #     - STRATEGY=uc2_bank_names
-  #     - RX=client_accounts
-  #     - TX=uc2_partial_bank_names
-  #     - IDX=2
-  #     - NPEERS=3
-  #     - RING_NAME=uc2_bank_names_group_by_ring
+      - IDX=0
+      - NPEERS=3
+      - RING_NAME=uc2_bank_names_group_by_ring
 
-  uc3_group_by_format:
+  uc2_bank_names_group_by_1:
     build:
       context: ./src/
       dockerfile: group_by/Dockerfile
-    container_name: uc3_group_by_format
+    container_name: uc2_bank_names_group_by_1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc2_bank_names
+      - RX=client_accounts
+      - TX=uc2_partial_bank_names
+      - IDX=1
+      - NPEERS=3
+      - RING_NAME=uc2_bank_names_group_by_ring
+
+  uc2_bank_names_group_by_2:
+    build:
+      context: ./src/
+      dockerfile: group_by/Dockerfile
+    container_name: uc2_bank_names_group_by_2
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc2_bank_names
+      - RX=client_accounts
+      - TX=uc2_partial_bank_names
+      - IDX=2
+      - NPEERS=3
+      - RING_NAME=uc2_bank_names_group_by_ring
+
+  uc3_group_by_format_0:
+    build:
+      context: ./src/
+      dockerfile: group_by/Dockerfile
+    container_name: uc3_group_by_format_0
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -359,6 +352,45 @@ services:
       - STRATEGY=uc3_sum
       - RX=uc3_transactons_period_A
       - TX=uc3_sum_by_format
+      - IDX=0
+      - NPEERS=3
+      - RING_NAME=uc2_group_by_format_ring
+
+  uc3_group_by_format_1:
+    build:
+      context: ./src/
+      dockerfile: group_by/Dockerfile
+    container_name: uc3_group_by_format_1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc3_sum
+      - RX=uc3_transactons_period_A
+      - TX=uc3_sum_by_format
+      - IDX=1
+      - NPEERS=3
+      - RING_NAME=uc2_group_by_format_ring
+
+  uc3_group_by_format_2:
+    build:
+      context: ./src/
+      dockerfile: group_by/Dockerfile
+    container_name: uc3_group_by_format_2
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc3_sum
+      - RX=uc3_transactons_period_A
+      - TX=uc3_sum_by_format
+      - IDX=2
+      - NPEERS=3
+      - RING_NAME=uc2_group_by_format_ring
 
   uc4_compute_graph_group_by_0:
     build:
