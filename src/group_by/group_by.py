@@ -1,8 +1,10 @@
-import logging
+from queue import Queue
+from threading import Thread
 from typing import Callable
 
 from group_by_fns import GroupByFn
 
+from common.comms.eof_handler import StatefulEOFHandler
 from common.comms.messages import EOF, MessageType, deserialize_message
 from common.comms.middleware import MOMQueue
 
@@ -10,25 +12,59 @@ from common.comms.middleware import MOMQueue
 class GroupBy:
     def __init__(
         self,
-        rx: MOMQueue,
+        external_rx: MOMQueue,
         fn: GroupByFn,
-        tx: MOMQueue,
+        external_tx: MOMQueue,
+        eof_handler: StatefulEOFHandler,
+        internal_eofs_rx: Queue[EOF],
     ):
-        self.rx = rx
+        self.external_rx = external_rx
         self.fn = fn
-        self.tx = tx
+        self.external_tx = external_tx
+        self.eof_handler = eof_handler
+        self.internal_eofs_rx = internal_eofs_rx
+
+        self.internal_eofs_handle: Thread
 
     def start(self):
-        self.rx.start_consuming(self._handle_message)
+        # TODO: estaría bueno no levantar este thread cuando estamos
+        #       sólos, normalmente me molestaría más pero por como se
+        #       manejan los threads en python la verdad prefiero que
+        #       esté programado más prolijo a no tener este """thread"""
+        #       al pedo.
+        self.internal_eofs_handle = Thread(target=self._handle_internal_eofs)
+        self.internal_eofs_handle.start()
+        self.eof_handler.start()
+        self.external_rx.start_consuming(self._handle_message)
 
-    def _handle_message(self, bytes2: bytes, ack: Callable, nack: Callable):
+        self.external_rx.stop_consuming()
+        self.eof_handler.stop()
+        self.internal_eofs_handle.join()
+
+    def _handle_internal_eofs(self):
+        eof = self.internal_eofs_rx.get(block=True)
+
+        result = self.fn.get_result(eof.client_id)
+
+        self.external_tx.send(result.serialize())
+        # si mando el eof por el otro lado entonces
+        # no me aseguro que se ejecute primero
+        # este thread mandando los datos, por eso
+        # no me estaría podiendo deshacer de la
+        # siguiente línea:
+        self.eof_handler.downstream(eof)
+        # lo que necesitaría es que este downstream
+        # mande sólo si fue este nodo el que
+        # arrancó a girar el eof, o sea lo manda al
+        # que le llega.
+
+    def _handle_message(self, bytes2: bytes, ack: Callable, _: Callable):
         msg = deserialize_message(bytes2)
 
         if msg.type() == MessageType.EOF:
-            self.tx.send(self.fn.get_result(msg.client_id).serialize())
-            self.tx.send(EOF(msg.client_id).serialize())
-            logging.info(f"forwarded eof for client {msg.client_id}")
+            self.eof_handler.handle(msg)  # type: ignore[reportArgumentType]
         else:
             self.fn.group_by(msg)
+            self.eof_handler.add_processed_count(msg.client_id)
 
         ack()

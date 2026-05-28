@@ -1,4 +1,5 @@
-from .eof_handler import EOFHandler, StatelessEOFHandler
-from .make_eof_handler import make_stateless_eof_handler
+from .eof_handler import EOFHandler, StatefulEOFHandler, StatelessEOFHandler
+from .make_eof_handler import make_stateful_eof_handler, make_stateless_eof_handler
 from .single_node_eof_handler import SingleNodeEOFHandler
+from .stateful_ring_eof_handler import StatefulRingEOFHandler
 from .stateless_ring_eof_handler import StatelessRingEOFHandler
