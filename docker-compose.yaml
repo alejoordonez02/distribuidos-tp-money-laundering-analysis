@@ -502,6 +502,7 @@ services:
       - STRATEGY=uc4_count_paths
       - RX=uc4_graphs
       - TX=uc4_paths
+      - NPEERS_UPSTREAM=5
 
   uc5_converter_0:
     build:
@@ -584,6 +585,7 @@ services:
       - STRATEGY=uc2_max_amount
       - RX=uc2_partial_max_amount
       - TX=uc2_max_amounts_by_bank
+      - NPEERS_UPSTREAM=3
 
   uc2_bank_names_aggregate:
     build:
@@ -599,6 +601,7 @@ services:
       - STRATEGY=uc2_bank_names
       - RX=uc2_partial_bank_names
       - TX=uc2_bank_id_name_mappings
+      - NPEERS_UPSTREAM=3
 
   uc3_average_aggregate:
     build:
@@ -614,6 +617,7 @@ services:
       - STRATEGY=uc3_average
       - RX=uc3_sum_by_format
       - TX=uc3_avg
+      - NPEERS_UPSTREAM=3
 
   uc4_paths_aggregate:
     build:
