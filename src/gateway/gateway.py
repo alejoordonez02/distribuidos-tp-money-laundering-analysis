@@ -1,5 +1,5 @@
 import logging
-from socket import socket
+from socket import SHUT_RDWR, socket
 from threading import Thread
 from typing import Callable
 
@@ -15,6 +15,7 @@ from common.comms.messages.errors import UnexpectedMessageError
 from common.comms.middleware import (
     MOMQueue,
 )
+from common.graceful_shutdown import setup_graceful_shutdown
 
 
 class Gateway:
@@ -54,8 +55,18 @@ class Gateway:
         """
         self._keep_running = True
         self.listener.listen()
-
+        setup_graceful_shutdown(self.stop)
         self._run()
+
+    def stop(self):
+        self._keep_running = False
+        try:
+            self.listener.shutdown(SHUT_RDWR)
+            self.listener.close()
+        except OSError as e:
+            # TODO: handle specific OSError cases (e.g. already closed)
+            logging.error("!!! UNHANDLED OSError in gateway stop: %s", e, exc_info=True)
+        self.server_rx.stop_consuming()
 
     def _handle_server_response(self, bytes2: bytes, ack: Callable, nack: Callable):
         try:
@@ -85,15 +96,16 @@ class Gateway:
         self.server_handle.start()
 
         while self._keep_running:
-            skt, _ = self.listener.accept()
+            try:
+                skt, _ = self.listener.accept()
+            except OSError as e:
+                # TODO: handle specific OSError cases (e.g. socket closed on shutdown vs real error)
+                logging.error("!!! UNHANDLED OSError in gateway accept loop: %s", e, exc_info=True)
+                break
             conn = Connection(skt)
-
             client = ClientHandler(conn, self.trans_tx_factory, self.accs_tx_factory)
             client.start()
-
             self.clients.add(client)
 
         self.server_handle.join()
-
-    def stop(self):
-        self._keep_running = False
+        self.server_rx.close()

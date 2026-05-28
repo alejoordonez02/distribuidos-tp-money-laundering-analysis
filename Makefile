@@ -3,7 +3,7 @@ PWD := $(shell pwd)
 PYTHON_PM := /bin/uv
 COMPOSE := docker compose -f docker-compose.yaml -f docker-compose.clients.yaml
 
-.PHONY: help gen_input_output gen_compose up down logs test report
+.PHONY: help gen_input_output gen_compose up down logs test report demo
 
 help:
 	@echo '* opciones: help (esto) - gen_input_output - gen_compose - up - down - logs - test - report'
@@ -37,3 +37,7 @@ test:
 report:
 	cd doc/informe && ./make_report
 	cd ../..
+
+demo:
+	mkdir -p demo/files
+	PYTHONPATH=test uv run test/gen_demo_files.py

@@ -6,6 +6,7 @@ from aggregate_fns import AggregateFn
 
 from common.comms.messages import EOF, MessageType, deserialize_message
 from common.comms.middleware import MOMQueue
+from common.graceful_shutdown import setup_graceful_shutdown
 
 
 class Aggregate:
@@ -23,7 +24,14 @@ class Aggregate:
         self._eof_counts: dict[UUID, int] = {}
 
     def start(self):
+        setup_graceful_shutdown(self.stop)
         self.rx.start_consuming(self._handle_message)
+        self.stop()
+
+    def stop(self):
+        self.rx.stop_consuming()
+        self.rx.close()
+        self.tx.close()
 
     def _handle_message(self, bytes2: bytes, ack: Callable, nack: Callable):
         msg = deserialize_message(bytes2)

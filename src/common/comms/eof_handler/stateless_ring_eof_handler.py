@@ -15,7 +15,7 @@ class StatelessRingEOFHandler(RingEOFHandler, StatelessEOFHandler):
         self.mom_ring = mom_ring
         self.txs = [tx.clone() for tx in txs]
         self.processed_counts: dict[UUID, int] = {}
-        self.thread_handle: Thread
+        self.thread_handle: Thread | None = None
         self.mtx = Lock()
 
     def handle(self, eof: EOF):

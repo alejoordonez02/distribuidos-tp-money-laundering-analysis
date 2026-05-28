@@ -8,6 +8,7 @@ from group_by_fns import GroupByFn
 from common.comms.eof_handler import StatefulEOFHandler
 from common.comms.messages import EOF, MessageType, deserialize_message
 from common.comms.middleware import MOMQueue
+from common.graceful_shutdown import setup_graceful_shutdown
 
 
 class GroupBy:
@@ -32,6 +33,7 @@ class GroupBy:
         self.internal_eofs_handle: Thread
 
     def start(self):
+        setup_graceful_shutdown(self.stop)
         self._should_keep_running = True
         # TODO: estaría bueno no levantar este thread cuando estamos
         #       sólos, normalmente me molestaría más pero por como se
@@ -45,9 +47,11 @@ class GroupBy:
 
     def stop(self):
         self.external_rx.stop_consuming()
+        self.external_rx.close()
+        self.external_tx.close()
         self.eof_handler.stop()
-        self.internal_eofs_handle.join()
         self.internal_eofs_rx.shutdown()
+        self.internal_eofs_handle.join()
 
     def _handle_internal_eofs(self):
         while self._should_keep_running:
