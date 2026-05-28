@@ -63,8 +63,9 @@ class Gateway:
         try:
             self.listener.shutdown(SHUT_RDWR)
             self.listener.close()
-        except OSError:
-            pass
+        except OSError as e:
+            # TODO: handle specific OSError cases (e.g. already closed)
+            logging.error("!!! UNHANDLED OSError in gateway stop: %s", e, exc_info=True)
         self.server_rx.stop_consuming()
 
     def _handle_server_response(self, bytes2: bytes, ack: Callable, nack: Callable):
@@ -97,7 +98,9 @@ class Gateway:
         while self._keep_running:
             try:
                 skt, _ = self.listener.accept()
-            except OSError:
+            except OSError as e:
+                # TODO: handle specific OSError cases (e.g. socket closed on shutdown vs real error)
+                logging.error("!!! UNHANDLED OSError in gateway accept loop: %s", e, exc_info=True)
                 break
             conn = Connection(skt)
             client = ClientHandler(conn, self.trans_tx_factory, self.accs_tx_factory)

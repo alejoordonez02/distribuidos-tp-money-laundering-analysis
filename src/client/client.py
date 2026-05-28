@@ -44,8 +44,9 @@ class Client:
     def stop(self):
         try:
             self.conn.close()
-        except OSError:
-            pass
+        except OSError as e:
+            # TODO: handle specific OSError cases (e.g. already closed)
+            logging.error("!!! UNHANDLED OSError in client stop: %s", e, exc_info=True)
 
     def _run(self):
         # read and send datasets in batches

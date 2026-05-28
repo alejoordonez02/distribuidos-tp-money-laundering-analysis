@@ -1,3 +1,4 @@
+import logging
 from threading import Thread
 from typing import Callable
 
@@ -33,8 +34,9 @@ class Join:
         self._route_handlers.append(main_rh)
         try:
             main_rh.start()
-        except Exception:
-            pass
+        except Exception as e:
+            # TODO: handle specific exceptions from JoinRouteHandler
+            logging.error("!!! UNHANDLED exception in join main route handler: %s", e, exc_info=True)
 
         for t in handles:
             t.join()
