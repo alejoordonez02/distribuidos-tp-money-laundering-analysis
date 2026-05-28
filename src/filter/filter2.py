@@ -6,6 +6,7 @@ from filter_fns import FilterFn
 
 from common.comms.messages import MessageType, deserialize_message
 from common.comms.middleware import MOMQueue
+from common.graceful_shutdown import setup_graceful_shutdown
 
 
 class Filter:
@@ -20,11 +21,17 @@ class Filter:
         self.eof_handler = eof_handler
 
     def start(self):
+        setup_graceful_shutdown(self.stop)
         self.eof_handler.start()
         self.messages_rx.start_consuming(self._handle_message)
+        self.stop()
 
+    def stop(self):
         self.messages_rx.stop_consuming()
         self.eof_handler.stop()
+        self.messages_rx.close()
+        for tx, _ in self.routes:
+            tx.close()
 
     def _handle_message(self, bytes2: bytes, ack: Callable, _: Callable):
         msg = deserialize_message(bytes2)

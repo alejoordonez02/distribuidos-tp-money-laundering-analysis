@@ -14,7 +14,7 @@ class RingEOFHandler(EOFHandler):
         self.mom_ring = mom_ring
         self.txs = txs
         self.processed_counts: dict[UUID, int] = {}
-        self.thread_handle: Thread
+        self.thread_handle: Thread | None = None
         self.mtx = Lock()
 
     def start(self):
@@ -25,7 +25,9 @@ class RingEOFHandler(EOFHandler):
 
     def stop(self):
         self.mom_ring.stop_consuming()
-        self.thread_handle.join()
+        if self.thread_handle is not None:
+            self.thread_handle.join()
+        self.mom_ring.close()
 
     def handle(self, eof: EOF):
         with self.mtx:
