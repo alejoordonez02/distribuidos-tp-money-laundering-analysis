@@ -15,10 +15,9 @@ class Result:
     amount: float
 
     def __eq__(self, other: object) -> bool:
-        if not isinstance(other, Result):
-            return NotImplemented
         return (
-            self.bank_id == other.bank_id
+            isinstance(other, Result)
+            and self.bank_id == other.bank_id
             and self.bank_name == other.bank_name
             and round(self.amount, 2) == round(other.amount, 2)
         )
