@@ -24,9 +24,11 @@ class GroupBy:
         self.eof_handler = eof_handler
         self.internal_eofs_rx = internal_eofs_rx
 
+        self._should_keep_running = False
         self.internal_eofs_handle: Thread
 
     def start(self):
+        self._should_keep_running = True
         # TODO: estaría bueno no levantar este thread cuando estamos
         #       sólos, normalmente me molestaría más pero por como se
         #       manejan los threads en python la verdad prefiero que
@@ -37,20 +39,31 @@ class GroupBy:
         self.eof_handler.start()
         self.external_rx.start_consuming(self._handle_message)
 
+    def stop(self):
         self.external_rx.stop_consuming()
         self.eof_handler.stop()
         self.internal_eofs_handle.join()
+        self.internal_eofs_rx.shutdown()
 
     def _handle_internal_eofs(self):
-        eof = self.internal_eofs_rx.get(block=True)
+        while self._should_keep_running:
+            try:
+                eof = self.internal_eofs_rx.get(block=True)
+            except Exception as e:
+                # TODO: mejor catchear la excepción más
+                #       específica pero no tengo ganas
+                #       de buscar cuál es (supongo OS)
+                if self._should_keep_running:
+                    raise e
+                return
 
-        result = self.fn.get_result(eof.client_id)
+            result = self.fn.get_result(eof.client_id)
 
-        self.external_tx.send(result.serialize())
-        # NOTE: the eof that's passed to `downstream`
-        #       must be the same one that's popped
-        #       from the `internal_eofs` queue.
-        self.eof_handler.downstream(eof)
+            self.external_tx.send(result.serialize())
+            # NOTE: the eof that's passed to `downstream`
+            #       must be the same one that's popped
+            #       from the `internal_eofs` queue.
+            self.eof_handler.downstream(eof)
 
     def _handle_message(self, bytes2: bytes, ack: Callable, _: Callable):
         msg = deserialize_message(bytes2)
