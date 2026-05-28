@@ -1,3 +1,4 @@
+import logging
 from typing import Callable
 
 from pika import BlockingConnection, ConnectionParameters
@@ -32,16 +33,19 @@ class QueueRabbitMQ(MOMQueue):
             self.chan.start_consuming()
         except AMQPConnectionError as e:
             raise MOMDisconnectedError(str(e)) from e
-        except Exception:
-            pass  # pika internal error during graceful shutdown (close() called mid-consume)
+        except Exception as e:
+            # TODO: distinguish OSError (socket closed mid-consume) from exceptions
+            # raised inside on_message_callback — the latter would pass silently here
+            logging.error("!!! UNHANDLED exception in start_consuming (queue=%s): %s", self.queue_name, e, exc_info=True)
 
     def stop_consuming(self) -> None:
         try:
             self.chan.stop_consuming()
         except AMQPConnectionError as e:
             raise MOMDisconnectedError(str(e)) from e
-        except Exception:
-            pass  # already stopped or connection closed
+        except Exception as e:
+            # TODO: handle specific pika shutdown exceptions
+            logging.error("!!! UNHANDLED exception in stop_consuming (queue=%s): %s", self.queue_name, e, exc_info=True)
 
     def send(self, message: bytes) -> None:
         try:
@@ -56,8 +60,9 @@ class QueueRabbitMQ(MOMQueue):
     def close(self) -> None:
         try:
             self.conn.close()
-        except ConnectionWrongStateError:
-            pass
+        except ConnectionWrongStateError as e:
+            # TODO: handle specific close-on-wrong-state case
+            logging.error("!!! UNHANDLED ConnectionWrongStateError in close (queue=%s): %s", self.queue_name, e, exc_info=True)
         except Exception as e:
             raise MOMMessageError(str(e)) from e
 
