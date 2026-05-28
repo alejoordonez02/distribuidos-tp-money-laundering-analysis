@@ -16,3 +16,7 @@ class MOMRing(MOM):
     @abstractmethod
     def __init__(self, host: str, ring_name: str, self_id: int, peer_ids: list[int]):
         pass
+
+    @abstractmethod
+    def clone(self) -> "MOMRing":
+        pass

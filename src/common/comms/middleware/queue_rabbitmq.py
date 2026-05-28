@@ -12,7 +12,9 @@ from .queue_mom import MOMQueue
 
 class QueueRabbitMQ(MOMQueue):
     def __init__(self, host: str, queue_name: str):
+        self.host = host
         self.queue_name = queue_name
+
         # TODO: heartbeat=600 may be starved by blocking callbacks in start_consuming — revisit
         self.conn = BlockingConnection(ConnectionParameters(host, heartbeat=600))
         self.chan = self.conn.channel()
@@ -56,6 +58,9 @@ class QueueRabbitMQ(MOMQueue):
             self.conn.close()
         except Exception as e:
             raise MOMMessageError(str(e)) from e
+
+    def clone(self) -> "QueueRabbitMQ":
+        return QueueRabbitMQ(self.host, self.queue_name)
 
     def _ack(self, chan, method) -> None:
         chan.basic_ack(delivery_tag=method.delivery_tag)
