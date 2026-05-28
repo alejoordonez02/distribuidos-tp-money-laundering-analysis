@@ -92,7 +92,7 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
             mom_ring_tx.send(ring_done.serialize())
 
     def _handle_ring_done(self, ring_done: RingDone, mom_ring_tx: MOMRing):
-        self.internal_eofs_tx.put(EOF(ring_done.client_id, origin=self.id))
+        self.internal_eofs_tx.put(EOF(ring_done.client_id, origin=ring_done.origin))
         if ring_done.origin == self.id:
             return
 
