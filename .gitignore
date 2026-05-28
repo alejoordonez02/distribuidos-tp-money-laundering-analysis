@@ -2,6 +2,9 @@
 datasets/
 responses/
 
+# generated demo comparison files
+demo/files/
+
 # generated compose override
 docker-compose.clients.yaml
 
