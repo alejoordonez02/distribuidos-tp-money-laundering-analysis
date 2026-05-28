@@ -1,17 +1,3 @@
-"""
-Generates side-by-side comparison .txt files for demo purposes.
-
-After running the system and gen_input_output.py, run this script to produce
-  demo/files/CLIENT_{n}_RESPONSES.txt
-  demo/files/CLIENT_{n}_EXPECTED.txt
-
-Both files use the same format and sorted lines so the professor can visually
-compare them side by side.
-
-Usage (from project root):
-  cd test && python gen_demo_files.py
-"""
-
 import re
 import sys
 from pathlib import Path
@@ -25,9 +11,6 @@ from cfg import (
 OUTPUT_DIR = Path("demo/files")
 
 _UCS = ["UC1", "UC2", "UC3", "UC4", "UC5"]
-
-
-# ── normalizers for actual responses ─────────────────────────────────────────
 
 
 def _norm_uc1_actual(line: str) -> str:
@@ -86,9 +69,6 @@ def parse_responses(path: str) -> dict[str, list[str]]:
     return sections
 
 
-# ── normalizers for expected CSVs ────────────────────────────────────────────
-
-
 def parse_expected_uc1(path: str) -> list[str]:
     lines = []
     with open(path) as f:
@@ -140,9 +120,6 @@ def parse_expected_uc5(path: str) -> list[str]:
         return [f"count: {f.read().strip()}"]
 
 
-# ── writer ────────────────────────────────────────────────────────────────────
-
-
 def write_txt(path: Path, sections: dict[str, list[str]]):
     with open(path, "w") as f:
         for uc in _UCS:
@@ -150,9 +127,6 @@ def write_txt(path: Path, sections: dict[str, list[str]]):
             for line in sorted(sections[uc]):
                 f.write(line + "\n")
             f.write("\n")
-
-
-# ── main ──────────────────────────────────────────────────────────────────────
 
 
 def main():
