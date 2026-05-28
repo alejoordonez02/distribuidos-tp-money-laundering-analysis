@@ -1,6 +1,7 @@
 from queue import Queue
 from threading import Thread
 from typing import Callable
+from uuid import UUID
 
 from group_by_fns import GroupByFn
 
@@ -17,12 +18,15 @@ class GroupBy:
         external_tx: MOMQueue,
         eof_handler: StatefulEOFHandler,
         internal_eofs_rx: Queue[EOF],
+        npeers_upstream: int = 1,
     ):
         self.external_rx = external_rx
         self.fn = fn
         self.external_tx = external_tx
         self.eof_handler = eof_handler
         self.internal_eofs_rx = internal_eofs_rx
+        self.npeers_upstream = npeers_upstream
+        self._upstream_eof_counts: dict[UUID, int] = {}
 
         self._should_keep_running = False
         self.internal_eofs_handle: Thread
@@ -69,7 +73,12 @@ class GroupBy:
         msg = deserialize_message(bytes2)
 
         if msg.type() == MessageType.EOF:
-            self.eof_handler.handle(msg)  # type: ignore[reportArgumentType]
+            count = self._upstream_eof_counts.get(msg.client_id, 0) + 1
+            if count < self.npeers_upstream:
+                self._upstream_eof_counts[msg.client_id] = count
+            else:
+                self._upstream_eof_counts.pop(msg.client_id, None)
+                self.eof_handler.handle(msg)  # type: ignore[reportArgumentType]
         else:
             self.fn.group_by(msg)
             self.eof_handler.add_processed_count(msg.client_id)

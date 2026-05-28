@@ -20,6 +20,7 @@ MOM_HOST = os.environ["MOM_HOST"]
 RX = os.environ["RX"]
 TX = os.environ["TX"]
 STRATEGY = os.environ["STRATEGY"]
+NPEERS_UPSTREAM = int(os.getenv("NPEERS_UPSTREAM", "1"))
 
 LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
 
@@ -49,7 +50,7 @@ def main():
     internal_eofs = Queue[EOF]()
     eof_handler = make_stateful_eof_handler(MOM_HOST, [external_tx], internal_eofs)
 
-    groupby = GroupBy(external_rx, fn, external_tx, eof_handler, internal_eofs)
+    groupby = GroupBy(external_rx, fn, external_tx, eof_handler, internal_eofs, NPEERS_UPSTREAM)
     groupby.start()
 
 
