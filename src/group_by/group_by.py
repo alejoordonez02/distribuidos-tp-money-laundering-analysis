@@ -47,16 +47,10 @@ class GroupBy:
         result = self.fn.get_result(eof.client_id)
 
         self.external_tx.send(result.serialize())
-        # si mando el eof por el otro lado entonces
-        # no me aseguro que se ejecute primero
-        # este thread mandando los datos, por eso
-        # no me estaría podiendo deshacer de la
-        # siguiente línea:
+        # NOTE: the eof that's passed to `downstream`
+        #       must be the same one that's popped
+        #       from the `internal_eofs` queue.
         self.eof_handler.downstream(eof)
-        # lo que necesitaría es que este downstream
-        # mande sólo si fue este nodo el que
-        # arrancó a girar el eof, o sea lo manda al
-        # que le llega.
 
     def _handle_message(self, bytes2: bytes, ack: Callable, _: Callable):
         msg = deserialize_message(bytes2)

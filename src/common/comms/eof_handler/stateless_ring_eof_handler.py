@@ -25,7 +25,7 @@ class StatelessRingEOFHandler(RingEOFHandler, StatelessEOFHandler):
             eof.processed_count = 0
             self.mom_ring.send(eof.serialize())
 
-    def _handle_ring_eof(self, bytes2: bytes, ack: Callable, _: Callable):
+    def _handle_ring_message(self, bytes2: bytes, ack: Callable, _: Callable):
         eof: EOF = EOF.deserialize(bytes2)  # type: ignore[reportAssignmentType]
 
         with self.mtx:

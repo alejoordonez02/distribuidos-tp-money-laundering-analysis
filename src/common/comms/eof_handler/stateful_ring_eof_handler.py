@@ -43,10 +43,6 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
             self.mom_ring.send(eof.serialize())
 
     def downstream(self, eof: EOF):
-        # NOTE: esto está un poco feo, porque estoy esperando
-        #       que me manden el mismo eof por acá que el que
-        #       estoy mandando yo por internal_eof_tx, de
-        #       última lo puedo aclarar bien en la docu.
         if eof.origin != self.id:
             return
 
@@ -54,54 +50,38 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
         for tx in self.external_txs:
             tx.send(eof.serialize())
 
-    def _handle_ring_eof(self, bytes2: bytes, ack: Callable, _: Callable):
+    def _handle_ring_message(self, bytes2: bytes, ack: Callable, _: Callable):
         msg = deserialize_message(bytes2)
-
         match msg.type():
             case MessageType.EOF:
-                eof: EOF = msg  # type: ignore[reportAssignmentType]
-
-                with self.mtx:
-                    eof.processed_count += self.processed_counts.get(eof.client_id, 0)
-                    self.processed_counts[eof.client_id] = 0
-
-                    # me falta mandar el internal eof con processed completo para
-                    # que los peers puedan llamar
-                    if eof.processed_count == eof.expected_count:
-                        # self.internal_eofs_tx.put(eof)
-
-                        ring_done = RingDone(eof.client_id, self.id)
-                        logging.info(
-                            f"sending internal ring done: {ring_done.__dict__}"
-                        )
-                        self.mom_ring.send(ring_done.serialize())
-
-                    else:  # eof.processed_count < eof.expected_count, esto no sé
-                        logging.info(f"forwarding internal eof: {eof.__dict__}")
-                        self.mom_ring.send(eof.serialize())
-
+                self._handle_ring_eof(msg)  # type: ignore[reportArgumentType]
             case MessageType.RING_DONE:
-                ring_done: RingDone = msg  # type: ignore[reportAssignmentType]
-
-                # TODO: la verdad podría pushear directamente los
-                #       client ids por acá en vez del eof
-
-                eof = EOF(ring_done.client_id, origin=self.id)
-                if ring_done.origin != self.id:
-                    # acá no voy a estar mandando eof porque no va a dar el if!
-                    # sólo voy a estar mandando la data
-                    self.internal_eofs_tx.put(eof)
-                    logging.info(f"forwarding internal ring done: {ring_done.__dict__}")
-                    self.mom_ring.send(ring_done.serialize())
-                else:
-                    # lo que estoy haciendo acá es asegurarme que yo, que soy el
-                    # origen, sea quien manda el eof al próximo cluster, porque en
-                    # el downstream está el if!
-                    self.internal_eofs_tx.put(eof)
-
+                self._handle_ring_done(msg)  # type: ignore[reportArgumentType]
             case _:
                 raise UnexpectedMessageError(
                     "stateful ring eof handler received unexpected msg: {msg.__dict__}"
                 )
 
         ack()
+
+    def _handle_ring_eof(self, eof: EOF):
+        with self.mtx:
+            eof.processed_count += self.processed_counts.get(eof.client_id, 0)
+            self.processed_counts[eof.client_id] = 0
+
+            if eof.processed_count != eof.expected_count:
+                logging.info(f"forwarding internal eof: {eof.__dict__}")
+                self.mom_ring.send(eof.serialize())
+                return
+
+            ring_done = RingDone(eof.client_id, self.id)
+            logging.info(f"sending internal ring done: {ring_done.__dict__}")
+            self.mom_ring.send(ring_done.serialize())
+
+    def _handle_ring_done(self, ring_done: RingDone):
+        self.internal_eofs_tx.put(EOF(ring_done.client_id, origin=self.id))
+        if ring_done.origin == self.id:
+            return
+
+        logging.info(f"forwarding internal ring done: {ring_done.__dict__}")
+        self.mom_ring.send(ring_done.serialize())

@@ -12,11 +12,11 @@ class RingEOFHandler(ABC):
     mom_ring: MOMRing
     mtx: Lock
     processed_counts: dict[UUID, int]
-    _handle_ring_eof: Callable[[Self, bytes, Callable, Callable], None]
+    _handle_ring_message: Callable[[Self, bytes, Callable, Callable], None]
 
     def start(self):
         self.thread_handle = Thread(
-            target=self.mom_ring.start_consuming, args=(self._handle_ring_eof,)
+            target=self.mom_ring.start_consuming, args=(self._handle_ring_message,)
         )
         self.thread_handle.start()
 
