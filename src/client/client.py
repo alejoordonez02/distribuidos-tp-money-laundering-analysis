@@ -62,8 +62,7 @@ class Client:
         # receive and write responses
         logging.info("waiting for server responses")
 
-        responses = self._receive_responses()
-        self._write_responses(responses)
+        self._receive_and_write_responses()
 
         logging.info("received server responses. Bye")
 
@@ -102,17 +101,9 @@ class Client:
     def _send_eof(self):
         self.conn.send(EOF(TMP_CLIENT_ID).serialize())
 
-    def _receive_responses(self):
-        responses = []
-
-        for _ in range(NRESPONSES):
-            response = Response.deserialize(self.conn.recv())
-            logging.info(f"received server response:\n{response.body[:11]}")  # type: ignore[reportAttributeAccessIssue]
-            responses.append(response.body)  # type: ignore[reportAttributeAccessIssue]
-
-        return responses
-
-    def _write_responses(self, responses):
+    def _receive_and_write_responses(self):
         with open(self.responses_path, "w") as file:
-            for r in responses:
-                file.write(r)
+            for _ in range(NRESPONSES):
+                response = Response.deserialize(self.conn.recv())
+                logging.info(f"received server response:\n{response.body[:11]}")  # type: ignore[reportAttributeAccessIssue]
+                file.write(response.body)  # type: ignore[reportAttributeAccessIssue]
