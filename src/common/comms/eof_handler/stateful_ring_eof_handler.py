@@ -54,9 +54,6 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
         self.mom_ring.send(eof.serialize())
 
     def downstream(self, eof: EOF):
-        if eof.origin != self.id:
-            return
-
         logging.info(f"downstreaming eof: {eof.__dict__}")
         for tx in self.external_txs:
             tx.send(eof.serialize())
