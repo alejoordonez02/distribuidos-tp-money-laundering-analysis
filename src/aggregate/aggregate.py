@@ -37,14 +37,22 @@ class Aggregate:
         msg = deserialize_message(bytes2)
 
         if msg.type() == MessageType.EOF:
-            count = self._eof_counts.get(msg.client_id, 0) + 1
+            eof: EOF = msg  # type: ignore[reportAssignmentType]
+
+            count = self._eof_counts.get(eof.client_id, 0) + 1
             if count < self.npeers_upstream:
-                self._eof_counts[msg.client_id] = count
+                self._eof_counts[eof.client_id] = count
                 ack()
                 return
-            self._eof_counts.pop(msg.client_id, None)
-            self.tx.send(self.fn.get_result(msg.client_id).serialize())
-            self.tx.send(EOF(msg.client_id).serialize())
+            self._eof_counts.pop(eof.client_id, None)
+            self.tx.send(self.fn.get_result(eof.client_id).serialize())
+            # NOTE: este uno va porque ahora mismo tenemos un sólo
+            #       aggregate que pushea un dato: el resultado,
+            #       que va seguido del eof para el cliente.
+            #       Eventualmente esto vuela porque vamos a tener
+            #       el eof handler.
+            eof.expected_count = 1
+            self.tx.send(msg.serialize())
             logging.info(f"forwarded eof for client {msg.client_id}")
             ack()
             return
