@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from threading import Lock, Thread
 from typing import Callable, Self
 from uuid import UUID
@@ -12,12 +12,9 @@ class RingEOFHandler(ABC):
     mom_ring: MOMRing
     mtx: Lock
     processed_counts: dict[UUID, int]
-    _handle_ring_message: Callable[[Self, bytes, Callable, Callable], None]
 
     def start(self):
-        self.thread_handle = Thread(
-            target=self.mom_ring.start_consuming, args=(self._handle_ring_message,)
-        )
+        self.thread_handle = Thread(target=self._start_consuming_back)
         self.thread_handle.start()
 
     def stop(self):
@@ -30,3 +27,18 @@ class RingEOFHandler(ABC):
                 self.processed_counts[client_id] = 0
 
             self.processed_counts[client_id] += 1
+
+    def _start_consuming_back(self):
+        exclusive = self.mom_ring.clone()
+        exclusive.start_consuming(
+            lambda bytes2, ack, nack: self._handle_ring_message(
+                bytes2, ack, nack, exclusive
+            )
+        )
+        exclusive.stop_consuming()
+
+    @abstractmethod
+    def _handle_ring_message(
+        self, bytes2: bytes, ack: Callable, nack: Callable, mom_ring_tx: MOMRing
+    ):
+        pass

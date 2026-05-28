@@ -13,19 +13,18 @@ from .ring_eof_handler import RingEOFHandler
 class StatelessRingEOFHandler(RingEOFHandler, StatelessEOFHandler):
     def __init__(self, mom_ring: MOMRing, txs: list[MOMQueue]):
         self.mom_ring = mom_ring
-        self.txs = txs
+        self.txs = [tx.clone() for tx in txs]
         self.processed_counts: dict[UUID, int] = {}
         self.thread_handle: Thread
         self.mtx = Lock()
 
     def handle(self, eof: EOF):
-        with self.mtx:
-            # TODO: estoy lockeando porq no estoy manejando pika
-            # thread-safetyness todavía
-            eof.processed_count = 0
-            self.mom_ring.send(eof.serialize())
+        eof.processed_count = 0
+        self.mom_ring.send(eof.serialize())
 
-    def _handle_ring_message(self, bytes2: bytes, ack: Callable, _: Callable):
+    def _handle_ring_message(
+        self, bytes2: bytes, ack: Callable, nack: Callable, mom_ring_tx: MOMRing
+    ):
         eof: EOF = EOF.deserialize(bytes2)  # type: ignore[reportAssignmentType]
 
         with self.mtx:
@@ -39,6 +38,6 @@ class StatelessRingEOFHandler(RingEOFHandler, StatelessEOFHandler):
 
             else:
                 logging.info(f"sending internal eof: {eof.__dict__}")
-                self.mom_ring.send(eof.serialize())
+                mom_ring_tx.send(eof.serialize())
 
             ack()
