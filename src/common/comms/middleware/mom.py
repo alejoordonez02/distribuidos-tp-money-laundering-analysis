@@ -55,3 +55,10 @@ class MOM(ABC):
         * `MOMClosedError` if the connection with the broker is lost.
         """
         pass
+
+    @abstractmethod
+    def clone(self) -> "MOM":
+        """
+        Create a clone of the middleware.
+        """
+        pass

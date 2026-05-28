@@ -1,5 +1,6 @@
 import logging
 import os
+from queue import Queue
 
 from group_by_fns import (
     UC2BankNamesGroupByFn,
@@ -10,6 +11,8 @@ from group_by_fns import (
     UC5CountGroupByFn,
 )
 
+from common.comms.eof_handler import make_stateful_eof_handler
+from common.comms.messages import EOF
 from common.comms.middleware import QueueRabbitMQ
 from group_by import GroupBy
 
@@ -17,6 +20,7 @@ MOM_HOST = os.environ["MOM_HOST"]
 RX = os.environ["RX"]
 TX = os.environ["TX"]
 STRATEGY = os.environ["STRATEGY"]
+NPEERS_UPSTREAM = int(os.getenv("NPEERS_UPSTREAM", "1"))
 
 LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
 
@@ -41,7 +45,13 @@ def main():
         case _:
             raise ValueError(f"unknown group_by strategy: {STRATEGY}")
 
-    GroupBy(QueueRabbitMQ(MOM_HOST, RX), fn, QueueRabbitMQ(MOM_HOST, TX)).start()
+    external_rx = QueueRabbitMQ(MOM_HOST, RX)
+    external_tx = QueueRabbitMQ(MOM_HOST, TX)
+    internal_eofs = Queue[EOF]()
+    eof_handler = make_stateful_eof_handler(MOM_HOST, [external_tx], internal_eofs)
+
+    groupby = GroupBy(external_rx, fn, external_tx, eof_handler, internal_eofs, NPEERS_UPSTREAM)
+    groupby.start()
 
 
 if __name__ == "__main__":

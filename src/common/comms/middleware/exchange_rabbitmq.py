@@ -13,7 +13,10 @@ from .exchange_mom import MOMExchange
 
 class ExchangeRabbitMQ(MOMExchange):
     def __init__(self, host: str, exchange_name: str, routing_keys: list[str]):
+        self.host = host
         self.exchange_name = exchange_name
+        self.routing_keys = routing_keys
+
         # TODO: heartbeat=600 may be starved by blocking callbacks in start_consuming — revisit
         self.conn = BlockingConnection(ConnectionParameters(host, heartbeat=600))
         self.chan = self.conn.channel()
@@ -22,7 +25,6 @@ class ExchangeRabbitMQ(MOMExchange):
         queue = self.chan.queue_declare(queue="", exclusive=True)
         queue_name = queue.method.queue
         self.queue_name = queue_name
-        self.routing_keys = routing_keys
         for k in routing_keys:
             self.chan.queue_bind(
                 exchange=exchange_name, queue=queue_name, routing_key=k
@@ -74,6 +76,9 @@ class ExchangeRabbitMQ(MOMExchange):
             logging.error("!!! UNHANDLED ConnectionWrongStateError in close (exchange=%s): %s", self.exchange_name, e, exc_info=True)
         except Exception as e:
             raise MOMMessageError(str(e)) from e
+
+    def clone(self) -> "ExchangeRabbitMQ":
+        return ExchangeRabbitMQ(self.host, self.exchange_name, self.routing_keys)
 
     def _ack(self, chan, method) -> None:
         chan.basic_ack(delivery_tag=method.delivery_tag)

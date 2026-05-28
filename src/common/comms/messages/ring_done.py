@@ -5,25 +5,18 @@ from .message import Message
 from .message_types import MessageType
 
 
-class EOF(Message):
-    def __init__(
-        self,
-        client_id: UUID,
-        processed_count: int = 0,
-        expected_count: int = 0,
-        origin: int = -1,
-    ):
+class RingDone(Message):
+    def __init__(self, client_id: UUID, origin: int, count: int):
         self.client_id = client_id
-        self.processed_count = processed_count
-        self.expected_count = expected_count
         self.origin = origin
+        self.processed_count = count
 
     @classmethod
     def _type(cls):
-        return MessageType.EOF
+        return MessageType.RING_DONE
 
     def _fields(self) -> list[Any]:
-        return [self.client_id, self.processed_count, self.expected_count, self.origin]
+        return [self.client_id, self.origin, self.processed_count]
 
     @classmethod
     def _from_fields(cls, fields: list[Any]) -> Self:

@@ -10,7 +10,7 @@ def _get_front_back_ids(self_id: int, peer_ids: list[int]) -> tuple[int, int]:
     if self_id in peer_ids:
         raise MOMRingError("invalid peer ids list, self's id should not be included")
 
-    peer_ids.sort()
+    peer_ids = sorted(peer_ids)
     npeers = len(peer_ids)
 
     if not npeers:
@@ -58,12 +58,15 @@ class RingRabbitMQ(MOMRing):
         # Returns
         A new `RingRabbitMQ` middleware.
         """
+        self.host = host
+        self.ring_name = ring_name
         self.id = self_id
         self.peer_ids = peer_ids
-        self.front_id, self.back_id = _get_front_back_ids(self.id, peer_ids)
+        self.exchange_factory = exchange_factory
 
+        self.front_id, self.back_id = _get_front_back_ids(self.id, peer_ids)
         self.exchange_front = exchange_factory(host, ring_name, [str(self.front_id)])
-        self.exchange_back = exchange_factory(host, ring_name, [str(self.back_id)])
+        self.exchange_back = exchange_factory(host, ring_name, [str(self.id)])
 
     def start_consuming(
         self, on_message_callback: Callable[[bytes, Callable, Callable], None]
@@ -119,3 +122,8 @@ class RingRabbitMQ(MOMRing):
                 f"failed to close connection with back peer (id: {self.back_id})",
                 str(e),
             ) from e
+
+    def clone(self) -> "RingRabbitMQ":
+        return RingRabbitMQ(
+            self.host, self.ring_name, self.id, self.peer_ids, self.exchange_factory
+        )

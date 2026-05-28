@@ -1,9 +1,9 @@
 import logging
 from typing import Callable
 
-from eof_handler import EOFHandler
 from filter_fns import FilterFn
 
+from common.comms.eof_handler import StatelessEOFHandler
 from common.comms.messages import MessageType, deserialize_message
 from common.comms.middleware import MOMQueue
 from common.graceful_shutdown import setup_graceful_shutdown
@@ -14,7 +14,7 @@ class Filter:
         self,
         messages_rx: MOMQueue,
         routes: list[tuple[MOMQueue, FilterFn]],
-        eof_handler: EOFHandler,
+        eof_handler: StatelessEOFHandler,
     ):
         self.messages_rx = messages_rx
         self.routes = routes

@@ -15,6 +15,7 @@ MOM_HOST = os.environ["MOM_HOST"]
 RX = os.environ["RX"]
 TX = os.environ["TX"]
 STRATEGY = os.environ["STRATEGY"]
+NPEERS_UPSTREAM = int(os.getenv("NPEERS_UPSTREAM", "1"))
 
 LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
 
@@ -35,7 +36,7 @@ def main():
         case _:
             raise ValueError(f"unknown aggregate strategy: {STRATEGY}")
 
-    Aggregate(QueueRabbitMQ(MOM_HOST, RX), fn, QueueRabbitMQ(MOM_HOST, TX)).start()
+    Aggregate(QueueRabbitMQ(MOM_HOST, RX), fn, QueueRabbitMQ(MOM_HOST, TX), NPEERS_UPSTREAM).start()
 
 
 if __name__ == "__main__":
