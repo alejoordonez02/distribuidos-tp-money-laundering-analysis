@@ -2,7 +2,6 @@ import logging
 from queue import Queue
 from threading import Thread
 from typing import Callable
-from uuid import UUID
 
 from aggregate_fns import AggregateFn
 
@@ -28,7 +27,6 @@ class Aggregate:
         self.eof_handler = eof_handler
         self.internal_eofs_rx = internal_eofs_rx
         self.npeers_upstream = npeers_upstream
-        self._upstream_eof_counts: dict[UUID, int] = {}
 
         self._should_keep_running = False
         self.internal_eofs_handle: Thread
@@ -68,9 +66,6 @@ class Aggregate:
 
             result = self.fn.get_result(eof.client_id)
 
-            # TODO: esto es tmp
-            eof.expected_count = 1
-
             self.external_tx.send(result.serialize())
             # NOTE: the eof that's passed to `downstream`
             #       must be the same one that's popped
@@ -81,12 +76,7 @@ class Aggregate:
         msg = deserialize_message(bytes2)
 
         if msg.type() == MessageType.EOF:
-            count = self._upstream_eof_counts.get(msg.client_id, 0) + 1
-            if count < self.npeers_upstream:
-                self._upstream_eof_counts[msg.client_id] = count
-            else:
-                self._upstream_eof_counts.pop(msg.client_id, None)
-                self.eof_handler.handle(msg)  # type: ignore[reportArgumentType]
+            self.eof_handler.handle(msg)  # type: ignore[reportArgumentType]
         else:
             self.fn.aggregate(msg)
             self.eof_handler.add_processed_count(msg.client_id)

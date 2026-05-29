@@ -11,6 +11,9 @@ from aggregate_fns import (
 
 from aggregate import Aggregate
 from common.comms.eof_handler.make_eof_handler import make_stateful_eof_handler
+from common.comms.eof_handler.single_node_eof_handler import (
+    StatefulSingleNodeEOFHandler,
+)
 from common.comms.messages.eof import EOF
 from common.comms.middleware import QueueRabbitMQ
 
@@ -44,6 +47,9 @@ def main():
 
     internal_eofs = Queue[EOF]()
     eof_handler = make_stateful_eof_handler(MOM_HOST, [external_tx], internal_eofs)
+    # TODO: tmp
+    if not isinstance(eof_handler, StatefulSingleNodeEOFHandler):
+        raise ValueError("scalability is not implemented for aggregator yet")
 
     aggregate = Aggregate(
         external_rx, fn, external_tx, eof_handler, internal_eofs, NPEERS_UPSTREAM
