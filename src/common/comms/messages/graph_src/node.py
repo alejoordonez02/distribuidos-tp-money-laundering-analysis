@@ -16,3 +16,7 @@ class Node:
 
     def __eq__(self, other) -> bool:
         return other.key == self.key
+
+    def __str__(self) -> str:
+        return f"{self.bank},{self.account}"
+
