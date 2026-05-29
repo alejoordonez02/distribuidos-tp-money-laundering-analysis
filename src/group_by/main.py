@@ -34,7 +34,6 @@ def main():
             fn = UC2BankNamesGroupByFn()
         case "uc3_sum":
             fn = UC3SumGroupByFn()
-            raise ValueError("tmp")
         case "uc4_compute_graph":
             fn = UC4ComputeGraph()
             raise ValueError("tmp")
@@ -43,7 +42,6 @@ def main():
             raise ValueError("tmp")
         case "uc5_count":
             fn = UC5CountGroupByFn()
-            raise ValueError("tmp")
         case _:
             raise ValueError(f"unknown group_by strategy: {STRATEGY}")
 
