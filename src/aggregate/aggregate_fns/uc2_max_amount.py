@@ -6,18 +6,22 @@ from .aggregate_fn import AggregateFn
 
 
 class UC2MaxAmountAggregateFn(AggregateFn):
-
     def __init__(self):
-        self._state: dict[UUID, MaxByBank] = {}
+        self.client_maxes_by_bank: dict[UUID, MaxByBank] = {}
 
     def aggregate(self, msg: MaxByBank):  # type: ignore[reportIncompatibleMethodOverride]
-        if msg.client_id not in self._state:
-            self._state[msg.client_id] = MaxByBank(msg.client_id, {})
-        state = self._state[msg.client_id].data
+        if msg.client_id not in self.client_maxes_by_bank:
+            self.client_maxes_by_bank[msg.client_id] = MaxByBank(msg.client_id, {})
+
+        curr_maxes = self.client_maxes_by_bank[msg.client_id].data
+
         for bank_id, (account, amount) in msg.data.items():
-            curr = state.get(bank_id)
-            if curr is None or amount > curr[1]:
-                state[bank_id] = (account, amount)
+            curr_max = curr_maxes.get(bank_id)
+
+            if not curr_max or amount > curr_max[1]:
+                new_max = (account, amount)
+                curr_maxes[bank_id] = new_max
 
     def get_result(self, client_id: UUID) -> MaxByBank:  # type: ignore[reportIncompatibleMethodOverride]
-        return self._state.pop(client_id, MaxByBank(client_id, {}))
+        result = self.client_maxes_by_bank.pop(client_id, MaxByBank(client_id, {}))
+        return result
