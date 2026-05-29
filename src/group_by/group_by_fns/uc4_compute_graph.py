@@ -29,12 +29,9 @@ class UC4ComputeGraph(GroupByFn):
         succs = self._succs.pop(client_id, {})
         preds = self._preds.pop(client_id, {})
 
-        # Send ALL nodes (even with only preds or only succs) so that
-        # uc4_count_paths can merge partial graphs from multiple nodes before
-        # filtering. Filtering here would drop intermediary nodes whose two
-        # edges (A→B and B→C) landed on different competing consumers.
         nodes = {
             node: (preds.get(node, set()), succs.get(node, set()))
             for node in succs.keys() | preds.keys()
         }
+
         return Graph(client_id, nodes)

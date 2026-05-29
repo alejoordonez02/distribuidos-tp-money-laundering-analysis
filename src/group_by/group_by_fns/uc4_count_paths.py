@@ -23,11 +23,6 @@ class UC4CountPaths(GroupByFn):
         preds = self._preds.pop(client_id, {})
         succs = self._succs.pop(client_id, {})
 
-        # Only count paths through nodes that have BOTH predecessors and
-        # successors after merging all partial graphs. This is the filter
-        # that was previously (incorrectly) applied inside each compute_graph
-        # node before the merge, which caused nodes whose two edges landed on
-        # different workers to be silently dropped.
         result = PathCounts(client_id, {})
         for node, node_preds in preds.items():
             node_succs = succs.get(node)
