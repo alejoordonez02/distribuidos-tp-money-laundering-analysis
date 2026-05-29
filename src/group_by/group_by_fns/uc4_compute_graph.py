@@ -32,6 +32,6 @@ class UC4ComputeGraph(GroupByFn):
         nodes = {
             node: (preds.get(node, set()), succs.get(node, set()))
             for node in succs.keys() | preds.keys()
-            if preds.get(node) and succs.get(node)
         }
+
         return Graph(client_id, nodes)
