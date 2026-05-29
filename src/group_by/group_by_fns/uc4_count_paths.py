@@ -25,8 +25,11 @@ class UC4CountPaths(GroupByFn):
 
         result = PathCounts(client_id, {})
         for node, node_preds in preds.items():
+            node_succs = succs.get(node)
+            if not node_succs:
+                continue
             for a in node_preds:
-                for c in succs.get(node, set()):
+                for c in node_succs:
                     if a != c:
                         result.add(Path(a, c), 1)
         return result

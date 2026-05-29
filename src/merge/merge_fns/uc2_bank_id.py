@@ -6,7 +6,6 @@ from .merge_fn import MergeFn
 
 
 class UC2BankIdMergeFn(MergeFn):
-
     def __init__(self):
         self._max_amounts: dict[UUID, MaxByBank] = {}
         self._bank_names: dict[UUID, BankNames] = {}
@@ -29,7 +28,8 @@ class UC2BankIdMergeFn(MergeFn):
         max_amounts = self._max_amounts.pop(client_id, MaxByBank(client_id, {})).data
         bank_names = self._bank_names.pop(client_id, BankNames(client_id, {})).data
         entries = [
-            (bank_id, account, amount, bank_names.get(bank_id, bank_id))
+            (bank_id, account, amount, bank_names[bank_id])
             for bank_id, (account, amount) in max_amounts.items()
+            if bank_id in bank_names
         ]
         return MergedBankData(client_id, entries)

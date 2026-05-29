@@ -19,3 +19,4 @@ class Node:
 
     def __str__(self) -> str:
         return f"{self.bank},{self.account}"
+
