@@ -46,11 +46,13 @@ def main():
             raise ValueError(f"unknown group_by strategy: {STRATEGY}")
 
     external_rx = QueueRabbitMQ(MOM_HOST, RX)
-    external_tx = QueueRabbitMQ(MOM_HOST, TX)
+    external_txs = (QueueRabbitMQ(MOM_HOST, TX),)
     internal_eofs = Queue[EOF]()
-    eof_handler = make_stateful_eof_handler(MOM_HOST, [external_tx], internal_eofs)
+    eof_handler = make_stateful_eof_handler(MOM_HOST, external_txs, internal_eofs)
 
-    groupby = GroupBy(external_rx, fn, external_tx, eof_handler, internal_eofs, NPEERS_UPSTREAM)
+    groupby = GroupBy(
+        external_rx, fn, external_txs, eof_handler, internal_eofs, NPEERS_UPSTREAM
+    )
     groupby.start()
 
 

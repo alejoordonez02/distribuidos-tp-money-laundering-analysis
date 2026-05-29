@@ -1,29 +1,29 @@
 from queue import Queue
 from threading import Thread
-from typing import Callable
+from typing import Callable, Sequence
 from uuid import UUID
 
 from group_by_fns import GroupByFn
 
 from common.comms.eof_handler import StatefulEOFHandler
 from common.comms.messages import EOF, MessageType, deserialize_message
-from common.comms.middleware import MOMQueue
+from common.comms.middleware.mom import MOM
 from common.graceful_shutdown import setup_graceful_shutdown
 
 
 class GroupBy:
     def __init__(
         self,
-        external_rx: MOMQueue,
+        external_rx: MOM,
         fn: GroupByFn,
-        external_tx: MOMQueue,
+        external_tx: Sequence[MOM],
         eof_handler: StatefulEOFHandler,
         internal_eofs_rx: Queue[EOF],
         npeers_upstream: int = 1,
     ):
         self.external_rx = external_rx
         self.fn = fn
-        self.external_tx = external_tx
+        self.external_txs = external_tx
         self.eof_handler = eof_handler
         self.internal_eofs_rx = internal_eofs_rx
         self.npeers_upstream = npeers_upstream
@@ -48,7 +48,9 @@ class GroupBy:
     def stop(self):
         self.external_rx.stop_consuming()
         self.external_rx.close()
-        self.external_tx.close()
+        for tx in self.external_txs:
+            tx.close()
+
         self.eof_handler.stop()
         self.internal_eofs_rx.shutdown()
         self.internal_eofs_handle.join()
@@ -65,9 +67,16 @@ class GroupBy:
                     raise e
                 return
 
-            result = self.fn.get_result(eof.client_id)
+            maybe_w_affinity = self.fn.get_result(eof.client_id)
+            if isinstance(maybe_w_affinity, tuple):
+                result, affinity = maybe_w_affinity
+            else:
+                result = maybe_w_affinity
+                affinity = 0
 
-            self.external_tx.send(result.serialize())
+            external_tx_idx = affinity % len(self.external_txs)
+
+            self.external_txs[external_tx_idx].send(result.serialize())
             # NOTE: the eof that's passed to `downstream`
             #       must be the same one that's popped
             #       from the `internal_eofs` queue.

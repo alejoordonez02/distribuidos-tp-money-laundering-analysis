@@ -136,7 +136,7 @@ services:
       - RX=uc4_aggregated_paths
       - UC4_FILTERED_PATHS_TX=uc4_join
       - IDX=0
-      - NPEERS=3
+      - NPEERS=2
       - RING_NAME=uc4_path_filter_ring
 
   uc4_path_filter_1:
@@ -154,25 +154,7 @@ services:
       - RX=uc4_aggregated_paths
       - UC4_FILTERED_PATHS_TX=uc4_join
       - IDX=1
-      - NPEERS=3
-      - RING_NAME=uc4_path_filter_ring
-
-  uc4_path_filter_2:
-    build:
-      context: ./src/
-      dockerfile: filter/Dockerfile
-    container_name: uc4_path_filter_2
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - STRATEGY=uc4_path
-      - RX=uc4_aggregated_paths
-      - UC4_FILTERED_PATHS_TX=uc4_join
-      - IDX=2
-      - NPEERS=3
+      - NPEERS=2
       - RING_NAME=uc4_path_filter_ring
 
   uc5_amount_filter_0:
@@ -190,7 +172,7 @@ services:
       - RX=uc5_converted_transactions
       - UC5_AMOUNT_FILTERED_TX=uc5_filtered_converted_transactions
       - IDX=0
-      - NPEERS=3
+      - NPEERS=2
       - RING_NAME=uc5_amount_filter_ring
 
   uc5_amount_filter_1:
@@ -208,25 +190,7 @@ services:
       - RX=uc5_converted_transactions
       - UC5_AMOUNT_FILTERED_TX=uc5_filtered_converted_transactions
       - IDX=1
-      - NPEERS=3
-      - RING_NAME=uc5_amount_filter_ring
-
-  uc5_amount_filter_2:
-    build:
-      context: ./src/
-      dockerfile: filter/Dockerfile
-    container_name: uc5_amount_filter_2
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - STRATEGY=uc5_amount
-      - RX=uc5_converted_transactions
-      - UC5_AMOUNT_FILTERED_TX=uc5_filtered_converted_transactions
-      - IDX=2
-      - NPEERS=3
+      - NPEERS=2
       - RING_NAME=uc5_amount_filter_ring
 
   # --- groupbys ---
@@ -408,7 +372,7 @@ services:
       - RX=uc4_filtered_transactions
       - TX=uc4_graphs
       - IDX=0
-      - NPEERS=5
+      - NPEERS=3
       - RING_NAME=uc4_compute_graph_ring
 
   uc4_compute_graph_group_by_1:
@@ -427,7 +391,7 @@ services:
       - RX=uc4_filtered_transactions
       - TX=uc4_graphs
       - IDX=1
-      - NPEERS=5
+      - NPEERS=3
       - RING_NAME=uc4_compute_graph_ring
 
   uc4_compute_graph_group_by_2:
@@ -446,45 +410,7 @@ services:
       - RX=uc4_filtered_transactions
       - TX=uc4_graphs
       - IDX=2
-      - NPEERS=5
-      - RING_NAME=uc4_compute_graph_ring
-
-  uc4_compute_graph_group_by_3:
-    build:
-      context: ./src/
-      dockerfile: group_by/Dockerfile
-    container_name: uc4_compute_graph_group_by_3
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    mem_limit: 2500m
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - STRATEGY=uc4_compute_graph
-      - RX=uc4_filtered_transactions
-      - TX=uc4_graphs
-      - IDX=3
-      - NPEERS=5
-      - RING_NAME=uc4_compute_graph_ring
-
-  uc4_compute_graph_group_by_4:
-    build:
-      context: ./src/
-      dockerfile: group_by/Dockerfile
-    container_name: uc4_compute_graph_group_by_4
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    mem_limit: 2500m
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - STRATEGY=uc4_compute_graph
-      - RX=uc4_filtered_transactions
-      - TX=uc4_graphs
-      - IDX=4
-      - NPEERS=5
+      - NPEERS=3
       - RING_NAME=uc4_compute_graph_ring
 
   uc4_count_paths_group_by:
@@ -518,7 +444,7 @@ services:
       - RX=uc5_filtered_transactions
       - TX=uc5_converted_transactions
       - IDX=0
-      - NPEERS=3
+      - NPEERS=2
       - RING_NAME=uc5_converter_ring
 
   uc5_converter_1:
@@ -535,24 +461,7 @@ services:
       - RX=uc5_filtered_transactions
       - TX=uc5_converted_transactions
       - IDX=1
-      - NPEERS=3
-      - RING_NAME=uc5_converter_ring
-
-  uc5_converter_2:
-    build:
-      context: ./src/
-      dockerfile: converter/Dockerfile
-    container_name: uc5_converter_2
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - RX=uc5_filtered_transactions
-      - TX=uc5_converted_transactions
-      - IDX=2
-      - NPEERS=3
+      - NPEERS=2
       - RING_NAME=uc5_converter_ring
 
   uc5_count_group_by:

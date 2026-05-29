@@ -1,13 +1,13 @@
 import logging
 from queue import Queue
 from threading import Lock, Thread
-from typing import Callable
+from typing import Callable, Iterable
 from uuid import UUID
 
 from common.comms.messages import EOF, RingDone, deserialize_message
 from common.comms.messages.errors import UnexpectedMessageError
 from common.comms.messages.message_types import MessageType
-from common.comms.middleware import MOMQueue, MOMRing
+from common.comms.middleware import MOM, MOMRing
 
 from .eof_handler import StatefulEOFHandler
 from .ring_eof_handler import RingEOFHandler
@@ -18,7 +18,7 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
         self,
         id2: int,
         mom_ring: MOMRing,
-        external_txs: list[MOMQueue],
+        external_txs: Iterable[MOM],
         internal_eofs_tx: Queue[EOF],
     ):
         self.id = id2
