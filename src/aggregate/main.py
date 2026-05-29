@@ -1,5 +1,6 @@
 import logging
 import os
+from queue import Queue
 
 from aggregate_fns import (
     UC2BankNamesAggregateFn,
@@ -9,6 +10,8 @@ from aggregate_fns import (
 )
 
 from aggregate import Aggregate
+from common.comms.eof_handler.make_eof_handler import make_stateful_eof_handler
+from common.comms.messages.eof import EOF
 from common.comms.middleware import QueueRabbitMQ
 
 MOM_HOST = os.environ["MOM_HOST"]
@@ -36,7 +39,16 @@ def main():
         case _:
             raise ValueError(f"unknown aggregate strategy: {STRATEGY}")
 
-    Aggregate(QueueRabbitMQ(MOM_HOST, RX), fn, QueueRabbitMQ(MOM_HOST, TX), NPEERS_UPSTREAM).start()
+    external_rx = QueueRabbitMQ(MOM_HOST, RX)
+    external_tx = QueueRabbitMQ(MOM_HOST, TX)
+
+    internal_eofs = Queue[EOF]()
+    eof_handler = make_stateful_eof_handler(MOM_HOST, [external_tx], internal_eofs)
+
+    aggregate = Aggregate(
+        external_rx, fn, external_tx, eof_handler, internal_eofs, NPEERS_UPSTREAM
+    )
+    aggregate.start()
 
 
 if __name__ == "__main__":
