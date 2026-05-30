@@ -1,6 +1,6 @@
 services:
   # --- rabbitmq ---
-  rabbitmq:
+  rabbitmq: # no le cambien nombre porq se usa en make down_server !!!
     build:
       context: ./src/rabbitmq
       dockerfile: Dockerfile
