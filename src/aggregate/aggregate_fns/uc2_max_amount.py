@@ -5,6 +5,8 @@ from common.comms.messages import MaxByBank
 
 from .aggregate_fn import AggregateFn
 
+AFFINITY_SHARDS = 100
+
 
 class UC2MaxAmountAggregateFn(AggregateFn):
     def __init__(self):
@@ -28,9 +30,12 @@ class UC2MaxAmountAggregateFn(AggregateFn):
             return ()
 
         maxes_by_bank = self.client_maxes_by_bank.pop(client_id)
+        affinities: dict[int, tuple[str, tuple[str, float]]] = {}
 
         for bank_id, (account, max2) in maxes_by_bank.data.items():
-            # TODO: vamos a tener que hacer que todos los
-            #       msjs sean unitarios
+            affinity_shard = hash(bank_id) % AFFINITY_SHARDS
+            affinities[affinity_shard] = bank_id, (account, max2)
+
+        for affinity, (bank_id, (account, max2)) in affinities.items():
             bank_max = MaxByBank(client_id, {bank_id: (account, max2)})
-            yield bank_max, hash(bank_id)
+            yield bank_max, affinity

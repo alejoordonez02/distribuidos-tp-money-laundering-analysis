@@ -5,6 +5,8 @@ from common.comms.messages import BankNames
 
 from .aggregate_fn import AggregateFn
 
+AFFINITY_SHARDS = 100
+
 
 class UC2BankNamesAggregateFn(AggregateFn):
     def __init__(self):
@@ -21,7 +23,12 @@ class UC2BankNamesAggregateFn(AggregateFn):
             return ()
 
         bank_names = self._state.pop(client_id)
+        affinities: dict[int, tuple[str, str]] = {}
 
         for bank_id, bank_name in bank_names.data.items():
+            affinity_shard = hash(bank_id) % AFFINITY_SHARDS
+            affinities[affinity_shard] = bank_id, bank_name
+
+        for affinity, (bank_id, bank_name) in affinities.items():
             bank_id_name = BankNames(client_id, {bank_id: bank_name})
-            yield bank_id_name, hash(bank_id)
+            yield bank_id_name, affinity
