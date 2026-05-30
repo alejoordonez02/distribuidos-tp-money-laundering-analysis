@@ -2,11 +2,12 @@ SHELL := /bin/bash
 PWD := $(shell pwd)
 PYTHON_PM := /bin/uv
 COMPOSE := docker compose -f docker-compose.yaml -f docker-compose.clients.yaml
+RABBIT_CONTAINER := rabbitmq
 
-.PHONY: help gen_input_output gen_compose up down logs test report demo
+.PHONY: help gen_input_output gen_compose up stop_server down logs test report demo
 
 help:
-	@echo '* opciones: help (esto) - gen_input_output - gen_compose - up - down - logs - test - report'
+	@echo '* opciones: help (esto) - gen_input_output - gen_compose - up - stop_server - down - logs - test - report'
 	@echo '* para up tienen que tener bajado los datasets LI-Small y dejarlos en `datasets/`'
 	@echo '  no los pusheé porque son demasiado grandes hasta comprimidos'
 	@echo '* para los targets que se corren en python se usa `uv`. Hay que tenerlo instalado'
@@ -23,6 +24,12 @@ up: gen_compose
 	mkdir -p responses
 	$(COMPOSE) up --build --remove-orphans --detach
 	$(COMPOSE) logs --follow
+
+stop_server: gen_compose
+	NON_RABBIT=$$($(COMPOSE) ps -q | grep -v $$(docker ps -q -f "name=$(RABBIT_CONTAINER)")); \
+	if [ -n "$$NON_RABBIT" ]; then \
+		docker stop $$NON_RABBIT -t 5; \
+	fi
 
 down: gen_compose
 	$(COMPOSE) stop -t 5
