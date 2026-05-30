@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from threading import Lock, Thread
-from typing import Callable, Self
+from typing import Callable
 from uuid import UUID
 
 from common.comms.middleware import MOMRing
@@ -12,6 +12,7 @@ class RingEOFHandler(ABC):
     mom_ring: MOMRing
     mtx: Lock
     processed_counts: dict[UUID, int]
+    next_expected_counts: dict[UUID, int]
 
     def start(self):
         self.thread_handle = Thread(target=self._start_consuming_back)

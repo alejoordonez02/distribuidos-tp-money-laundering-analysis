@@ -7,7 +7,10 @@ from common.comms.messages.eof import EOF
 from common.comms.middleware import MOM, RingRabbitMQ
 
 from .eof_handler import StatefulEOFHandler, StatelessEOFHandler
-from .single_node_eof_handler import SingleNodeEOFHandler, StatefulSingleNodeEOFHandler
+from .single_node_eof_handler import (
+    StatefulSingleNodeEOFHandler,
+    StatelessSingleNodeEOFHandler,
+)
 from .stateless_ring_eof_handler import StatelessRingEOFHandler
 
 
@@ -31,7 +34,7 @@ def make_stateless_eof_handler(
     if NPEERS < 1:
         raise ValueError("NPEERS must be greater or equal than 1")
     if NPEERS == 1:
-        return SingleNodeEOFHandler(txs)
+        return StatelessSingleNodeEOFHandler(txs)
 
     IDX = int(os.environ["IDX"])
     RING_NAME: str = os.environ["RING_NAME"]

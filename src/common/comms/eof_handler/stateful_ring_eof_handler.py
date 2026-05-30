@@ -48,6 +48,7 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
 
     def handle(self, eof: EOF):
         eof.processed_count = 0
+        eof.next_expected_count = 0
         eof.origin = self.id
 
         logging.info(f"sending internal eof: {eof.__dict__}")
@@ -61,16 +62,10 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
         #       debería volver a estar, no lo toco sólo
         #       porque ahora que los groupbys son
         #       stateless nadie usa esta clase.
-        # if eof.origin != self.id:
-        #     return
+        if eof.origin != self.id:
+            return
 
-        # NOTE: si soy steteful espero al eof del cliente
-        #       para hacer `get_result(client_id)` y mandar
-        #       mandar el msj, mando un sólo msj, sin
-        #       embargo, a diferencia de en
-        #       `SingleNodeEOFHandler`, acá van a estar
-        #       mandando cada uno de los nodos del clúster.
-        eof.expected_count = self.mom_ring.nnodes()
+        eof.expected_count = eof.next_expected_count
 
         logging.info(f"downstreaming eof: {eof.__dict__}")
         for tx in self.external_txs:
@@ -95,7 +90,10 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
     def _handle_ring_eof(self, eof: EOF, mom_ring_tx: MOMRing):
         with self.mtx:
             eof.processed_count += self.processed_counts.get(eof.client_id, 0)
+            eof.next_expected_count += self.next_expected_counts.get(eof.client_id, 0)
+
             self.processed_counts[eof.client_id] = 0
+            self.next_expected_counts[eof.client_id] = 0
 
             if eof.processed_count != eof.expected_count:
                 logging.info(f"forwarding internal eof: {eof.__dict__}")

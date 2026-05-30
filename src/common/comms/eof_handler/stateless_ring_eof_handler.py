@@ -15,11 +15,13 @@ class StatelessRingEOFHandler(RingEOFHandler, StatelessEOFHandler):
         self.mom_ring = mom_ring
         self.txs = [tx.clone() for tx in txs]
         self.processed_counts: dict[UUID, int] = {}
+        self.next_expected_counts: dict[UUID, int] = {}
         self.thread_handle: Thread | None = None
         self.mtx = Lock()
 
     def handle(self, eof: EOF):
         eof.processed_count = 0
+        eof.next_expected_count = 0
         self.mom_ring.send(eof.serialize())
 
     def _handle_ring_message(
@@ -29,7 +31,10 @@ class StatelessRingEOFHandler(RingEOFHandler, StatelessEOFHandler):
 
         with self.mtx:
             eof.processed_count += self.processed_counts.get(eof.client_id, 0)
+            eof.next_expected_count += self.next_expected_counts.get(eof.client_id, 0)
+
             self.processed_counts[eof.client_id] = 0
+            self.next_expected_counts[eof.client_id] = 0
 
             if eof.processed_count == eof.expected_count:
                 logging.info(f"downstreaming eof: {eof.__dict__}")
