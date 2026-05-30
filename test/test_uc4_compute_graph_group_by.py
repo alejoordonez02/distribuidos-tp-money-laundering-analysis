@@ -37,17 +37,24 @@ def test_single_path_graph():
     transactions = Transactions(
         some_uuid,  # type: ignore[reportArgumentType]
         [
-            _transaction("origin_bank", "origin_account", "middle_bank", "middle_account"),
-            _transaction("middle_bank", "middle_account", "destination_bank", "destination_account"),
+            _transaction(
+                "origin_bank", "origin_account", "middle_bank", "middle_account"
+            ),
+            _transaction(
+                "middle_bank",
+                "middle_account",
+                "destination_bank",
+                "destination_account",
+            ),
         ],
     )
 
     expected = {(origin_node, middle_node), (middle_node, destination_node)}
 
     fn = UC4ComputeGraph()
-    fn.group_by(transactions)
+    graph = fn.group_by(transactions)
 
-    assert _all_edges(fn.get_result(some_uuid)) == expected  # type: ignore[reportArgumentType]
+    assert _all_edges(graph) == expected  # type: ignore[reportArgumentType]
 
 
 def test_five_path_graph():
@@ -59,20 +66,27 @@ def test_five_path_graph():
     transactions = Transactions(
         some_uuid,  # type: ignore[reportArgumentType]
         [
-            _transaction("origin_bank", "origin_account", f"middle_bank{i}", f"middle_account{i}")
+            _transaction(
+                "origin_bank", "origin_account", f"middle_bank{i}", f"middle_account{i}"
+            )
             for i in range(1, 6)
-        ] + [
-            _transaction(f"middle_bank{i}", f"middle_account{i}", "destination_bank", "destination_account")
+        ]
+        + [
+            _transaction(
+                f"middle_bank{i}",
+                f"middle_account{i}",
+                "destination_bank",
+                "destination_account",
+            )
             for i in range(1, 6)
         ],
     )
 
-    expected = (
-        {(origin_node, m) for m in middles}
-        | {(m, destination_node) for m in middles}
-    )
+    expected = {(origin_node, m) for m in middles} | {
+        (m, destination_node) for m in middles
+    }
 
     fn = UC4ComputeGraph()
-    fn.group_by(transactions)
+    graph = fn.group_by(transactions)
 
-    assert _all_edges(fn.get_result(some_uuid)) == expected  # type: ignore[reportArgumentType]
+    assert _all_edges(graph) == expected  # type: ignore[reportArgumentType]
