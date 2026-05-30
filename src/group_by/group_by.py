@@ -50,6 +50,8 @@ class GroupBy:
 
                 # FIXME: ver q esto funcione en todos
                 #       los eof handlers
-                self.eof_handler.add_processed_count(msg.client_id)
+                self.eof_handler.add_next_expected_processed_counts(msg.client_id)
+
+            self.eof_handler.add_processed_count(msg.client_id)
 
         ack()

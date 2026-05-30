@@ -1,6 +1,6 @@
 from queue import Queue
 from threading import Thread
-from typing import Callable, Iterable
+from typing import Callable, Sequence
 
 from aggregate_fns import AggregateFn
 
@@ -15,7 +15,7 @@ class Aggregate:
         self,
         external_rx: MOM,
         fn: AggregateFn,
-        external_txs: Iterable[MOM],
+        external_txs: Sequence[MOM],
         eof_handler: StatefulEOFHandler,
         internal_eofs_rx: Queue[EOF],
         npeers_upstream: int = 1,
@@ -72,7 +72,7 @@ class Aggregate:
 
                 # FIXME: ver q esto funcione en todos
                 #       los eof handlers
-                self.eof_handler.add_processed_count(eof.client_id)
+                self.eof_handler.add_next_expected_processed_counts(eof.client_id)
 
             # NOTE: the eof that's passed to `downstream`
             #       must be the same one that's popped

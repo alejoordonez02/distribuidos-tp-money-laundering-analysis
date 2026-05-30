@@ -48,6 +48,7 @@ class Filter:
                 destination.send(filtered.serialize())
                 logging.debug(f"filtered: {filtered.__dict__}")
 
+            self.eof_handler.add_next_expected_processed_counts(msg.client_id)
             self.eof_handler.add_processed_count(msg.client_id)
 
         ack()
