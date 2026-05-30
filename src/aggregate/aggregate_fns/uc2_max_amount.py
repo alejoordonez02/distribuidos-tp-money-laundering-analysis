@@ -22,6 +22,6 @@ class UC2MaxAmountAggregateFn(AggregateFn):
                 new_max = (account, amount)
                 curr_maxes[bank_id] = new_max
 
-    def get_result(self, client_id: UUID) -> MaxByBank:  # type: ignore[reportIncompatibleMethodOverride]
+    def get_result(self, client_id: UUID) -> Iterator[MaxByBank]:  # type: ignore[reportIncompatibleMethodOverride]
         result = self.client_maxes_by_bank.pop(client_id, MaxByBank(client_id, {}))
-        return result
+        return [result]

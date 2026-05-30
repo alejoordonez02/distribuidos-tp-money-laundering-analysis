@@ -37,7 +37,7 @@ class StatelessRingEOFHandler(RingEOFHandler, StatelessEOFHandler):
                     tx.send(eof.serialize())
 
             else:
-                logging.info(f"sending internal eof: {eof.__dict__}")
+                # logging.info(f"sending internal eof: {eof.__dict__}")
                 mom_ring_tx.send(eof.serialize())
 
             ack()

@@ -50,7 +50,7 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
         eof.processed_count = 0
         eof.origin = self.id
 
-        logging.info(f"sending internal eof: {eof.__dict__}")
+        # logging.info(f"sending internal eof: {eof.__dict__}")
         self.mom_ring.send(eof.serialize())
 
     def downstream(self, eof: EOF):

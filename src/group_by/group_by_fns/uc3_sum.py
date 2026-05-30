@@ -16,4 +16,4 @@ class UC3SumGroupByFn(GroupByFn):
 
             sum_counts[t.payment_format] = new
 
-        return SumByPaymentFormat(msg.client_id, sum_counts)
+        return [SumByPaymentFormat(msg.client_id, sum_counts),]

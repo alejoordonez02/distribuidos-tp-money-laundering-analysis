@@ -14,8 +14,8 @@ MAX_AMOUNT = 100
 SHARDING_FILES = 100
 
 
-def sharding_hash(node: Node, client_id: UUID) -> int:
-    return hash(f"{client_id:}_{str(node)}") % SHARDING_FILES
+def sharding_hash(node: Node) -> int:
+    return hash(f"{str(node)}") % SHARDING_FILES
 
 def _serialize(node: Node, preds: set[Node], succs: set[Node]) -> str:
     return json.dumps([str(node), [str(n) for n in preds], [str(n) for n in succs]])
@@ -31,9 +31,11 @@ class UC4AggregateGraphs(AggregateFn):
         self._files: dict[UUID, dict[int, pathlib.Path]] = {}
 
     def _file_for(self, node: Node, client_id: UUID) -> pathlib.Path:
-        hash = sharding_hash(node, client_id)
+        hash = sharding_hash(node)
+        if client_id not in self._files:
+            self._files[client_id] = {}
         if hash not in self._files[client_id]:
-            fd, path = tempfile.mkstemp(prefix=f"UC4:{hash}", suffix=".jsonl")
+            fd, path = tempfile.mkstemp(prefix=f"UC4:{client_id}:{hash}", suffix=".jsonl")
             os.close(fd)
             self._files[client_id][hash] = pathlib.Path(path)
         return self._files[client_id][hash]
