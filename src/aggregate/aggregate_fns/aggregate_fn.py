@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from typing import Iterable
 from uuid import UUID
 
 from common.comms.messages import Message
@@ -10,5 +11,5 @@ class AggregateFn:
         pass
 
     @abstractmethod
-    def get_result(self, client_id: UUID) -> Message:
+    def get_result(self, client_id: UUID) -> Iterable[tuple[Message, int]]:
         pass
