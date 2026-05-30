@@ -22,32 +22,23 @@ class ExchangeRabbitMQ(MOMExchange):
         self.host = host
         self.exchange_name = exchange_name
         self.routing_keys = routing_keys
+        self.queue_name = queue_name
 
         # TODO: heartbeat=600 may be starved by blocking callbacks in start_consuming — revisit
         self.conn = BlockingConnection(ConnectionParameters(host, heartbeat=600))
         self.chan = self.conn.channel()
         self.chan.exchange_declare(exchange=exchange_name)
 
-        # NOTE: estaban quedando msjs en ready cuando miraba
-        #       el monitor de rabbit, para debuggear les puse
-        #       nombre pero cuando les puse nombre
-        #       desaparecieron esos msjs... El problema es
-        #       que para ponerles nombre tuve que bochar este
-        #       `exclusive=True`, porque tendría que una sola
-        #       vez, pero de ambos lados, prod consumer, se
-        #       declara por si acaso.
-        # queue = self.chan.queue_declare(queue="", exclusive=True)
-        # queue_name = queue.method.queue
-        self.chan.queue_declare(queue=queue_name)
-        self.queue_name = queue_name
+    def start_consuming(
+        self, on_message_callback: Callable[[bytes, Callable, Callable], None]
+    ) -> None:
+
+        self.chan.queue_declare(queue=self.queue_name, exclusive=True)
         for k in self.routing_keys:
             self.chan.queue_bind(
                 exchange=self.exchange_name, queue=self.queue_name, routing_key=k
             )
 
-    def start_consuming(
-        self, on_message_callback: Callable[[bytes, Callable, Callable], None]
-    ) -> None:
         def callback(chan, method, _, body):
             on_message_callback(
                 body, lambda: self._ack(chan, method), lambda: self._nack(chan, method)
