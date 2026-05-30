@@ -400,7 +400,6 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-    mem_limit: 2500m
     environment:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
@@ -419,7 +418,6 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-    mem_limit: 2500m
     environment:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
@@ -438,7 +436,6 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-    mem_limit: 2500m
     environment:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
@@ -457,7 +454,6 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-    mem_limit: 2500m
     environment:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
@@ -476,7 +472,6 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-    mem_limit: 2500m
     environment:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
@@ -495,7 +490,6 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-    mem_limit: 3g
     environment:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
@@ -659,7 +653,6 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-    mem_limit: 1500m
     environment:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
