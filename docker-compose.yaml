@@ -364,7 +364,6 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-    mem_limit: 2500m
     environment:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
@@ -383,7 +382,6 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-    mem_limit: 2500m
     environment:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
@@ -402,7 +400,6 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-    mem_limit: 2500m
     environment:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
@@ -412,23 +409,6 @@ services:
       - IDX=2
       - NPEERS=3
       - RING_NAME=uc4_compute_graph_ring
-
-  uc4_count_paths_group_by:
-    build:
-      context: ./src/
-      dockerfile: group_by/Dockerfile
-    container_name: uc4_count_paths_group_by
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    mem_limit: 3g
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - STRATEGY=uc4_count_paths
-      - RX=uc4_graphs
-      - TX=uc4_paths
-      - NPEERS_UPSTREAM=5
 
   uc5_converter_0:
     build:
@@ -528,6 +508,22 @@ services:
       - TX=uc3_avg
       - NPEERS_UPSTREAM=3
 
+  uc4_graph_aggregate:
+    build:
+      context: ./src/
+      dockerfile: aggregate/Dockerfile
+    container_name: uc4_graph_aggregate
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc4_count_paths
+      - RX=uc4_graphs
+      - TX=uc4_paths
+      - NPEERS_UPSTREAM=5
+
   uc4_paths_aggregate:
     build:
       context: ./src/
@@ -568,7 +564,6 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-    mem_limit: 1500m
     environment:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672

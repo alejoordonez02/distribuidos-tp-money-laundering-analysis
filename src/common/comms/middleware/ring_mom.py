@@ -14,9 +14,16 @@ class MOMRing(MOM):
     """
 
     @abstractmethod
-    def __init__(self, host: str, ring_name: str, self_id: int, peer_ids: list[int]):
-        pass
+    def __init__(
+        self, host: str, ring_name: str, self_id: int, peer_ids: list[int]
+    ): ...
 
     @abstractmethod
-    def clone(self) -> "MOMRing":
-        pass
+    def clone(self) -> "MOMRing": ...
+
+    @abstractmethod
+    def nnodes(self) -> int:
+        """
+        Returns the number of nodes in the ring.
+        """
+        ...

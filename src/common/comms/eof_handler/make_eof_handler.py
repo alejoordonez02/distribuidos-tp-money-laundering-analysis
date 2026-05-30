@@ -11,7 +11,9 @@ from .single_node_eof_handler import SingleNodeEOFHandler, StatefulSingleNodeEOF
 from .stateless_ring_eof_handler import StatelessRingEOFHandler
 
 
-def make_stateless_eof_handler(mom_host: str, txs: list[MOM]) -> StatelessEOFHandler:
+def make_stateless_eof_handler(
+    mom_host: str, txs: Iterable[MOM]
+) -> StatelessEOFHandler:
     """
     Create a stateless end of file message handler.
 

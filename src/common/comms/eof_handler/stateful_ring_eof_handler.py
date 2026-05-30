@@ -54,6 +54,24 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
         self.mom_ring.send(eof.serialize())
 
     def downstream(self, eof: EOF):
+        # TODO: esto realmente no funcionaba? ver. Saqué
+        #       la restricción de que se esperen todos
+        #       los eofs de atrás porque no estaba
+        #       sirviendo en esta rama. Así que esto
+        #       debería volver a estar, no lo toco sólo
+        #       porque ahora que los groupbys son
+        #       stateless nadie usa esta clase.
+        # if eof.origin != self.id:
+        #     return
+
+        # NOTE: si soy steteful espero al eof del cliente
+        #       para hacer `get_result(client_id)` y mandar
+        #       mandar el msj, mando un sólo msj, sin
+        #       embargo, a diferencia de en
+        #       `SingleNodeEOFHandler`, acá van a estar
+        #       mandando cada uno de los nodos del clúster.
+        eof.expected_count = self.mom_ring.nnodes()
+
         logging.info(f"downstreaming eof: {eof.__dict__}")
         for tx in self.external_txs:
             tx.send(eof.serialize())

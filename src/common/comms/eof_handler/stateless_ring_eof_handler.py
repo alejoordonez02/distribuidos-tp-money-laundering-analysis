@@ -1,17 +1,17 @@
 import logging
 from threading import Lock, Thread
-from typing import Callable
+from typing import Callable, Iterable
 from uuid import UUID
 
 from common.comms.messages import EOF
-from common.comms.middleware import MOMQueue, MOMRing
+from common.comms.middleware import MOM, MOMRing
 
 from .eof_handler import StatelessEOFHandler
 from .ring_eof_handler import RingEOFHandler
 
 
 class StatelessRingEOFHandler(RingEOFHandler, StatelessEOFHandler):
-    def __init__(self, mom_ring: MOMRing, txs: list[MOMQueue]):
+    def __init__(self, mom_ring: MOMRing, txs: Iterable[MOM]):
         self.mom_ring = mom_ring
         self.txs = [tx.clone() for tx in txs]
         self.processed_counts: dict[UUID, int] = {}

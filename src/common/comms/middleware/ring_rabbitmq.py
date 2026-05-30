@@ -68,6 +68,11 @@ class RingRabbitMQ(MOMRing):
         self.exchange_front = exchange_factory(host, ring_name, [str(self.front_id)])
         self.exchange_back = exchange_factory(host, ring_name, [str(self.id)])
 
+    def nnodes(self) -> int:
+        # TODO: esto para fault tolerance va a
+        #       tener que ser dinámico.
+        return 1 + len(self.peer_ids)
+
     def start_consuming(
         self, on_message_callback: Callable[[bytes, Callable, Callable], None]
     ):

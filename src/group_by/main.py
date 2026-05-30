@@ -1,18 +1,15 @@
 import logging
 import os
-from queue import Queue
 
 from group_by_fns import (
     UC2BankNamesGroupByFn,
     UC2MaxAmountGroupByFn,
     UC3SumGroupByFn,
     UC4ComputeGraph,
-    UC4CountPaths,
     UC5CountGroupByFn,
 )
 
-from common.comms.eof_handler import make_stateful_eof_handler
-from common.comms.messages import EOF
+from common.comms.eof_handler import make_stateless_eof_handler
 from common.comms.middleware import QueueRabbitMQ
 from group_by import GroupBy
 
@@ -38,8 +35,6 @@ def main():
             fn = UC3SumGroupByFn()
         case "uc4_compute_graph":
             fn = UC4ComputeGraph()
-        case "uc4_count_paths":
-            fn = UC4CountPaths()
         case "uc5_count":
             fn = UC5CountGroupByFn()
         case _:
@@ -47,12 +42,9 @@ def main():
 
     external_rx = QueueRabbitMQ(MOM_HOST, RX)
     external_txs = (QueueRabbitMQ(MOM_HOST, TX),)
-    internal_eofs = Queue[EOF]()
-    eof_handler = make_stateful_eof_handler(MOM_HOST, external_txs, internal_eofs)
+    eof_handler = make_stateless_eof_handler(MOM_HOST, external_txs)
 
-    groupby = GroupBy(
-        external_rx, fn, external_txs, eof_handler, internal_eofs, NPEERS_UPSTREAM
-    )
+    groupby = GroupBy(fn, external_rx, external_txs, eof_handler)
     groupby.start()
 
 

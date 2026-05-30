@@ -1,29 +1,19 @@
-import logging
-from uuid import UUID
-
 from common.comms.messages import SumByPaymentFormat, Transactions
 
 from .group_by_fn import GroupByFn
 
 
 class UC3SumGroupByFn(GroupByFn):
-    """Groups transactions by bank_id, keeping the max-amount entry per bank."""
-
-    def __init__(self):
-        self._state: dict[UUID, SumByPaymentFormat] = {}
-
     def group_by(self, msg: Transactions):  # type: ignore[reportIncompatibleMethodOverride]
-        if msg.client_id not in self._state:
-            self._state[msg.client_id] = SumByPaymentFormat(msg.client_id, {})
-        state = self._state[msg.client_id].sum_counts
+        sum_counts: dict[str, tuple[float, int]] = {}
 
         for t in msg.transactions:
-            curr = state.get(t.payment_format)
-            if curr is None:
-                curr = (t.amount_paid, 1)
-            else:
-                curr = (curr[0] + t.amount_paid, curr[1] + 1)
-            state[t.payment_format] = curr
+            if t.payment_format not in sum_counts:
+                sum_counts[t.payment_format] = (0, 0)
 
-    def get_result(self, client_id: UUID) -> SumByPaymentFormat:  # type: ignore[reportIncompatibleMethodOverride]
-        return self._state.get(client_id, SumByPaymentFormat(client_id, {}))
+            curr = sum_counts[t.payment_format]
+            new = (curr[0] + t.amount_paid, curr[1] + 1)
+
+            sum_counts[t.payment_format] = new
+
+        return SumByPaymentFormat(msg.client_id, sum_counts)
