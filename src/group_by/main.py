@@ -6,7 +6,6 @@ from group_by_fns import (
     UC2MaxAmountGroupByFn,
     UC3SumGroupByFn,
     UC4ComputeGraph,
-    UC4CountPaths,
     UC5CountGroupByFn,
 )
 
@@ -36,10 +35,6 @@ def main():
             fn = UC3SumGroupByFn()
         case "uc4_compute_graph":
             fn = UC4ComputeGraph()
-            raise ValueError("tmp")
-        case "uc4_count_paths":
-            fn = UC4CountPaths()
-            raise ValueError("tmp")
         case "uc5_count":
             fn = UC5CountGroupByFn()
         case _:
