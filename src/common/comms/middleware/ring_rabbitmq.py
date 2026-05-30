@@ -5,6 +5,8 @@ from .exchange_mom import MOMExchange
 from .exchange_rabbitmq import ExchangeRabbitMQ
 from .ring_mom import MOMRing, MOMRingError
 
+QUEUE_NAME_SUFFIX = "_queue"
+
 
 def _get_front_back_ids(self_id: int, peer_ids: list[int]) -> tuple[int, int]:
     if self_id in peer_ids:
@@ -39,7 +41,7 @@ class RingRabbitMQ(MOMRing):
         self_id: int,
         peer_ids: list[int],
         exchange_factory: Callable[
-            [str, str, list[str]], MOMExchange
+            [str, str, list[str], str], MOMExchange
         ] = ExchangeRabbitMQ,
     ):
         """
@@ -65,8 +67,14 @@ class RingRabbitMQ(MOMRing):
         self.exchange_factory = exchange_factory
 
         self.front_id, self.back_id = _get_front_back_ids(self.id, peer_ids)
-        self.exchange_front = exchange_factory(host, ring_name, [str(self.front_id)])
-        self.exchange_back = exchange_factory(host, ring_name, [str(self.id)])
+        front_queue_name = ring_name + QUEUE_NAME_SUFFIX + str(self.front_id)
+        self.exchange_front = exchange_factory(
+            host, ring_name, [str(self.front_id)], front_queue_name
+        )
+        self_queue_name = ring_name + QUEUE_NAME_SUFFIX + str(self.id)
+        self.exchange_back = exchange_factory(
+            host, ring_name, [str(self.id)], self_queue_name
+        )
 
     def nnodes(self) -> int:
         # TODO: esto para fault tolerance va a
