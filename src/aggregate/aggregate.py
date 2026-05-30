@@ -1,28 +1,28 @@
 from queue import Queue
 from threading import Thread
-from typing import Callable
+from typing import Callable, Iterable
 
 from aggregate_fns import AggregateFn
 
 from common.comms.eof_handler.eof_handler import StatefulEOFHandler
 from common.comms.messages import EOF, MessageType, deserialize_message
-from common.comms.middleware import MOMQueue
+from common.comms.middleware import MOM
 from common.graceful_shutdown import setup_graceful_shutdown
 
 
 class Aggregate:
     def __init__(
         self,
-        external_rx: MOMQueue,
+        external_rx: MOM,
         fn: AggregateFn,
-        external_tx: MOMQueue,
+        external_txs: Iterable[MOM],
         eof_handler: StatefulEOFHandler,
         internal_eofs_rx: Queue[EOF],
         npeers_upstream: int = 1,
     ):
         self.external_rx = external_rx
         self.fn = fn
-        self.external_tx = external_tx
+        self.external_txs = external_txs
         self.eof_handler = eof_handler
         self.internal_eofs_rx = internal_eofs_rx
         self.npeers_upstream = npeers_upstream
@@ -46,7 +46,9 @@ class Aggregate:
     def stop(self):
         self.external_rx.stop_consuming()
         self.external_rx.close()
-        self.external_tx.close()
+        for tx in self.external_txs:
+            tx.close()
+
         self.eof_handler.stop()
         self.internal_eofs_rx.shutdown()
         self.internal_eofs_handle.join()
@@ -63,9 +65,15 @@ class Aggregate:
                     raise e
                 return
 
-            result = self.fn.get_result(eof.client_id)
+            aggregates = self.fn.get_result(eof.client_id)
+            for agg, affinity in aggregates:
+                external_tx_idx = affinity % len(self.external_txs)
+                self.external_txs[external_tx_idx].send(agg.serialize())
 
-            self.external_tx.send(result.serialize())
+                # FIXME: ver q esto funcione en todos
+                #       los eof handlers
+                self.eof_handler.add_processed_count(eof.client_id)
+
             # NOTE: the eof that's passed to `downstream`
             #       must be the same one that's popped
             #       from the `internal_eofs` queue.
