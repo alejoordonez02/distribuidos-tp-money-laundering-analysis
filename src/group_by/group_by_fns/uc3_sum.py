@@ -1,10 +1,12 @@
+from typing import Iterable
+
 from common.comms.messages import SumByPaymentFormat, Transactions
 
 from .group_by_fn import GroupByFn
 
 
 class UC3SumGroupByFn(GroupByFn):
-    def group_by(self, msg: Transactions):  # type: ignore[reportIncompatibleMethodOverride]
+    def group_by(self, msg: Transactions) -> Iterable[tuple[SumByPaymentFormat, int]]:  # type: ignore[reportIncompatibleMethodOverride]
         sum_counts: dict[str, tuple[float, int]] = {}
 
         for t in msg.transactions:
@@ -16,4 +18,6 @@ class UC3SumGroupByFn(GroupByFn):
 
             sum_counts[t.payment_format] = new
 
-        return SumByPaymentFormat(msg.client_id, sum_counts)
+        for format2, (sum2, count) in sum_counts.items():
+            sum_count = SumByPaymentFormat(msg.client_id, {format2: (sum2, count)})
+            yield sum_count, hash(format2)
