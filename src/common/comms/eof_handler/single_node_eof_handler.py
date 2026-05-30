@@ -44,6 +44,12 @@ class StatefulSingleNodeEOFHandler(StatefulEOFHandler):
 
     def downstream(self, eof: EOF):
         logging.info(f"downstreaming eof: {eof.__dict__}")
+
+        # NOTE: si soy steteful espero al eof del cliente
+        #       para hacer `get_result(client_id)` y
+        #       mandar el msj, mando un sólo msj.
+        eof.expected_count = 1
+
         for tx in self.txs:
             tx.send(eof.serialize())
 
