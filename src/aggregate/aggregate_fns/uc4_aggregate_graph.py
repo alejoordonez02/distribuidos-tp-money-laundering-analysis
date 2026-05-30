@@ -11,7 +11,7 @@ class UC4AggregateGraphs(AggregateFn):
         self._preds: dict[UUID, dict[Node, set[Node]]] = {}
         self._succs: dict[UUID, dict[Node, set[Node]]] = {}
 
-    def group_by(self, msg: Graph):  # type: ignore[reportIncompatibleMethodOverride]
+    def aggregate(self, msg: Graph):  # type: ignore[reportIncompatibleMethodOverride]
         if msg.client_id not in self._preds:
             self._preds[msg.client_id] = {}
             self._succs[msg.client_id] = {}
