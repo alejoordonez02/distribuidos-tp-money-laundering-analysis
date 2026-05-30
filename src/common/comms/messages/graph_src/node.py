@@ -1,3 +1,5 @@
+from typing import Self
+
 class Node:
     def __init__(
         self,
@@ -21,7 +23,7 @@ class Node:
         return f"{self.bank},{self.account}"
     
     @classmethod
-    def from_str(cls, s: str) -> "Node":
+    def from_str(cls, s: str) -> Self:
         bank, account = s.split(",")
         return cls(bank, account)
 

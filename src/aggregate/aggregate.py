@@ -63,9 +63,8 @@ class Aggregate:
                     raise e
                 return
 
-            result = self.fn.get_result(eof.client_id)
-
-            self.external_tx.send(result.serialize())
+            for result in self.fn.get_result(eof.client_id):
+                self.external_tx.send(result.serialize())
             # NOTE: the eof that's passed to `downstream`
             #       must be the same one that's popped
             #       from the `internal_eofs` queue.

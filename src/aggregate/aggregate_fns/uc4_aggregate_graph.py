@@ -14,7 +14,7 @@ MAX_AMOUNT = 100
 SHARDING_FILES = 100
 
 
-def sharding_hash(node: Node, client_id: UUID):
+def sharding_hash(node: Node, client_id: UUID) -> int:
     return hash(f"{client_id:}_{str(node)}") % SHARDING_FILES
 
 def _serialize(node: Node, preds: set[Node], succs: set[Node]) -> str:
@@ -47,7 +47,6 @@ class UC4AggregateGraphs(AggregateFn):
         self._succs[msg.client_id].setdefault(msg.node, set()).update(msg.succesors)
         
         # Sharding
-        # Esto explota conforme más clientes haya
         if len(self._preds[msg.client_id]) >= MAX_AMOUNT:
             self.downstream(msg.client_id)
             
@@ -64,9 +63,9 @@ class UC4AggregateGraphs(AggregateFn):
             file.unlink()
             for node in preds.keys():
                 yield NodeMsg(client_id, node, preds[node], succs[node])
-        self._files.pop(client_id, None)
-        self._preds.pop(client_id, None)
-        self._succs.pop(client_id, None)
+        self._files.pop(client_id)
+        self._preds.pop(client_id)
+        self._succs.pop(client_id)
 
     def downstream(self, client_id):
         preds = self._preds[client_id]

@@ -41,8 +41,8 @@ class GroupBy:
         if msg.type() == MessageType.EOF:
             self.eof_handler.handle(msg)  # type: ignore[reportUndefinedVariable]
         else:
-            grouped = self.fn.group_by(msg)
-            self.external_tx.send(grouped.serialize())
-            self.eof_handler.add_processed_count(msg.client_id)
+            for grouped in self.fn.group_by(msg):
+                self.external_tx.send(grouped.serialize())
+                self.eof_handler.add_processed_count(msg.client_id)
 
         ack()
