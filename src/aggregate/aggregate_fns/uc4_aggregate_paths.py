@@ -16,5 +16,5 @@ class UC4AggregatePaths(AggregateFn):
         for path, count in msg.counts.items():
             self.counts[msg.client_id].add(path, count)
 
-    def get_result(self, client_id: UUID) -> PathCounts:
+    def get_result(self, client_id: UUID) -> PathCounts: # type: ignore[reportIncompatibleMethodOverride]
         return self.counts.pop(client_id, PathCounts(client_id, {}))
