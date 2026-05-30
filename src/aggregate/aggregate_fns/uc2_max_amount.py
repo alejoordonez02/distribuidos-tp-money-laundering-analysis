@@ -30,12 +30,16 @@ class UC2MaxAmountAggregateFn(AggregateFn):
             return ()
 
         maxes_by_bank = self.client_maxes_by_bank.pop(client_id)
-        affinities: dict[int, tuple[str, tuple[str, float]]] = {}
+        # affinities: dict[int, tuple[str, tuple[str, float]]] = {}
+        #
+        # for bank_id, (account, max2) in maxes_by_bank.data.items():
+        #     affinity_shard = hash(bank_id) % AFFINITY_SHARDS
+        #     affinities[affinity_shard] = bank_id, (account, max2)
+        #
+        # for affinity, (bank_id, (account, max2)) in affinities.items():
+        #     bank_max = MaxByBank(client_id, {bank_id: (account, max2)})
+        #     yield bank_max, affinity
 
         for bank_id, (account, max2) in maxes_by_bank.data.items():
-            affinity_shard = hash(bank_id) % AFFINITY_SHARDS
-            affinities[affinity_shard] = bank_id, (account, max2)
-
-        for affinity, (bank_id, (account, max2)) in affinities.items():
             bank_max = MaxByBank(client_id, {bank_id: (account, max2)})
-            yield bank_max, affinity
+            yield bank_max, hash(bank_id)

@@ -65,10 +65,11 @@ class Aggregate:
                     raise e
                 return
 
-            aggregates = self.fn.get_result(eof.client_id)
-            for agg, affinity in aggregates:
+            affinity_groups = self.fn.get_result(eof.client_id)
+
+            for aggregated, affinity in affinity_groups:
                 external_tx_idx = affinity % len(self.external_txs)
-                self.external_txs[external_tx_idx].send(agg.serialize())
+                self.external_txs[external_tx_idx].send(aggregated.serialize())
 
                 # FIXME: ver q esto funcione en todos
                 #       los eof handlers

@@ -20,16 +20,16 @@ class UC2MaxAmountGroupByFn(GroupByFn):
                 new_max = (t.from_account, t.amount_paid)
                 maxes_by_bank.data[t.from_bank] = new_max
 
-        # TODO: esto seguro se puede hacer mejor pero
-        #       estoy sólo tocando affinities.
-        #       Probablemente se pueda hacer en el
-        #       mismo loop q arriba.
-        affinities: dict[int, tuple[str, tuple[str, float]]] = {}
+        # affinities: dict[int, tuple[str, tuple[str, float]]] = {}
+
+        # for bank_id, (account, max2) in maxes_by_bank.data.items():
+        #     affinity_shard = hash(bank_id) % AFFINITY_SHARDS
+        #     affinities[affinity_shard] = bank_id, (account, max2)
+        #
+        # for affinity, (bank_id, (account, max2)) in affinities.items():
+        #     bank_max = MaxByBank(msg.client_id, {bank_id: (account, max2)})
+        #     yield bank_max, affinity
 
         for bank_id, (account, max2) in maxes_by_bank.data.items():
-            affinity_shard = hash(bank_id) % AFFINITY_SHARDS
-            affinities[affinity_shard] = bank_id, (account, max2)
-
-        for affinity, (bank_id, (account, max2)) in affinities.items():
             bank_max = MaxByBank(msg.client_id, {bank_id: (account, max2)})
-            yield bank_max, affinity
+            yield bank_max, hash(bank_id)

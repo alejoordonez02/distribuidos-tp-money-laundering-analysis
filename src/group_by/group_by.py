@@ -43,8 +43,9 @@ class GroupBy:
         if msg.type() == MessageType.EOF:
             self.eof_handler.handle(msg)  # type: ignore[reportUndefinedVariable]
         else:
-            groups = self.fn.group_by(msg)
-            for group, affinity in groups:
+            affinity_groups = self.fn.group_by(msg)
+
+            for group, affinity in affinity_groups:
                 external_tx_idx = affinity % len(self.external_txs)
                 self.external_txs[external_tx_idx].send(group.serialize())
 
