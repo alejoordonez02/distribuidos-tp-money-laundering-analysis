@@ -1,10 +1,10 @@
-from common.comms.messages import Graph, Node, Transactions
+from common.comms.messages import Node, Transactions, NodeMsg, Graph
 
 from .group_by_fn import GroupByFn
 
 
 class UC4ComputeGraph(GroupByFn):
-    def group_by(self, msg: Transactions) -> Graph:  # type: ignore[reportIncompatibleMethodOverride]
+    def group_by(self, msg: Transactions) -> Iterator[NodeMsg]:  # type: ignore[reportIncompatibleMethodOverride]
         graph = Graph(msg.client_id, {})
 
         for t in msg.transactions:
@@ -14,4 +14,5 @@ class UC4ComputeGraph(GroupByFn):
             graph.add_origin(b, a)
             graph.add_destination(a, b)
 
-        return graph
+        for node, (p, s) in graph.nodes.items():
+            yield NodeMsg(msg.client_id, node, p, s)

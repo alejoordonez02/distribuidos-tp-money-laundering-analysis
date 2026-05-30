@@ -19,4 +19,9 @@ class Node:
 
     def __str__(self) -> str:
         return f"{self.bank},{self.account}"
+    
+    @classmethod
+    def from_str(cls, s: str) -> "Node":
+        bank, account = s.split(",")
+        return cls(bank, account)
 
