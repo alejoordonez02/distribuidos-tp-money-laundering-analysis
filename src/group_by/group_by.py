@@ -43,16 +43,13 @@ class GroupBy:
         if msg.type() == MessageType.EOF:
             self.eof_handler.handle(msg)  # type: ignore[reportUndefinedVariable]
         else:
-            maybe_w_affinity = self.fn.group_by(msg)
-            if isinstance(maybe_w_affinity, tuple):
-                grouped, affinity = maybe_w_affinity
-            else:
-                grouped = maybe_w_affinity
-                affinity = 0
+            groups = self.fn.group_by(msg)
+            for group, affinity in groups:
+                external_tx_idx = affinity % len(self.external_txs)
+                self.external_txs[external_tx_idx].send(group.serialize())
 
-            external_tx_idx = affinity % len(self.external_txs)
-
-            self.external_txs[external_tx_idx].send(grouped.serialize())
-            self.eof_handler.add_processed_count(msg.client_id)
+                # FIXME: ver q esto funcione en todos
+                #       los eof handlers
+                self.eof_handler.add_processed_count(msg.client_id)
 
         ack()
