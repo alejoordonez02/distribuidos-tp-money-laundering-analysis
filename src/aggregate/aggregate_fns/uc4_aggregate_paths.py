@@ -77,7 +77,10 @@ class UC4AggregatePaths(AggregateFn):
         paths = self._paths[client_id]
         # Aca si necesitamos una optimización podemos leer todo paths, agrupar los del mismo hashing
         # y hacer todo en una sola escritura de archivo
-        for p, amount in paths.items():
-            file = self._file_for(p, client_id)
-            with open(file, "a") as f:
-                f.write(_serialize(PathMsg(client_id, p, amount)) + "\n")
+        for shard in range(SHARDING_FILES):
+            for p, amount in paths.items():
+                if shard != sharding_hash(p, client_id):
+                    continue
+                file = self._file_for(p, client_id)
+                with open(file, "a") as f:
+                    f.write(_serialize(PathMsg(client_id, p, amount)) + "\n")

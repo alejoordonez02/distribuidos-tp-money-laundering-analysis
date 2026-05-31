@@ -71,14 +71,17 @@ class UC4AggregateGraphs(AggregateFn):
         self._preds.pop(client_id)
         self._succs.pop(client_id)
 
-    def downstream(self, client_id):
+    def downstream(self, client_id): 
         logging.info("Downstreaming")
         preds = self._preds[client_id]
         succs = self._succs[client_id]
-        for node, _ in preds.items():
-            path = self._file_for(node, client_id)
-            with open(path, "a") as f:
-                f.write(_serialize(node, preds[node], succs[node]) + "\n")
+        for shard in range(SHARDING_FILES):
+            for node, _ in preds.items():
+                if sharding_hash(node) != shard:
+                    continue
+                path = self._file_for(node, client_id)
+                with open(path, "a") as f:
+                    f.write(_serialize(node, preds[node], succs[node]) + "\n")
         self._preds[client_id].clear()
         self._succs[client_id].clear()
 
