@@ -1,3 +1,6 @@
+# test cfg
+test/cfg.py
+
 # datasets and server responses
 datasets/
 responses/
