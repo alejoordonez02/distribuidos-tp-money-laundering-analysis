@@ -25,7 +25,7 @@ class ExchangeRabbitMQ(MOMExchange):
         self.queue_name = queue_name
 
         # TODO: heartbeat=600 may be starved by blocking callbacks in start_consuming — revisit
-        self.conn = BlockingConnection(ConnectionParameters(host, heartbeat=600))
+        self.conn = BlockingConnection(ConnectionParameters(host, heartbeat=0))
         self.chan = self.conn.channel()
         self.chan.exchange_declare(exchange=exchange_name)
 
