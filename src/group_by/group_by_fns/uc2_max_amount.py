@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import Iterable
 
 from common.comms.messages import MaxByBank, Transactions
@@ -20,16 +21,13 @@ class UC2MaxAmountGroupByFn(GroupByFn):
                 new_max = (t.from_account, t.amount_paid)
                 maxes_by_bank.data[t.from_bank] = new_max
 
-        # affinities: dict[int, tuple[str, tuple[str, float]]] = {}
-
-        # for bank_id, (account, max2) in maxes_by_bank.data.items():
-        #     affinity_shard = hash(bank_id) % AFFINITY_SHARDS
-        #     affinities[affinity_shard] = bank_id, (account, max2)
-        #
-        # for affinity, (bank_id, (account, max2)) in affinities.items():
-        #     bank_max = MaxByBank(msg.client_id, {bank_id: (account, max2)})
-        #     yield bank_max, affinity
+        affinities: dict[int, MaxByBank] = defaultdict(
+            lambda: MaxByBank(msg.client_id, {})
+        )
 
         for bank_id, (account, max2) in maxes_by_bank.data.items():
-            bank_max = MaxByBank(msg.client_id, {bank_id: (account, max2)})
-            yield bank_max, hash(bank_id)
+            affinity_shard = hash(bank_id) % AFFINITY_SHARDS
+            affinities[affinity_shard].data[bank_id] = (account, max2)
+
+        for affinity, max_by_bank in affinities.items():
+            yield max_by_bank, affinity

@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import Iterable
 
 from common.comms.messages import Accounts, BankNames
@@ -16,16 +17,13 @@ class UC2BankNamesGroupByFn(GroupByFn):
             {a.bank_id: a.bank_name for a in msg.accounts},
         )
 
-        # affinities: dict[int, tuple[str, str]] = {}
-
-        # for bank_id, bank_name in bank_id_names.data.items():
-        #     affinity_shard = hash(bank_id) % AFFINITY_SHARDS
-        #     affinities[affinity_shard] = bank_id, bank_name
-        #
-        # for affinity, (bank_id, bank_name) in affinities.items():
-        #     bank_id_name = BankNames(msg.client_id, {bank_id: bank_name})
-        #     yield bank_id_name, affinity
+        affinities: dict[int, BankNames] = defaultdict(
+            lambda: BankNames(msg.client_id, {})
+        )
 
         for bank_id, bank_name in bank_id_names.data.items():
-            bank_id_name = BankNames(msg.client_id, {bank_id: bank_name})
-            yield bank_id_name, hash(bank_id)
+            affinity_shard = hash(bank_id) % AFFINITY_SHARDS
+            affinities[affinity_shard].data[bank_id] = bank_name
+
+        for affinity, bank_id_names in affinities.items():
+            yield bank_id_names, affinity
