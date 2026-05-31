@@ -13,7 +13,7 @@ from common.comms.messages.path_count import PathCounts
 
 from .aggregate_fn import AggregateFn
 
-MAX_AMOUNT = 10000
+MAX_AMOUNT = 100000
 SHARDING_FILES = 1000
 
 
