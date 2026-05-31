@@ -1,5 +1,6 @@
 from collections import defaultdict
 import json
+import logging
 import os
 import pathlib
 import tempfile
@@ -10,8 +11,8 @@ from common.comms.messages import Graph, Node, Path, PathCounts, NodeMsg
 
 from .aggregate_fn import AggregateFn
 
-MAX_AMOUNT = 100
-SHARDING_FILES = 100
+MAX_AMOUNT = 10000
+SHARDING_FILES = 1000
 
 
 def sharding_hash(node: Node) -> int:
@@ -54,6 +55,7 @@ class UC4AggregateGraphs(AggregateFn):
             
 
     def get_result(self, client_id: UUID) -> Iterable[NodeMsg]:
+        self.downstream(client_id)
         for _ , file in self._files[client_id].items():
             preds: dict[Node, set[Node]] = defaultdict(set)
             succs: dict[Node, set[Node]] = defaultdict(set)
@@ -70,6 +72,7 @@ class UC4AggregateGraphs(AggregateFn):
         self._succs.pop(client_id)
 
     def downstream(self, client_id):
+        logging.info("Downstreaming")
         preds = self._preds[client_id]
         succs = self._succs[client_id]
         for node, _ in preds.items():

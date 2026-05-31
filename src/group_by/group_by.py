@@ -39,6 +39,7 @@ class GroupBy:
         logging.debug(f"received msg: {msg.__dict__}")
 
         if msg.type() == MessageType.EOF:
+            logging.info(f"Llego un EOF!")
             self.eof_handler.handle(msg)  # type: ignore[reportUndefinedVariable]
         else:
             for grouped in self.fn.group_by(msg):

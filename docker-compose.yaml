@@ -135,45 +135,7 @@ services:
       - STRATEGY=uc4_path
       - RX=uc4_aggregated_paths
       - UC4_FILTERED_PATHS_TX=uc4_join
-      - IDX=0
-      - NPEERS=3
-      - RING_NAME=uc4_path_filter_ring
 
-  uc4_path_filter_1:
-    build:
-      context: ./src/
-      dockerfile: filter/Dockerfile
-    container_name: uc4_path_filter_1
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - STRATEGY=uc4_path
-      - RX=uc4_aggregated_paths
-      - UC4_FILTERED_PATHS_TX=uc4_join
-      - IDX=1
-      - NPEERS=3
-      - RING_NAME=uc4_path_filter_ring
-
-  uc4_path_filter_2:
-    build:
-      context: ./src/
-      dockerfile: filter/Dockerfile
-    container_name: uc4_path_filter_2
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - STRATEGY=uc4_path
-      - RX=uc4_aggregated_paths
-      - UC4_FILTERED_PATHS_TX=uc4_join
-      - IDX=2
-      - NPEERS=3
-      - RING_NAME=uc4_path_filter_ring
 
   uc5_amount_filter_0:
     build:
@@ -406,45 +368,6 @@ services:
       - STRATEGY=uc4_compute_graph
       - RX=uc4_filtered_transactions
       - TX=uc4_graphs
-      - IDX=0
-      - NPEERS=3
-      - RING_NAME=uc4_compute_graph_ring
-
-  uc4_compute_graph_group_by_1:
-    build:
-      context: ./src/
-      dockerfile: group_by/Dockerfile
-    container_name: uc4_compute_graph_group_by_1
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - STRATEGY=uc4_compute_graph
-      - RX=uc4_filtered_transactions
-      - TX=uc4_graphs
-      - IDX=1
-      - NPEERS=3
-      - RING_NAME=uc4_compute_graph_ring
-
-  uc4_compute_graph_group_by_2:
-    build:
-      context: ./src/
-      dockerfile: group_by/Dockerfile
-    container_name: uc4_compute_graph_group_by_2
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - STRATEGY=uc4_compute_graph
-      - RX=uc4_filtered_transactions
-      - TX=uc4_graphs
-      - IDX=2
-      - NPEERS=3
-      - RING_NAME=uc4_compute_graph_ring
 
 
   uc4_count_paths_0:
@@ -461,45 +384,6 @@ services:
       - STRATEGY=uc4_count_paths
       - RX=uc4_agggregated_nodes
       - TX=uc4_paths
-      - IDX=0
-      - NPEERS=3
-      - RING_NAME=uc4_count_paths_ring
-
-  uc4_count_paths_1:
-    build:
-      context: ./src/
-      dockerfile: group_by/Dockerfile
-    container_name: uc4_count_paths_1
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - STRATEGY=uc4_count_paths
-      - RX=uc4_agggregated_nodes
-      - TX=uc4_paths
-      - IDX=31
-      - NPEERS=3
-      - RING_NAME=uc4_count_paths_ring
-  
-  uc4_count_paths_2:
-    build:
-      context: ./src/
-      dockerfile: group_by/Dockerfile
-    container_name: uc4_count_paths_2
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - STRATEGY=uc4_count_paths
-      - RX=uc4_agggregated_nodes
-      - TX=uc4_paths
-      - IDX=2
-      - NPEERS=3
-      - RING_NAME=uc4_count_paths_ring
 
 
   uc5_converter_0:
@@ -631,7 +515,7 @@ services:
       - STRATEGY=uc4_count_paths
       - RX=uc4_graphs
       - TX=uc4_agggregated_nodes
-      - NPEERS_UPSTREAM=3
+      - NPEERS_UPSTREAM=1
 
   uc4_paths_aggregate:
     build:
@@ -647,7 +531,7 @@ services:
       - STRATEGY=uc4_paths
       - RX=uc4_paths
       - TX=uc4_aggregated_paths
-      - NPEERS_UPSTREAM=3
+      - NPEERS_UPSTREAM=1
 
   # --- merges ---
   uc2_merge:

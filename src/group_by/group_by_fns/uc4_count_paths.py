@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 
 from common.comms.messages import NodeMsg, Node, PathMsg

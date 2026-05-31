@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Self
 from uuid import UUID
 
@@ -10,10 +11,10 @@ class PathMsg(Message):
     def __init__(self, client_id: UUID, path: Path, count: int):
         self.client_id = client_id
         self.path = path
-        self.count = count
+        self.counts = count
         
     def add(self, count: int):
-        self.count += count
+        self.counts += count
         
     @classmethod
     def _type(cls):
@@ -22,15 +23,20 @@ class PathMsg(Message):
     def _fields(self) -> list[Any]:
         return [
             self.client_id,
-            str(self.path.origin),
-            str(self.path.destination),
-            str(self.count)
+            self.path.fields(),
+            self.counts
         ]
 
     @classmethod
     def _from_fields(cls, fields: list[Any]) -> Self:
+        cli_id = UUID(fields[0])
+        logging.info(f"FIELDS 1: {fields[1]}")
+        f = fields[1]
+        onode = Node(f[0][0], f[0][1])
+        dnode = Node(f[1][0], f[1][1])
+        p = Path(onode, dnode)
         return cls(
-            client_id=UUID(fields[0]),
-            path=Path(Node.from_str(fields[1]), Node.from_str(fields[2])),
-            count=int(fields[3])
+            client_id=cli_id,
+            path= p,
+            count=int(fields[2])
         )
