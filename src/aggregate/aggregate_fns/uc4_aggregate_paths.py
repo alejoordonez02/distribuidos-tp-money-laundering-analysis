@@ -60,11 +60,7 @@ class UC4AggregatePaths(AggregateFn):
 
     def get_result(self, client_id: UUID) -> Iterable[tuple[PathCounts, int]]:
         if client_id not in self._paths and client_id not in self._files:
-            return (
-                (PathCounts(client_id, {}), 0),
-            )  # esto me estaba fallando, o sea q llegamos a acá...
-            # parece que no podemos deolver la tupla vacía porque
-            # si no después hay quilombo con el expected count
+            return ()
 
         if client_id in self._paths:
             self.downstream(client_id)

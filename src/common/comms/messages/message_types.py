@@ -19,3 +19,4 @@ class MessageType(IntEnum):
     RING_DONE = 14
     NODEMSG = 15
     PATH_MSG = 16
+    RING_SENT_DATA = 17

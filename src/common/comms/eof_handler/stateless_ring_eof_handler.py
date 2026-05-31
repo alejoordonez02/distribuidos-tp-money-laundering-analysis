@@ -1,4 +1,5 @@
 import logging
+import time
 from threading import Lock, Thread
 from typing import Callable, Iterable
 from uuid import UUID
@@ -9,13 +10,15 @@ from common.comms.middleware import MOM, MOMRing
 from .eof_handler import StatelessEOFHandler
 from .ring_eof_handler import RingEOFHandler
 
+EOF_LOOP_SECS = 1
+
 
 class StatelessRingEOFHandler(RingEOFHandler, StatelessEOFHandler):
     def __init__(self, mom_ring: MOMRing, external_txs: Iterable[MOM]):
         self.mom_ring = mom_ring
         self.external_txs = [tx.clone() for tx in external_txs]
         self.processed_counts: dict[UUID, int] = {}
-        self.next_expected_counts: dict[UUID, int] = {}
+        self.sent_data: dict[UUID, int] = {}
         self.thread_handle: Thread | None = None
         self.mtx = Lock()
 
@@ -32,20 +35,23 @@ class StatelessRingEOFHandler(RingEOFHandler, StatelessEOFHandler):
 
         with self.mtx:
             eof.processed_count += self.processed_counts.get(eof.client_id, 0)
-            eof.next_expected_count += self.next_expected_counts.get(eof.client_id, 0)
+            eof.next_expected_count += self.sent_data.get(eof.client_id, 0)
 
             self.processed_counts[eof.client_id] = 0
-            self.next_expected_counts[eof.client_id] = 0
+            self.sent_data[eof.client_id] = 0
 
-            if eof.processed_count == eof.expected_count:
-                eof.expected_count = eof.next_expected_count
-                logging.info(f"downstreaming eof: {eof.__dict__}")
+        if eof.processed_count == eof.expected_count:
+            eof.expected_count = eof.next_expected_count
 
-                for tx in self.external_txs:
-                    tx.send(eof.serialize())
+            logging.info(f"downstreaming eof: {eof.__dict__}")
+            for tx in self.external_txs:
+                tx.send(eof.serialize())
+        else:
+            time.sleep(
+                EOF_LOOP_SECS / self.mom_ring.nnodes()
+            )  # avoid making the eof go around too much
 
-            else:
-                logging.info(f"sending internal eof: {eof.__dict__}")
-                mom_ring_tx.send(eof.serialize())
+            logging.info(f"sending internal eof: {eof.__dict__}")
+            mom_ring_tx.send(eof.serialize())
 
-            ack()
+        ack()

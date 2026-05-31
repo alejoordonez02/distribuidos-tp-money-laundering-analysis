@@ -12,7 +12,7 @@ class RingEOFHandler(ABC):
     mom_ring: MOMRing
     mtx: Lock
     processed_counts: dict[UUID, int]
-    next_expected_counts: dict[UUID, int]
+    sent_data: dict[UUID, int]
 
     def start(self):
         self.thread_handle = Thread(target=self._start_consuming_back)
@@ -41,5 +41,4 @@ class RingEOFHandler(ABC):
     @abstractmethod
     def _handle_ring_message(
         self, bytes2: bytes, ack: Callable, nack: Callable, mom_ring_tx: MOMRing
-    ):
-        pass
+    ): ...

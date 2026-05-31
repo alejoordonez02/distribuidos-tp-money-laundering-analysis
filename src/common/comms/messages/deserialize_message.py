@@ -12,14 +12,17 @@ from .merged_bank_data import MergedBankData
 from .merged_transactions import MergedTransactions
 from .message import Message
 from .message_types import MessageType
+from .node_msg import NodeMsg
 from .path_count import PathCounts
+from .path_msg import PathMsg
 from .response import Response
 from .ring_done import RingDone
+from .ring_sent_data import RingSentData
 from .sum_by_payment_format import SumByPaymentFormat
 from .transaction_count import TransactionCount
 from .transactions import Transactions
-from .node_msg import NodeMsg
-from .path_msg import PathMsg
+
+
 def deserialize_message(bytes2: bytes) -> Message:
     """
     Deserializes `bytes` into a `Message`.
@@ -69,6 +72,8 @@ def deserialize_message(bytes2: bytes) -> Message:
             return NodeMsg.deserialize(bytes2)
         case MessageType.PATH_MSG:
             return PathMsg.deserialize(bytes2)
+        case MessageType.RING_SENT_DATA:
+            return RingSentData.deserialize(bytes2)
         case _:
             raise UnknownMessageError(
                 f"unknown message type {fields[0]} with contents {fields[1:]}"
