@@ -5,7 +5,7 @@ from common.comms.messages import Accounts, BankNames
 
 from .group_by_fn import GroupByFn
 
-AFFINITY_SHARDS = 100
+AFFINITY_SHARDS = 10
 
 
 class UC2BankNamesGroupByFn(GroupByFn):
