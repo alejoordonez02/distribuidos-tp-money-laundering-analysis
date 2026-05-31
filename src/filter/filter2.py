@@ -1,19 +1,19 @@
 import logging
-from typing import Callable
+from typing import Callable, Sequence
 
 from filter_fns import FilterFn
 
 from common.comms.eof_handler import StatelessEOFHandler
 from common.comms.messages import MessageType, deserialize_message
-from common.comms.middleware import MOMQueue
+from common.comms.middleware import MOM
 from common.graceful_shutdown import setup_graceful_shutdown
 
 
 class Filter:
     def __init__(
         self,
-        messages_rx: MOMQueue,
-        routes: list[tuple[MOMQueue, FilterFn]],
+        messages_rx: MOM,
+        routes: Sequence[tuple[MOM, FilterFn]],
         eof_handler: StatelessEOFHandler,
     ):
         self.messages_rx = messages_rx
@@ -48,6 +48,7 @@ class Filter:
                 destination.send(filtered.serialize())
                 logging.debug(f"filtered: {filtered.__dict__}")
 
+            self.eof_handler.add_next_expected_processed_counts(msg.client_id)
             self.eof_handler.add_processed_count(msg.client_id)
 
         ack()

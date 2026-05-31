@@ -13,8 +13,10 @@ from common.graceful_shutdown import setup_graceful_shutdown
 
 @dataclass
 class _ClientState:
-    left_done: bool = False
-    right_done: bool = False
+    left_processed = 0
+    left_expected = -1
+    right_processed = 0
+    right_expected = -1
 
 
 class Merge:
@@ -31,7 +33,7 @@ class Merge:
         self._tx_factory = tx_factory
 
         self._state: dict[UUID, _ClientState] = {}
-        self._lock = Lock()
+        self._mtx = Lock()
 
     def start(self):
         setup_graceful_shutdown(self.stop)
@@ -59,12 +61,29 @@ class Merge:
 
     def _try_emit_result(self, tx: MOMQueue, client_id: UUID):
         s = self._state[client_id]
-        if not (s.left_done and s.right_done):
+        done = (
+            s.left_processed == s.left_expected
+            and s.right_processed == s.right_expected
+        )
+        logging.debug(
+            f"left: {s.left_processed}/{s.left_expected},\nright: {s.right_processed}/{s.right_expected}\ndone:{done}"
+        )
+
+        if not done:
             return
 
         tx.send(self._fn.get_result(client_id).serialize())
-        tx.send(EOF(client_id).serialize())
-        logging.info(f"merge complete for client {client_id}")
+        # NOTE: merge no está escalado ahora, maneja
+        #       él mismo su eof, sabemos que es uno
+        #       y que emite el resultado cuando le
+        #       llegan los dos eofs, o sea que el
+        #       próximo clúster tiene que esperar 1
+        #       msj, que es el que acabamos de
+        #       mandar arriba.
+        eof = EOF(client_id, expected_count=1)
+
+        logging.info(f"downstreaming eof: {eof.__dict__}")
+        tx.send(eof.serialize())
 
     def _handle_side(
         self,
@@ -82,13 +101,17 @@ class Merge:
     ):
         msg = deserialize_message(bytes2)
 
-        with self._lock:
+        # TODO: seguro se puede manejar mejor este mtx.
+        with self._mtx:
             if msg.type() == MessageType.EOF:
-                self._get_state(msg.client_id).left_done = True
-                self._try_emit_result(tx, msg.client_id)
-
+                eof: EOF = msg  # type: ignore[reportAssignmentType]
+                logging.debug("received left eof: {eof.__dict__}")
+                self._get_state(eof.client_id).left_expected = eof.expected_count
             else:
                 self._fn.left(msg)
+                self._get_state(msg.client_id).left_processed += 1
+
+            self._try_emit_result(tx, msg.client_id)
 
         ack()
 
@@ -97,12 +120,15 @@ class Merge:
     ):
         msg = deserialize_message(bytes2)
 
-        with self._lock:
+        with self._mtx:
             if msg.type() == MessageType.EOF:
-                self._get_state(msg.client_id).right_done = True
-                self._try_emit_result(tx, msg.client_id)
-
+                eof: EOF = msg  # type: ignore[reportAssignmentType]
+                logging.debug("received right eof: {eof.__dict__}")
+                self._get_state(eof.client_id).right_expected = eof.expected_count
             else:
                 self._fn.right(msg)
+                self._get_state(msg.client_id).right_processed += 1
+
+            self._try_emit_result(tx, msg.client_id)
 
         ack()

@@ -1,11 +1,12 @@
 import logging
 import os
+from typing import Sequence
 
 from filter2 import Filter
 from filter_fns import FilterFn
 
 from common.comms.eof_handler import make_stateless_eof_handler
-from common.comms.middleware import MOMQueue, QueueRabbitMQ
+from common.comms.middleware import MOM, QueueRabbitMQ
 
 MOM_HOST = os.environ["MOM_HOST"]
 RX = os.environ["RX"]
@@ -17,7 +18,7 @@ STRATEGY = os.getenv("STRATEGY", "default")
 LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
 
 
-def make_default_filter() -> tuple[MOMQueue, list[tuple[MOMQueue, FilterFn]]]:
+def make_default_filter() -> tuple[MOM, Sequence[tuple[MOM, FilterFn]], Sequence[MOM]]:
     from filter_fns import (
         UC1Filter,
         UC2Filter,
@@ -49,22 +50,28 @@ def make_default_filter() -> tuple[MOMQueue, list[tuple[MOMQueue, FilterFn]]]:
         (QueueRabbitMQ(MOM_HOST, UC4_TRANSACTIONS_TX), UC4Filter()),
         (QueueRabbitMQ(MOM_HOST, UC5_TRANSACTIONS_TX), UC5Filter()),
     ]
+    # TODO: reescribir esto, las listas se
+    #       declaran una vez mejor :)
+    eof_txs = [tx for (tx, _) in routes]
 
-    return transactions_rx, routes
+    return (transactions_rx, routes, eof_txs)
 
 
-def make_uc3_average_filter() -> tuple[MOMQueue, list[tuple[MOMQueue, FilterFn]]]:
+def make_uc3_average_filter() -> tuple[
+    MOM, Sequence[tuple[MOM, FilterFn]], Sequence[MOM]
+]:
     from filter_fns import UC3AvgFilter
 
     UC3_FILTERED_TX = os.environ["UC3_FILTERED_TX"]
 
     transactions_rx = QueueRabbitMQ(MOM_HOST, RX)
     routes = [(QueueRabbitMQ(MOM_HOST, UC3_FILTERED_TX), UC3AvgFilter())]
+    eof_txs = [tx for (tx, _) in routes]
 
-    return transactions_rx, routes  # type: ignore[reportReturnType]
+    return (transactions_rx, routes, eof_txs)
 
 
-def make_uc4_path_filter() -> tuple[MOMQueue, list[tuple[MOMQueue, FilterFn]]]:
+def make_uc4_path_filter() -> tuple[MOM, Sequence[tuple[MOM, FilterFn]], Sequence[MOM]]:
     from filter_fns import UC4PathFilter
 
     UC4_FILTERED_PATHS_TX = os.environ["UC4_FILTERED_PATHS_TX"]
@@ -73,11 +80,14 @@ def make_uc4_path_filter() -> tuple[MOMQueue, list[tuple[MOMQueue, FilterFn]]]:
     routes = [
         (QueueRabbitMQ(MOM_HOST, UC4_FILTERED_PATHS_TX), UC4PathFilter()),
     ]
+    eof_txs = [tx for (tx, _) in routes]
 
-    return transactions_rx, routes  # type: ignore[reportReturnType]
+    return (transactions_rx, routes, eof_txs)
 
 
-def make_uc5_amount_filter() -> tuple[MOMQueue, list[tuple[MOMQueue, FilterFn]]]:
+def make_uc5_amount_filter() -> tuple[
+    MOM, Sequence[tuple[MOM, FilterFn]], Sequence[MOM]
+]:
     from filter_fns import UC5AmountFilter
 
     UC5_AMOUNT_FILTERED_TX = os.environ["UC5_AMOUNT_FILTERED_TX"]
@@ -86,8 +96,9 @@ def make_uc5_amount_filter() -> tuple[MOMQueue, list[tuple[MOMQueue, FilterFn]]]
     routes = [
         (QueueRabbitMQ(MOM_HOST, UC5_AMOUNT_FILTERED_TX), UC5AmountFilter()),
     ]
+    eof_txs = [tx for (tx, _) in routes]
 
-    return transactions_rx, routes  # type: ignore[reportReturnType]
+    return (transactions_rx, routes, eof_txs)
 
 
 def main():
@@ -96,19 +107,19 @@ def main():
 
     match STRATEGY:
         case "default":
-            transactions_rx, routes = make_default_filter()
+            rx, txs, eof_txs = make_default_filter()
         case "uc3_avg":
-            transactions_rx, routes = make_uc3_average_filter()
+            rx, txs, eof_txs = make_uc3_average_filter()
         case "uc4_path":
-            transactions_rx, routes = make_uc4_path_filter()
+            rx, txs, eof_txs = make_uc4_path_filter()
         case "uc5_amount":
-            transactions_rx, routes = make_uc5_amount_filter()
+            rx, txs, eof_txs = make_uc5_amount_filter()
         case _:
             raise ValueError(f"unknown filter strategy: {STRATEGY}")
 
-    eof_handler = make_stateless_eof_handler(MOM_HOST, [tx for (tx, _) in routes])
+    eof_handler = make_stateless_eof_handler(MOM_HOST, eof_txs)
 
-    filter2 = Filter(transactions_rx, routes, eof_handler)
+    filter2 = Filter(rx, txs, eof_handler)
     filter2.start()
 
 

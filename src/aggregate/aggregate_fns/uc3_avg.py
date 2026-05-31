@@ -1,3 +1,4 @@
+from typing import Iterable
 from uuid import UUID
 
 from common.comms.messages import AvgByFormat, SumByPaymentFormat
@@ -20,10 +21,13 @@ class UC3AvgAggregateFn(AggregateFn):
 
             client_sum_counts[format2] = new
 
-    def get_result(self, client_id: UUID) -> AvgByFormat:  # type: ignore[reportIncompatibleMethodOverride]
-        sc = self.sum_counts.pop(client_id, None)
-        if not sc:
-            return AvgByFormat(client_id, {})
+    def get_result(self, client_id: UUID) -> Iterable[tuple[AvgByFormat, int]]:  # type: ignore[reportIncompatibleMethodOverride]
+        if client_id not in self.sum_counts:
+            return ()
 
-        averages = {fmt: s / c for fmt, (s, c) in sc.sum_counts.items()}
-        return AvgByFormat(client_id, averages)
+        sum_counts = self.sum_counts.pop(client_id)
+        averages = {fmt: s / c for fmt, (s, c) in sum_counts.sum_counts.items()}
+
+        for format2, average in averages.items():
+            format_average = AvgByFormat(client_id, {format2: average})
+            yield format_average, hash(format2)

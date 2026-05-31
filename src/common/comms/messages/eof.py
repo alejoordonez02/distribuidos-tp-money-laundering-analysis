@@ -11,11 +11,13 @@ class EOF(Message):
         client_id: UUID,
         processed_count: int = 0,
         expected_count: int = 0,
+        next_expected_count: int = 0,
         origin: int = -1,
     ):
         self.client_id = client_id
         self.processed_count = processed_count
         self.expected_count = expected_count
+        self.next_expected_count = next_expected_count
         self.origin = origin
 
     @classmethod
@@ -23,7 +25,13 @@ class EOF(Message):
         return MessageType.EOF
 
     def _fields(self) -> list[Any]:
-        return [self.client_id, self.processed_count, self.expected_count, self.origin]
+        return [
+            self.client_id,
+            self.processed_count,
+            self.expected_count,
+            self.next_expected_count,
+            self.origin,
+        ]
 
     @classmethod
     def _from_fields(cls, fields: list[Any]) -> Self:

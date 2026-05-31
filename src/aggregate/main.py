@@ -17,14 +17,29 @@ from common.comms.eof_handler.single_node_eof_handler import (
 )
 from common.comms.messages.eof import EOF
 from common.comms.middleware import QueueRabbitMQ
+from common.comms.middleware.exchange_rabbitmq import ExchangeRabbitMQ
 
 MOM_HOST = os.environ["MOM_HOST"]
 RX = os.environ["RX"]
 TX = os.environ["TX"]
 STRATEGY = os.environ["STRATEGY"]
-NPEERS_UPSTREAM = int(os.getenv("NPEERS_UPSTREAM", "1"))
 
 LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
+
+
+def make_uc4_aggregate_graphs():
+    IDX = int(os.environ["IDX"])
+
+    fn = UC4AggregateGraphs()
+
+    external_rx = ExchangeRabbitMQ(MOM_HOST, RX, [f"{IDX}"], f"{RX}{IDX}")
+    external_txs = (QueueRabbitMQ(MOM_HOST, TX),)
+
+    internal_eofs = Queue[EOF]()
+    eof_handler = make_stateful_eof_handler(MOM_HOST, external_txs, internal_eofs)
+
+    aggregate = Aggregate(fn, external_rx, external_txs, eof_handler, internal_eofs)
+    aggregate.start()
 
 
 def main():
@@ -38,25 +53,23 @@ def main():
             fn = UC2BankNamesAggregateFn()
         case "uc3_average":
             fn = UC3AvgAggregateFn()
-        case "uc4_count_paths":
-            fn = UC4AggregateGraphs()
+        case "uc4_aggregate_graphs":
+            return make_uc4_aggregate_graphs()
         case "uc4_paths":
             fn = UC4AggregatePaths()
         case _:
             raise ValueError(f"unknown aggregate strategy: {STRATEGY}")
 
     external_rx = QueueRabbitMQ(MOM_HOST, RX)
-    external_tx = QueueRabbitMQ(MOM_HOST, TX)
+    external_txs = (QueueRabbitMQ(MOM_HOST, TX),)
 
     internal_eofs = Queue[EOF]()
-    eof_handler = make_stateful_eof_handler(MOM_HOST, [external_tx], internal_eofs)
+    eof_handler = make_stateful_eof_handler(MOM_HOST, external_txs, internal_eofs)
     # TODO: tmp
     if not isinstance(eof_handler, StatefulSingleNodeEOFHandler):
         raise ValueError("scalability is not implemented for aggregator yet")
 
-    aggregate = Aggregate(
-        external_rx, fn, external_tx, eof_handler, internal_eofs, NPEERS_UPSTREAM
-    )
+    aggregate = Aggregate(fn, external_rx, external_txs, eof_handler, internal_eofs)
     aggregate.start()
 
 

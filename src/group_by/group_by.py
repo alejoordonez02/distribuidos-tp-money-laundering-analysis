@@ -1,11 +1,11 @@
 import logging
-from typing import Callable
+from typing import Callable, Sequence
 
 from group_by_fns import GroupByFn
 
-from common.comms.eof_handler.eof_handler import StatelessEOFHandler
+from common.comms.eof_handler import StatelessEOFHandler
 from common.comms.messages import MessageType, deserialize_message
-from common.comms.middleware import MOMQueue
+from common.comms.middleware import MOM, MOMQueue
 from common.graceful_shutdown import setup_graceful_shutdown
 
 
@@ -14,11 +14,11 @@ class GroupBy:
         self,
         fn: GroupByFn,
         external_rx: MOMQueue,
-        external_tx: MOMQueue,
+        external_txs: Sequence[MOM],
         eof_handler: StatelessEOFHandler,
     ):
         self.external_rx = external_rx
-        self.external_tx = external_tx
+        self.external_txs = external_txs
         self.fn = fn
         self.eof_handler = eof_handler
 
@@ -32,7 +32,8 @@ class GroupBy:
         self.external_rx.stop_consuming()
         self.eof_handler.stop()
         self.external_rx.close()
-        self.external_tx.close()
+        for tx in self.external_txs:
+            tx.close()
 
     def _handle_message(self, bytes2: bytes, ack: Callable, _: Callable):
         msg = deserialize_message(bytes2)
@@ -41,8 +42,16 @@ class GroupBy:
         if msg.type() == MessageType.EOF:
             self.eof_handler.handle(msg)  # type: ignore[reportUndefinedVariable]
         else:
-            grouped = self.fn.group_by(msg)
-            self.external_tx.send(grouped.serialize())
+            affinity_groups = self.fn.group_by(msg)
+
+            for group, affinity in affinity_groups:
+                external_tx_idx = affinity % len(self.external_txs)
+                self.external_txs[external_tx_idx].send(group.serialize())
+
+                # FIXME: ver q esto funcione en todos
+                #       los eof handlers
+                self.eof_handler.add_next_expected_processed_counts(msg.client_id)
+
             self.eof_handler.add_processed_count(msg.client_id)
 
         ack()

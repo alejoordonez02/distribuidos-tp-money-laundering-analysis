@@ -18,3 +18,5 @@ from .ring_done import RingDone
 from .sum_by_payment_format import SumByPaymentFormat
 from .transaction_count import TransactionCount
 from .transactions import Transactions
+from .node_msg import NodeMsg
+from .path_msg import PathMsg

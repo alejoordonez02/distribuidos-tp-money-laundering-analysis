@@ -1,17 +1,21 @@
 import os
 from queue import Queue
+from typing import Sequence
 
 from common.comms.eof_handler.stateful_ring_eof_handler import StatefulRingEOFHandler
 from common.comms.messages.eof import EOF
-from common.comms.middleware import MOMQueue, RingRabbitMQ
+from common.comms.middleware import MOM, RingRabbitMQ
 
 from .eof_handler import StatefulEOFHandler, StatelessEOFHandler
-from .single_node_eof_handler import SingleNodeEOFHandler, StatefulSingleNodeEOFHandler
+from .single_node_eof_handler import (
+    StatefulSingleNodeEOFHandler,
+    StatelessSingleNodeEOFHandler,
+)
 from .stateless_ring_eof_handler import StatelessRingEOFHandler
 
 
 def make_stateless_eof_handler(
-    mom_host: str, txs: list[MOMQueue]
+    mom_host: str, txs: Sequence[MOM]
 ) -> StatelessEOFHandler:
     """
     Create a stateless end of file message handler.
@@ -30,7 +34,7 @@ def make_stateless_eof_handler(
     if NPEERS < 1:
         raise ValueError("NPEERS must be greater or equal than 1")
     if NPEERS == 1:
-        return SingleNodeEOFHandler(txs)
+        return StatelessSingleNodeEOFHandler(txs)
 
     IDX = int(os.environ["IDX"])
     RING_NAME: str = os.environ["RING_NAME"]
@@ -42,7 +46,7 @@ def make_stateless_eof_handler(
 
 
 def make_stateful_eof_handler(
-    mom_host: str, txs: list[MOMQueue], internal_eofs_tx: Queue[EOF]
+    mom_host: str, txs: Sequence[MOM], internal_eofs_tx: Queue[EOF]
 ) -> StatefulEOFHandler:
     """
     Create a stateful end of file message handler.

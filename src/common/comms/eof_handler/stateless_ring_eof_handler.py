@@ -1,25 +1,28 @@
 import logging
 from threading import Lock, Thread
-from typing import Callable
+from typing import Callable, Iterable
 from uuid import UUID
 
 from common.comms.messages import EOF
-from common.comms.middleware import MOMQueue, MOMRing
+from common.comms.middleware import MOM, MOMRing
 
 from .eof_handler import StatelessEOFHandler
 from .ring_eof_handler import RingEOFHandler
 
 
 class StatelessRingEOFHandler(RingEOFHandler, StatelessEOFHandler):
-    def __init__(self, mom_ring: MOMRing, txs: list[MOMQueue]):
+    def __init__(self, mom_ring: MOMRing, external_txs: Iterable[MOM]):
         self.mom_ring = mom_ring
-        self.txs = [tx.clone() for tx in txs]
+        self.external_txs = [tx.clone() for tx in external_txs]
         self.processed_counts: dict[UUID, int] = {}
+        self.next_expected_counts: dict[UUID, int] = {}
         self.thread_handle: Thread | None = None
         self.mtx = Lock()
 
     def handle(self, eof: EOF):
         eof.processed_count = 0
+        eof.next_expected_count = 0
+        logging.info(f"starting eof ring round, {eof.__dict__}")
         self.mom_ring.send(eof.serialize())
 
     def _handle_ring_message(
@@ -29,11 +32,16 @@ class StatelessRingEOFHandler(RingEOFHandler, StatelessEOFHandler):
 
         with self.mtx:
             eof.processed_count += self.processed_counts.get(eof.client_id, 0)
+            eof.next_expected_count += self.next_expected_counts.get(eof.client_id, 0)
+
             self.processed_counts[eof.client_id] = 0
+            self.next_expected_counts[eof.client_id] = 0
 
             if eof.processed_count == eof.expected_count:
+                eof.expected_count = eof.next_expected_count
                 logging.info(f"downstreaming eof: {eof.__dict__}")
-                for tx in self.txs:
+
+                for tx in self.external_txs:
                     tx.send(eof.serialize())
 
             else:

@@ -1,5 +1,5 @@
-# test cfg
-test/cfg.py
+# temp files
+tmp/
 
 # datasets and server responses
 datasets/

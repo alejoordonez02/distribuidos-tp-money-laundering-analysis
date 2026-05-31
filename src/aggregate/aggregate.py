@@ -1,31 +1,30 @@
+import logging
 from queue import Queue
 from threading import Thread
-from typing import Callable
+from typing import Callable, Sequence
 
 from aggregate_fns import AggregateFn
 
 from common.comms.eof_handler.eof_handler import StatefulEOFHandler
 from common.comms.messages import EOF, MessageType, deserialize_message
-from common.comms.middleware import MOMQueue
+from common.comms.middleware import MOM
 from common.graceful_shutdown import setup_graceful_shutdown
 
 
 class Aggregate:
     def __init__(
         self,
-        external_rx: MOMQueue,
         fn: AggregateFn,
-        external_tx: MOMQueue,
+        external_rx: MOM,
+        external_txs: Sequence[MOM],
         eof_handler: StatefulEOFHandler,
         internal_eofs_rx: Queue[EOF],
-        npeers_upstream: int = 1,
     ):
         self.external_rx = external_rx
         self.fn = fn
-        self.external_tx = external_tx
+        self.external_txs = external_txs
         self.eof_handler = eof_handler
         self.internal_eofs_rx = internal_eofs_rx
-        self.npeers_upstream = npeers_upstream
 
         self._should_keep_running = False
         self.internal_eofs_handle: Thread
@@ -46,7 +45,9 @@ class Aggregate:
     def stop(self):
         self.external_rx.stop_consuming()
         self.external_rx.close()
-        self.external_tx.close()
+        for tx in self.external_txs:
+            tx.close()
+
         self.eof_handler.stop()
         self.internal_eofs_rx.shutdown()
         self.internal_eofs_handle.join()
@@ -63,9 +64,16 @@ class Aggregate:
                     raise e
                 return
 
-            result = self.fn.get_result(eof.client_id)
+            affinity_groups = self.fn.get_result(eof.client_id)
 
-            self.external_tx.send(result.serialize())
+            for aggregated, affinity in affinity_groups:
+                external_tx_idx = affinity % len(self.external_txs)
+                self.external_txs[external_tx_idx].send(aggregated.serialize())
+
+                # FIXME: ver q esto funcione en todos
+                #       los eof handlers
+                self.eof_handler.add_next_expected_processed_counts(eof.client_id)
+
             # NOTE: the eof that's passed to `downstream`
             #       must be the same one that's popped
             #       from the `internal_eofs` queue.
@@ -73,6 +81,7 @@ class Aggregate:
 
     def _handle_message(self, bytes2: bytes, ack: Callable, _: Callable):
         msg = deserialize_message(bytes2)
+        logging.debug(f"received msg: {msg.__dict__}")
 
         if msg.type() == MessageType.EOF:
             self.eof_handler.handle(msg)  # type: ignore[reportArgumentType]
