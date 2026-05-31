@@ -11,9 +11,9 @@ from .ring_eof_handler import RingEOFHandler
 
 
 class StatelessRingEOFHandler(RingEOFHandler, StatelessEOFHandler):
-    def __init__(self, mom_ring: MOMRing, txs: Iterable[MOM]):
+    def __init__(self, mom_ring: MOMRing, external_txs: Iterable[MOM]):
         self.mom_ring = mom_ring
-        self.txs = [tx.clone() for tx in txs]
+        self.external_txs = [tx.clone() for tx in external_txs]
         self.processed_counts: dict[UUID, int] = {}
         self.next_expected_counts: dict[UUID, int] = {}
         self.thread_handle: Thread | None = None
@@ -22,6 +22,7 @@ class StatelessRingEOFHandler(RingEOFHandler, StatelessEOFHandler):
     def handle(self, eof: EOF):
         eof.processed_count = 0
         eof.next_expected_count = 0
+        logging.info(f"starting eof ring round, {eof.__dict__}")
         self.mom_ring.send(eof.serialize())
 
     def _handle_ring_message(
@@ -38,7 +39,8 @@ class StatelessRingEOFHandler(RingEOFHandler, StatelessEOFHandler):
 
             if eof.processed_count == eof.expected_count:
                 logging.info(f"downstreaming eof: {eof.__dict__}")
-                for tx in self.txs:
+
+                for tx in self.external_txs:
                     tx.send(eof.serialize())
 
             else:

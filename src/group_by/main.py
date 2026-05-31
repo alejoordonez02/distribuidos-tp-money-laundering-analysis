@@ -11,7 +11,7 @@ from group_by_fns import (
 )
 
 from common.comms.eof_handler import make_stateless_eof_handler
-from common.comms.middleware import QueueRabbitMQ
+from common.comms.middleware import ExchangeRabbitMQ, QueueRabbitMQ
 from group_by import GroupBy
 
 MOM_HOST = os.environ["MOM_HOST"]
@@ -21,6 +21,30 @@ STRATEGY = os.environ["STRATEGY"]
 NPEERS_UPSTREAM = int(os.getenv("NPEERS_UPSTREAM", "1"))
 
 LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
+
+
+def make_uc4_compute_graph():
+    NNODES_DOWNSTREAM = int(os.environ["NNODES_DOWNSTREAM"])
+
+    if NNODES_DOWNSTREAM <= 0:
+        raise ValueError("downstream nodes amount cannot be less than 0")
+
+    fn = UC4ComputeGraph()
+
+    external_rx = QueueRabbitMQ(MOM_HOST, RX)
+    external_txs = [
+        ExchangeRabbitMQ(MOM_HOST, TX, routing_keys=[f"{n}"], queue_name=f"{TX}{n}")
+        for n in range(NNODES_DOWNSTREAM)
+    ]
+
+    # TODO: quizás estaría bueno elegir
+    #       random de manera dinámica?
+    #       para no mandar siempre al
+    #       mismo.
+    eof_handler = make_stateless_eof_handler(MOM_HOST, (external_txs[0],))
+
+    groupby = GroupBy(fn, external_rx, external_txs, eof_handler)
+    groupby.start()
 
 
 def main():
@@ -35,7 +59,7 @@ def main():
         case "uc3_sum":
             fn = UC3SumGroupByFn()
         case "uc4_compute_graph":
-            fn = UC4ComputeGraph()
+            return make_uc4_compute_graph()
         case "uc4_count_paths":
             fn = UC4CountPaths()
         case "uc5_count":
