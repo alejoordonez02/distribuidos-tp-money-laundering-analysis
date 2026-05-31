@@ -38,6 +38,7 @@ class StatelessRingEOFHandler(RingEOFHandler, StatelessEOFHandler):
             self.next_expected_counts[eof.client_id] = 0
 
             if eof.processed_count == eof.expected_count:
+                eof.expected_count = eof.next_expected_count
                 logging.info(f"downstreaming eof: {eof.__dict__}")
 
                 for tx in self.external_txs:
