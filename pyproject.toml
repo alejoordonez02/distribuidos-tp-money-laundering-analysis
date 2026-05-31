@@ -8,6 +8,7 @@ dependencies = [
     "numpy>=2.4.5",
     "pandas>=3.0.3",
     "pytest>=9.0.3",
+    "pyyaml>=6.0.3",
     "requests>=2.32",
 ]
 [tool.pytest.ini_options]

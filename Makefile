@@ -11,14 +11,14 @@ help:
 	@echo '* para up tienen que tener bajado los datasets LI-Small y dejarlos en `datasets/`'
 	@echo '  no los pusheé porque son demasiado grandes hasta comprimidos'
 	@echo '* para los targets que se corren en python se usa `uv`. Hay que tenerlo instalado'
-	@echo '* NCLIENTS se configura en test/cfg.py — gen_compose regenera docker-compose.clients.yaml'
+	@echo '* NCLIENTS se configura en config.yaml — gen_compose regenera docker-compose.clients.yaml'
 
 gen_input_output:
 	mkdir -p test/expected_responses
 	PYTHONPATH=src uv run test/gen_input_output.py # TODO: este script hay q limpiarlo después
 
 gen_compose:
-	PYTHONPATH=test uv run gen_compose.py
+	PYTHONPATH=. uv run scripts/gen_compose.py
 
 up: gen_compose
 	mkdir -p responses

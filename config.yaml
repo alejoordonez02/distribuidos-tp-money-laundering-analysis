@@ -1,0 +1,11 @@
+dataset:
+  transactions_path: datasets/LI-Small_Trans.csv
+  accounts_path: datasets/LI-Small_accounts.csv
+  accounts_sample_size: null  # null = whole dataset
+
+clients:
+  nclients: 3
+  total_sample_frac: 0.1   # 10% of dataset total, split evenly across clients
+  datasets_path: datasets/
+  expected_responses_path: test/expected_responses/
+  responses_path: responses/
