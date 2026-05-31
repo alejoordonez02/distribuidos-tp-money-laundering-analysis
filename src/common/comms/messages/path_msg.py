@@ -30,7 +30,6 @@ class PathMsg(Message):
     @classmethod
     def _from_fields(cls, fields: list[Any]) -> Self:
         cli_id = UUID(fields[0])
-        logging.info(f"FIELDS 1: {fields[1]}")
         f = fields[1]
         onode = Node(f[0][0], f[0][1])
         dnode = Node(f[1][0], f[1][1])
