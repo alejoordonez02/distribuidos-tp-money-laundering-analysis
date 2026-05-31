@@ -374,6 +374,7 @@ services:
       - NPEERS=3
       - RING_NAME=uc4_compute_graph_ring
       - NNODES_DOWNSTREAM=3
+      - PYTHONHASHSEED=2026
 
   uc4_compute_graph_group_by_1:
     build:
@@ -393,6 +394,7 @@ services:
       - NPEERS=3
       - RING_NAME=uc4_compute_graph_ring
       - NNODES_DOWNSTREAM=3
+      - PYTHONHASHSEED=2026
 
   uc4_compute_graph_group_by_2:
     build:
@@ -412,6 +414,7 @@ services:
       - NPEERS=3
       - RING_NAME=uc4_compute_graph_ring
       - NNODES_DOWNSTREAM=3
+      - PYTHONHASHSEED=2026 # esto es para tener hashing consistente
 
   uc4_count_paths:
     build:
