@@ -70,8 +70,6 @@ class Aggregate:
                 external_tx_idx = affinity % len(self.external_txs)
                 self.external_txs[external_tx_idx].send(aggregated.serialize())
 
-                # FIXME: ver q esto funcione en todos
-                #       los eof handlers
                 self.eof_handler.add_next_expected_processed_counts(eof.client_id)
 
             # NOTE: the eof that's passed to `downstream`

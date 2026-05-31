@@ -1,21 +1,28 @@
+from collections import defaultdict
 from typing import Iterator
 
-from common.comms.messages import NodeMsg, PathMsg
-from common.comms.messages.graph_src.path import Path
+from common.comms.messages import Graph, Path, PathCounts
 
 from .group_by_fn import GroupByFn
 
+AFFINITY_SHARDS = 100
+
 
 class UC4CountPaths(GroupByFn):
-    def group_by(self, msg: NodeMsg) -> Iterator[tuple[PathMsg, int]]:  # type: ignore[reportIncompatibleMethodOverride]
-        preds = msg.predecesors
-        succs = msg.succesors
-        paths: set[PathMsg] = set()
-        for a in preds:
-            for c in succs:
-                if a != c:
-                    paths.add(PathMsg(msg.client_id, Path(a, c), 1))
+    def group_by(self, msg: Graph) -> Iterator[tuple[PathCounts, int]]:  # type: ignore[reportIncompatibleMethodOverride]
+        affinities: dict[int, PathCounts] = defaultdict(
+            lambda: PathCounts(msg.client_id, {})
+        )
 
-        for path in paths:
-            yield path, hash(path)
+        for _, (preds, succs) in msg.nodes.items():
+            for a in preds:
+                for c in succs:
+                    if a != c:
+                        path = Path(a, c)
+                        idx = hash(path) % AFFINITY_SHARDS
+                        affinity_shard = affinities[idx]
 
+                        affinity_shard.add(path, 1)
+
+        for affinity, path_counts in affinities.items():
+            yield path_counts, affinity

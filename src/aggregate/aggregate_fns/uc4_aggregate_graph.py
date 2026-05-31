@@ -7,12 +7,14 @@ from collections import defaultdict
 from typing import Iterable
 from uuid import UUID
 
-from common.comms.messages import Node, NodeMsg
+from common.comms.messages import Graph, Node, NodeMsg
 
 from .aggregate_fn import AggregateFn
 
 MAX_AMOUNT = 10000
 SHARDING_FILES = 1000
+
+AFFINITY_SHARDS = 100
 
 
 def sharding_hash(node: Node) -> int:
@@ -50,31 +52,52 @@ class UC4AggregateGraphs(AggregateFn):
             self._files[client_id][hash] = pathlib.Path(path)
         return self._files[client_id][hash]
 
-    def aggregate(self, msg: NodeMsg):  # type: ignore[reportIncompatibleMethodOverride]
+    def aggregate(self, msg: Graph):  # type: ignore[reportIncompatibleMethodOverride]
         if msg.client_id not in self._preds:
             self._preds[msg.client_id] = {}
             self._succs[msg.client_id] = {}
 
-        self._preds[msg.client_id].setdefault(msg.node, set()).update(msg.predecesors)
-        self._succs[msg.client_id].setdefault(msg.node, set()).update(msg.succesors)
+        for node, (predecessors, successors) in msg.nodes.items():
+            self._preds[msg.client_id].setdefault(node, set()).update(predecessors)
+            self._succs[msg.client_id].setdefault(node, set()).update(successors)
 
         # Sharding
         if len(self._preds[msg.client_id]) >= MAX_AMOUNT:
             self.downstream(msg.client_id)
 
-    def get_result(self, client_id: UUID) -> Iterable[tuple[NodeMsg, int]]:
-        self.downstream(client_id)
+    def get_result(self, client_id: UUID) -> Iterable[tuple[Graph, int]]:
+        if client_id not in self._succs and client_id not in self._files:
+            return ()
+
+        if client_id in self._succs:
+            self.downstream(client_id)
+
         for _, file in self._files[client_id].items():
             preds: dict[Node, set[Node]] = defaultdict(set)
             succs: dict[Node, set[Node]] = defaultdict(set)
+
             with open(file, "r") as f:
                 for line in f:
                     node, pre, suc = _deserialize(line)
                     preds[node].update(pre)
                     succs[node].update(suc)
             file.unlink()
+
+            affinities: dict[int, Graph] = defaultdict(lambda: Graph(client_id, {}))
+
             for node in preds.keys():
-                yield NodeMsg(client_id, node, preds[node], succs[node]), hash(node)
+                affinity_shard_idx = hash(node) % AFFINITY_SHARDS
+                affinity_shard = affinities[affinity_shard_idx]
+
+                if node not in affinity_shard.nodes:
+                    affinity_shard.nodes[node] = (preds[node], succs[node])
+                    continue
+
+                affinities[affinity_shard_idx].nodes[node][0].update(preds[node])
+                affinities[affinity_shard_idx].nodes[node][1].update(succs[node])
+
+            for affinity, graph in affinities.items():
+                yield graph, affinity
 
         self._files.pop(client_id)
         self._preds.pop(client_id)
