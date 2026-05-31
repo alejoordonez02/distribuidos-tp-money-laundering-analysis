@@ -42,6 +42,22 @@ def make_uc4_aggregate_graphs():
     aggregate.start()
 
 
+# TODO: deduplicar este código porfa
+def make_uc4_aggregate_paths():
+    IDX = int(os.environ["IDX"])
+
+    fn = UC4AggregatePaths()
+
+    external_rx = ExchangeRabbitMQ(MOM_HOST, RX, [f"{IDX}"], f"{RX}{IDX}")
+    external_txs = (QueueRabbitMQ(MOM_HOST, TX),)
+
+    internal_eofs = Queue[EOF]()
+    eof_handler = make_stateful_eof_handler(MOM_HOST, external_txs, internal_eofs)
+
+    aggregate = Aggregate(fn, external_rx, external_txs, eof_handler, internal_eofs)
+    aggregate.start()
+
+
 def main():
     logging.basicConfig(level=LOGGING_LEVEL)
     logging.getLogger("pika").setLevel(logging.WARNING)
@@ -56,7 +72,7 @@ def main():
         case "uc4_aggregate_graphs":
             return make_uc4_aggregate_graphs()
         case "uc4_paths":
-            fn = UC4AggregatePaths()
+            return make_uc4_aggregate_paths()
         case _:
             raise ValueError(f"unknown aggregate strategy: {STRATEGY}")
 
