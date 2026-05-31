@@ -17,3 +17,5 @@ class MessageType(IntEnum):
     AVG_BY_FORMAT = 12
     MERGED_TRANSACTIONS = 13
     RING_DONE = 14
+    NODEMSG = 15
+    PATH_MSG = 16

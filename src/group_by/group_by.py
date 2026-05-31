@@ -3,10 +3,9 @@ from typing import Callable, Sequence
 
 from group_by_fns import GroupByFn
 
-from common.comms.eof_handler.eof_handler import StatelessEOFHandler
+from common.comms.eof_handler import StatelessEOFHandler
 from common.comms.messages import MessageType, deserialize_message
-from common.comms.middleware import MOMQueue
-from common.comms.middleware.mom import MOM
+from common.comms.middleware import MOM, MOMQueue
 from common.graceful_shutdown import setup_graceful_shutdown
 
 

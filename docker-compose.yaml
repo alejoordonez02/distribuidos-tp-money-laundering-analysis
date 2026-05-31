@@ -374,11 +374,11 @@ services:
       - NPEERS=3
       - RING_NAME=uc4_compute_graph_ring
 
-  uc4_compute_graph_group_by_1:
+  uc4_count_paths_0:
     build:
       context: ./src/
       dockerfile: group_by/Dockerfile
-    container_name: uc4_compute_graph_group_by_1
+    container_name: uc4_count_paths_0
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -521,8 +521,7 @@ services:
       - MOM_PORT=5672
       - STRATEGY=uc4_count_paths
       - RX=uc4_graphs
-      - TX=uc4_paths
-      - NPEERS_UPSTREAM=5
+      - TX=uc4_agggregated_nodes
 
   uc4_paths_aggregate:
     build:

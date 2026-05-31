@@ -18,8 +18,8 @@ from .ring_done import RingDone
 from .sum_by_payment_format import SumByPaymentFormat
 from .transaction_count import TransactionCount
 from .transactions import Transactions
-
-
+from .node_msg import NodeMsg
+from .path_msg import PathMsg
 def deserialize_message(bytes2: bytes) -> Message:
     """
     Deserializes `bytes` into a `Message`.
@@ -65,6 +65,10 @@ def deserialize_message(bytes2: bytes) -> Message:
             return TransactionCount.deserialize(bytes2)
         case MessageType.RING_DONE:
             return RingDone.deserialize(bytes2)
+        case MessageType.NODEMSG:
+            return NodeMsg.deserialize(bytes2)
+        case MessageType.PATH_MSG:
+            return PathMsg.deserialize(bytes2)
         case _:
             raise UnknownMessageError(
                 f"unknown message type {fields[0]} with contents {fields[1:]}"

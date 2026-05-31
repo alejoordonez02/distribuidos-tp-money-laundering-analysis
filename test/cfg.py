@@ -1,6 +1,8 @@
 # TRANSACTIONS_PATH = "datasets/synthetic_uc4_50k.csv"
 TRANSACTIONS_PATH = "datasets/LI-Small_Trans.csv"
 ACCOUNTS_PATH = "datasets/LI-Small_accounts.csv"
+# TRANSACTIONS_PATH = "datasets/perfect_sample.csv"
+# ACCOUNTS_PATH = "datasets/perfect_sample_accounts.csv"
 ACCOUNTS_SAMPLE_SIZE = None  # whole dataset
 
 NCLIENTS = 3
