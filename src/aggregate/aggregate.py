@@ -1,3 +1,4 @@
+import logging
 from queue import Queue
 from threading import Thread
 from typing import Callable, Sequence
@@ -13,19 +14,17 @@ from common.graceful_shutdown import setup_graceful_shutdown
 class Aggregate:
     def __init__(
         self,
-        external_rx: MOM,
         fn: AggregateFn,
+        external_rx: MOM,
         external_txs: Sequence[MOM],
         eof_handler: StatefulEOFHandler,
         internal_eofs_rx: Queue[EOF],
-        npeers_upstream: int = 1,
     ):
         self.external_rx = external_rx
         self.fn = fn
         self.external_txs = external_txs
         self.eof_handler = eof_handler
         self.internal_eofs_rx = internal_eofs_rx
-        self.npeers_upstream = npeers_upstream
 
         self._should_keep_running = False
         self.internal_eofs_handle: Thread
@@ -82,6 +81,7 @@ class Aggregate:
 
     def _handle_message(self, bytes2: bytes, ack: Callable, _: Callable):
         msg = deserialize_message(bytes2)
+        logging.debug(f"received msg: {msg.__dict__}")
 
         if msg.type() == MessageType.EOF:
             self.eof_handler.handle(msg)  # type: ignore[reportArgumentType]

@@ -1,6 +1,6 @@
 import logging
 from queue import Queue
-from typing import Iterable
+from typing import Sequence
 from uuid import UUID
 
 from common.comms.messages import EOF
@@ -10,8 +10,8 @@ from .eof_handler import StatefulEOFHandler, StatelessEOFHandler
 
 
 class StatelessSingleNodeEOFHandler(StatelessEOFHandler):
-    def __init__(self, txs: Iterable[MOM]):
-        self.txs = txs
+    def __init__(self, external_txs: Sequence[MOM]):
+        self.external_txs = external_txs
 
         self.processed_counts: dict[UUID, int] = {}
         self.next_expected_counts: dict[UUID, int] = {}
@@ -25,14 +25,14 @@ class StatelessSingleNodeEOFHandler(StatelessEOFHandler):
     def handle(self, eof: EOF):
         eof.expected_count = self.next_expected_counts[eof.client_id]
         logging.info(f"downstreaming eof: {eof.__dict__}")
-        for tx in self.txs:
+        for tx in self.external_txs:
             tx.send(eof.serialize())
 
 
 # TODO: esto es tmp hasta definir bien la interfaz
 class StatefulSingleNodeEOFHandler(StatefulEOFHandler):
-    def __init__(self, txs: Iterable[MOM], internal_eofs_tx: Queue[EOF]):
-        self.txs = txs
+    def __init__(self, external_txs: Sequence[MOM], internal_eofs_tx: Queue[EOF]):
+        self.external_txs = external_txs
         self.internal_eofs_tx = internal_eofs_tx
 
         self.processed_counts: dict[UUID, int] = {}
@@ -50,5 +50,5 @@ class StatefulSingleNodeEOFHandler(StatefulEOFHandler):
     def downstream(self, eof: EOF):
         eof.expected_count = self.next_expected_counts[eof.client_id]
         logging.info(f"downstreaming eof: {eof.__dict__}")
-        for tx in self.txs:
+        for tx in self.external_txs:
             tx.send(eof.serialize())

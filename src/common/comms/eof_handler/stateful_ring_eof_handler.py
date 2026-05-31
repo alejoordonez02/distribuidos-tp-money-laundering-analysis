@@ -1,7 +1,7 @@
 import logging
 from queue import Queue
 from threading import Lock, Thread
-from typing import Callable, Iterable
+from typing import Callable, Sequence
 from uuid import UUID
 
 from common.comms.messages import EOF, RingDone, deserialize_message
@@ -18,7 +18,7 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
         self,
         id2: int,
         mom_ring: MOMRing,
-        external_txs: Iterable[MOM],
+        external_txs: Sequence[MOM],
         internal_eofs_tx: Queue[EOF],
     ):
         self.id = id2
@@ -45,6 +45,7 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
         self.mtx = Lock()
 
         self.ring_proccessed_counts: dict[UUID, int] = {}
+        self.next_expected_counts: dict[UUID, int] = {}
 
     def handle(self, eof: EOF):
         eof.processed_count = 0
