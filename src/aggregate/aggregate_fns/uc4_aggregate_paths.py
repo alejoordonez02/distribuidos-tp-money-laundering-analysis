@@ -100,3 +100,5 @@ class UC4AggregatePaths(AggregateFn):
                 file = self._file_for(p, client_id)
                 with open(file, "a") as f:
                     f.write(_serialize(PathMsg(client_id, p, amount)) + "\n")
+
+        self._files.pop(client_id)
