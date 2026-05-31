@@ -465,11 +465,11 @@ services:
       - NNODES_DOWNSTREAM=3
       - PYTHONHASHSEED=2026
 
-  uc4_count_paths:
+  uc4_count_paths_0:
     build:
       context: ./src/
       dockerfile: group_by/Dockerfile
-    container_name: uc4_count_paths
+    container_name: uc4_count_paths_0
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -477,9 +477,93 @@ services:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
       - STRATEGY=uc4_count_paths
-      - RX=uc4_aggregated_nodes
+      - RX=uc4_aggregated_graphs
       - TX=uc4_paths
-      - NNODES_DOWNSTREAM=3
+      - IDX=0
+      - NPEERS=5
+      - RING_NAME=uc4_count_paths_ring
+      - NNODES_DOWNSTREAM=5
+      - PYTHONHASHSEED=2026
+
+  uc4_count_paths_1:
+    build:
+      context: ./src/
+      dockerfile: group_by/Dockerfile
+    container_name: uc4_count_paths_1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc4_count_paths
+      - RX=uc4_aggregated_graphs
+      - TX=uc4_paths
+      - IDX=1
+      - NPEERS=5
+      - RING_NAME=uc4_count_paths_ring
+      - NNODES_DOWNSTREAM=5
+      - PYTHONHASHSEED=2026
+
+  uc4_count_paths_2:
+    build:
+      context: ./src/
+      dockerfile: group_by/Dockerfile
+    container_name: uc4_count_paths_2
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc4_count_paths
+      - RX=uc4_aggregated_graphs
+      - TX=uc4_paths
+      - IDX=2
+      - NPEERS=5
+      - RING_NAME=uc4_count_paths_ring
+      - NNODES_DOWNSTREAM=5
+      - PYTHONHASHSEED=2026
+
+  uc4_count_paths_3:
+    build:
+      context: ./src/
+      dockerfile: group_by/Dockerfile
+    container_name: uc4_count_paths_3
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc4_count_paths
+      - RX=uc4_aggregated_graphs
+      - TX=uc4_paths
+      - IDX=3
+      - NPEERS=5
+      - RING_NAME=uc4_count_paths_ring
+      - NNODES_DOWNSTREAM=5
+      - PYTHONHASHSEED=2026
+
+  uc4_count_paths_4:
+    build:
+      context: ./src/
+      dockerfile: group_by/Dockerfile
+    container_name: uc4_count_paths_4
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc4_count_paths
+      - RX=uc4_aggregated_graphs
+      - TX=uc4_paths
+      - IDX=4
+      - NPEERS=5
+      - RING_NAME=uc4_count_paths_ring
+      - NNODES_DOWNSTREAM=5
+      - PYTHONHASHSEED=2026
 
   uc5_converter_0:
     build:
@@ -589,10 +673,11 @@ services:
       - MOM_PORT=5672
       - STRATEGY=uc4_aggregate_graphs
       - RX=uc4_graphs
-      - TX=uc4_aggregated_nodes
+      - TX=uc4_aggregated_graphs
       - IDX=0
       - NPEERS=3
       - RING_NAME=uc4_aggregate_graphs_ring
+      - NNODES_DOWNSTREAM=5
       - PYTHONHASHSEED=2026
 
   uc4_aggregate_graphs_1:
@@ -608,10 +693,11 @@ services:
       - MOM_PORT=5672
       - STRATEGY=uc4_aggregate_graphs
       - RX=uc4_graphs
-      - TX=uc4_aggregated_nodes
+      - TX=uc4_aggregated_graphs
       - IDX=1
       - NPEERS=3
       - RING_NAME=uc4_aggregate_graphs_ring
+      - NNODES_DOWNSTREAM=5
       - PYTHONHASHSEED=2026
 
   uc4_aggregate_graphs_2:
@@ -627,12 +713,15 @@ services:
       - MOM_PORT=5672
       - STRATEGY=uc4_aggregate_graphs
       - RX=uc4_graphs
-      - TX=uc4_aggregated_nodes
+      - TX=uc4_aggregated_graphs
       - IDX=2
       - NPEERS=3
       - RING_NAME=uc4_aggregate_graphs_ring
+      - NNODES_DOWNSTREAM=5
       - PYTHONHASHSEED=2026
 
+  # después de este estamos usando una working queue
+  # por eso no está el NNODES_DOWNSTREAM
   uc4_paths_aggregate_0:
     build:
       context: ./src/

@@ -48,6 +48,7 @@ def make_uc4_compute_graph():
 
 
 def make_uc4_count_paths():
+    IDX = int(os.environ["IDX"])
     NNODES_DOWNSTREAM = int(os.environ["NNODES_DOWNSTREAM"])
 
     if NNODES_DOWNSTREAM <= 0:
@@ -55,7 +56,7 @@ def make_uc4_count_paths():
 
     fn = UC4CountPaths()
 
-    external_rx = QueueRabbitMQ(MOM_HOST, RX)
+    external_rx = ExchangeRabbitMQ(MOM_HOST, RX, [f"{IDX}"], f"{RX}{IDX}")
     external_txs = [
         ExchangeRabbitMQ(MOM_HOST, TX, routing_keys=[f"{n}"], queue_name=f"{TX}{n}")
         for n in range(NNODES_DOWNSTREAM)

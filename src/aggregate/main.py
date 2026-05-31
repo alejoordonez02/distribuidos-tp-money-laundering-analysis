@@ -29,14 +29,18 @@ LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
 
 def make_uc4_aggregate_graphs():
     IDX = int(os.environ["IDX"])
+    NNODES_DOWNSTREAM = int(os.environ["NNODES_DOWNSTREAM"])
 
     fn = UC4AggregateGraphs()
 
     external_rx = ExchangeRabbitMQ(MOM_HOST, RX, [f"{IDX}"], f"{RX}{IDX}")
-    external_txs = (QueueRabbitMQ(MOM_HOST, TX),)
+    external_txs = [
+        ExchangeRabbitMQ(MOM_HOST, TX, routing_keys=[f"{n}"], queue_name=f"{TX}{n}")
+        for n in range(NNODES_DOWNSTREAM)
+    ]
 
     internal_eofs = Queue[EOF]()
-    eof_handler = make_stateful_eof_handler(MOM_HOST, external_txs, internal_eofs)
+    eof_handler = make_stateful_eof_handler(MOM_HOST, (external_txs[0],), internal_eofs)
 
     aggregate = Aggregate(fn, external_rx, external_txs, eof_handler, internal_eofs)
     aggregate.start()
@@ -52,7 +56,7 @@ def make_uc4_aggregate_paths():
     external_txs = (QueueRabbitMQ(MOM_HOST, TX),)
 
     internal_eofs = Queue[EOF]()
-    eof_handler = make_stateful_eof_handler(MOM_HOST, external_txs, internal_eofs)
+    eof_handler = make_stateful_eof_handler(MOM_HOST, (external_txs[0],), internal_eofs)
 
     aggregate = Aggregate(fn, external_rx, external_txs, eof_handler, internal_eofs)
     aggregate.start()
