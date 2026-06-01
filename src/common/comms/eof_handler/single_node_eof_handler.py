@@ -47,6 +47,9 @@ class StatefulSingleNodeEOFHandler(StatefulEOFHandler):
     def handle(self, eof: EOF):
         self.internal_eofs_tx.put(eof)
 
+    def confirm_sent_data(self, client_id: UUID):
+        pass
+
     def downstream(self, eof: EOF):
         eof.expected_count = self.sent_data[eof.client_id]
         logging.info(f"downstreaming eof: {eof.__dict__}")

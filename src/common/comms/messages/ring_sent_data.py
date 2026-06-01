@@ -19,17 +19,32 @@ class RingSentData(Message):
     to be downstreamed.
     """
 
-    def __init__(self, client_id: UUID, origin: int, sent_data: int):
+    def __init__(
+        self,
+        client_id: UUID,
+        origin: int,
+        sent_data_amount: int,
+        sent_data: bool,
+        done: bool,
+    ):
         self.client_id = client_id
         self.origin = origin
+        self.sent_data_amount = sent_data_amount
         self.sent_data = sent_data
+        self.done = done
 
     @classmethod
     def _type(cls):
         return MessageType.RING_SENT_DATA
 
     def _fields(self) -> list[Any]:
-        return [self.client_id, self.origin, self.sent_data]
+        return [
+            self.client_id,
+            self.origin,
+            self.sent_data_amount,
+            self.sent_data,
+            self.done,
+        ]
 
     @classmethod
     def _from_fields(cls, fields: list[Any]) -> Self:

@@ -72,6 +72,8 @@ class Aggregate:
 
                 self.eof_handler.add_sent_data_count(eof.client_id)
 
+            self.eof_handler.confirm_sent_data(eof.client_id)
+
             # NOTE: the eof that's passed to `downstream`
             #       must be the same one that's popped
             #       from the `internal_eofs` queue.

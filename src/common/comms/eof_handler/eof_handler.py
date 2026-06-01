@@ -70,3 +70,6 @@ class StatefulEOFHandler(EOFHandler):
 
     @abstractmethod
     def downstream(self, eof: EOF): ...
+
+    @abstractmethod
+    def confirm_sent_data(self, client_id: UUID): ...

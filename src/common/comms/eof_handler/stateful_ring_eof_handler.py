@@ -13,7 +13,7 @@ from common.comms.middleware import MOM, MOMRing
 from .eof_handler import StatefulEOFHandler
 from .ring_eof_handler import RingEOFHandler
 
-EOF_LOOP_SECS = 2
+RING_LOOP_TIMEOFF = 2
 
 
 class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
@@ -47,6 +47,11 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
         self.mtx = Lock()
 
         self.sent_data: dict[UUID, int] = {}
+        self.confirmed_sent_data: dict[UUID, bool] = {}
+
+    def confirm_sent_data(self, client_id: UUID):
+        with self.mtx:
+            self.confirmed_sent_data[client_id] = True
 
     def handle(self, eof: EOF):
         eof.processed_count = 0
@@ -65,7 +70,11 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
         # eventualmente me va a llegar a mí con todo sumado
         with self.mtx:
             ring_data = RingSentData(
-                eof.client_id, self.id, self.sent_data.pop(eof.client_id, 0)
+                client_id=eof.client_id,
+                origin=self.id,
+                sent_data_amount=self.sent_data.pop(eof.client_id, 0),
+                sent_data=self.confirmed_sent_data.get(eof.client_id, True),
+                done=False,
             )
 
         logging.info(f"sending internal ring sent data: {ring_data.__dict__}")
@@ -113,7 +122,7 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
 
         if eof.processed_count != eof.expected_count:
             if eof.origin == self.id:
-                time.sleep(EOF_LOOP_SECS)  # avoid making the eof loop too much
+                time.sleep(RING_LOOP_TIMEOFF)  # avoid making the eof loop too much
 
             logging.info(f"forwarding internal eof: {eof.__dict__}")
             mom_ring_tx.send(eof.serialize())
@@ -138,13 +147,50 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
     def _handle_ring_sent_data(
         self, ring_data: RingSentData, mom_ring_tx: MOMRing, external_txs: Sequence[MOM]
     ):
+        # 6. si ya terminamos limpio los recursos, y sólo corto si soy el líder
+        if ring_data.done:
+            logging.info(f"ring sent data done: {ring_data.__dict__}")
+            self.sent_data.pop(ring_data.client_id, None)
+            self.confirmed_sent_data.pop(ring_data.client_id, None)
+
+            if ring_data.origin == self.id:
+                return
+
+            ring_data.sent_data = True
+            logging.info(f"sending ring sent data done: {ring_data.__dict__}")
+            mom_ring_tx.send(ring_data.serialize())
+
+        # 1. no importa quién sea, si alguien no terminó entonces sent data
+        # es false y appendeo mi sent_data_amount al msj
+        with self.mtx:
+            ring_data.sent_data_amount += self.sent_data.pop(ring_data.client_id, 0)
+            ring_data.sent_data &= self.confirmed_sent_data.get(
+                ring_data.client_id, False
+            )
+
+        # 2. si no soy el "líder" forwardeo y me voy
         if self.id != ring_data.origin:
-            ring_data.sent_data += self.sent_data.pop(ring_data.client_id, 0)
             logging.info(f"forwarding internal ring sent data: {ring_data.__dict__}")
             mom_ring_tx.send(ring_data.serialize())
             return
 
-        eof = EOF(ring_data.client_id, expected_count=ring_data.sent_data)
+        # 3. si todavía no todos confirmaron que mandaron sigo girando el msj
+        # y me voy
+        if not ring_data.sent_data:
+            ring_data.sent_data = True
+            time.sleep(RING_LOOP_TIMEOFF)
+            logging.info(f"restarting internal ring sent data: {ring_data.__dict__}")
+            mom_ring_tx.send(ring_data.serialize())
+            return
+
+        # 4. ya confirmaron todos, sólo hace falta volver a girar el msj para
+        # que ahora todos sepan que pueden liberar el recurso
+        ring_data.done = True
+        mom_ring_tx.send(ring_data.serialize())
+
+        # 5. mientras todos van limpiando los recursos ya podemos ir mandando
+        # el eof al próximo clúster
+        eof = EOF(ring_data.client_id, expected_count=ring_data.sent_data_amount)
 
         logging.info("downstreaming eof: {eof.__dict__}")
         for tx in external_txs:
