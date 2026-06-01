@@ -11,7 +11,7 @@ from common.comms.messages import Graph, Node
 
 from .aggregate_fn import AggregateFn
 
-MAX_AMOUNT = 100000
+MAX_AMOUNT = 1_000_000
 SHARDING_FILES = 1000
 
 AFFINITY_SHARDS = 100
@@ -100,8 +100,10 @@ class UC4AggregateGraphs(AggregateFn):
                 yield graph, affinity
 
         self._files.pop(client_id)
-        self._preds.pop(client_id)
-        self._succs.pop(client_id)
+        # FIXME: está ok este default? hace falta
+        #        este pop?
+        self._preds.pop(client_id, None)
+        self._succs.pop(client_id, None)
 
     def downstream(self, client_id):
         logging.info("Downstreaming")
@@ -114,5 +116,6 @@ class UC4AggregateGraphs(AggregateFn):
                 path = self._file_for(node, client_id)
                 with open(path, "a") as f:
                     f.write(_serialize(node, preds[node], succs[node]) + "\n")
-        self._preds[client_id].clear()
-        self._succs[client_id].clear()
+
+        self._preds.pop(client_id, None)
+        self._succs.pop(client_id, None)

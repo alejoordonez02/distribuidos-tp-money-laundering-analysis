@@ -5,6 +5,10 @@ from common.comms.messages import BankNames
 
 from .aggregate_fn import AggregateFn
 
+# NOTE: estos no pueden ser más chicos
+#       que la cantidad de controladores
+#       que hay adelante, porque se van
+#       a desperdiciar la diferencia.
 AFFINITY_SHARDS = 10
 
 

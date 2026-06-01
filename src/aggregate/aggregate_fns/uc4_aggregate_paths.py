@@ -13,7 +13,7 @@ from common.comms.messages.path_count import PathCounts
 
 from .aggregate_fn import AggregateFn
 
-MAX_AMOUNT = 100000
+MAX_AMOUNT = 1_000_000
 SHARDING_FILES = 1000
 
 
@@ -101,4 +101,4 @@ class UC4AggregatePaths(AggregateFn):
                 with open(file, "a") as f:
                     f.write(_serialize(PathMsg(client_id, p, amount)) + "\n")
 
-        self._files.pop(client_id)
+        self._paths.pop(client_id)
