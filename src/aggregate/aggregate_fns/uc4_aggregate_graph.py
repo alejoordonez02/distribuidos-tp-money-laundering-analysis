@@ -7,7 +7,7 @@ from collections import defaultdict
 from typing import Iterable
 from uuid import UUID
 
-from common.comms.messages import Graph, Node, NodeMsg
+from common.comms.messages import Graph, Node
 
 from .aggregate_fn import AggregateFn
 

@@ -5,7 +5,7 @@ from common.comms.messages import Graph, Path, PathCounts
 
 from .group_by_fn import GroupByFn
 
-AFFINITY_SHARDS = 100
+AFFINITY_SHARDS = 10
 
 
 class UC4CountPaths(GroupByFn):
