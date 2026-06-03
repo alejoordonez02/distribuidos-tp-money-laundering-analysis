@@ -11,8 +11,8 @@ from common.comms.messages import Graph, Node
 
 from .aggregate_fn import AggregateFn
 
-MAX_AMOUNT = 1_000_000
-SHARDING_FILES = 1000
+MAX_AMOUNT = 100_000
+SHARDING_FILES = 200
 
 AFFINITY_SHARDS = 100
 

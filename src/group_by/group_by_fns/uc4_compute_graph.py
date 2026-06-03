@@ -5,7 +5,7 @@ from common.comms.messages import Graph, Node, Transactions
 
 from .group_by_fn import GroupByFn
 
-AFFINITY_SHARDS = 200
+AFFINITY_SHARDS = 50
 
 
 class UC4ComputeGraph(GroupByFn):

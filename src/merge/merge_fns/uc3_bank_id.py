@@ -49,12 +49,10 @@ class UC3BankIdMergeFn(MergeFn):
             self._averages[msg.client_id][fmt] = avg
 
     def right(self, msg: Transactions):  # type: ignore[reportIncompatibleMethodOverride]
-        avgs = self._averages.get(msg.client_id)
         path = self._file_for(msg.client_id)
         with open(path, "a") as f:
             for t in msg.transactions:
-                if avgs is None or t.payment_format in avgs:
-                    f.write(_serialize(t) + "\n")
+                f.write(_serialize(t) + "\n")
 
     def get_result(self, client_id: UUID) -> MergedTransactions:
         averages = self._averages.pop(client_id, {})

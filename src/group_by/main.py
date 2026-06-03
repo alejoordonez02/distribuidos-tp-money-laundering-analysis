@@ -6,7 +6,6 @@ from group_by_fns import (
     UC2MaxAmountGroupByFn,
     UC3SumGroupByFn,
     UC4ComputeGraph,
-    UC4CountPaths,
     UC5CountGroupByFn,
 )
 
@@ -47,30 +46,6 @@ def make_uc4_compute_graph():
     groupby.start()
 
 
-def make_uc4_count_paths():
-    IDX = int(os.environ["IDX"])
-    NNODES_DOWNSTREAM = int(os.environ["NNODES_DOWNSTREAM"])
-
-    if NNODES_DOWNSTREAM <= 0:
-        raise ValueError("downstream nodes amount cannot be less than 0")
-
-    fn = UC4CountPaths()
-
-    external_rx = ExchangeRabbitMQ(MOM_HOST, RX, [f"{IDX}"], f"{RX}{IDX}")
-    external_txs = [
-        ExchangeRabbitMQ(MOM_HOST, TX, routing_keys=[f"{n}"], queue_name=f"{TX}{n}")
-        for n in range(NNODES_DOWNSTREAM)
-    ]
-
-    # TODO: quizás estaría bueno elegir
-    #       random de manera dinámica?
-    #       para no mandar siempre al
-    #       mismo.
-    eof_handler = make_stateless_eof_handler(MOM_HOST, (external_txs[0],))
-
-    groupby = GroupBy(fn, external_rx, external_txs, eof_handler)
-    groupby.start()
-
 
 def main():
     logging.basicConfig(level=LOGGING_LEVEL)
@@ -85,8 +60,6 @@ def main():
             fn = UC3SumGroupByFn()
         case "uc4_compute_graph":
             return make_uc4_compute_graph()
-        case "uc4_count_paths":
-            return make_uc4_count_paths()
         case "uc5_count":
             fn = UC5CountGroupByFn()
         case _:

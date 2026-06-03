@@ -13,8 +13,8 @@ from common.comms.messages.path_count import PathCounts
 
 from .aggregate_fn import AggregateFn
 
-MAX_AMOUNT = 1_000_000
-SHARDING_FILES = 1000
+MAX_AMOUNT = 100_000
+SHARDING_FILES = 200
 
 
 def sharding_hash(path: Path, client_id: UUID) -> int:
