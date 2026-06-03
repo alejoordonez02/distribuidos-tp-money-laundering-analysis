@@ -5,8 +5,8 @@ ACCOUNTS_PATH = "datasets/LI-Small_accounts.csv"
 # ACCOUNTS_PATH = "datasets/perfect_sample_accounts.csv"
 ACCOUNTS_SAMPLE_SIZE = None  # whole dataset
 
-NCLIENTS = 3
-TRANSACTIONS_SAMPLE_FRAC: float = 0.1 / NCLIENTS
+NCLIENTS = 2
+TRANSACTIONS_SAMPLE_FRAC: float = 0.5
 CLIENT_DATASETS_PATH = "datasets/"
 CLIENT_EXPECTED_RESPONSES_PATH = "test/expected_responses/"
 
