@@ -72,15 +72,18 @@ class Merge:
         if not done:
             return
 
-        tx.send(self._fn.get_result(client_id).serialize())
-        # NOTE: merge no está escalado ahora, maneja
-        #       él mismo su eof, sabemos que es uno
-        #       y que emite el resultado cuando le
-        #       llegan los dos eofs, o sea que el
-        #       próximo clúster tiene que esperar 1
-        #       msj, que es el que acabamos de
-        #       mandar arriba.
-        eof = EOF(client_id, expected_count=1)
+        # get_result streams the merged output in bounded chunks (the right side
+        # is spilled to disk) so we never build one huge message. We forward each
+        # chunk and tell the next cluster exactly how many messages to expect.
+        # NOTE: merge is single-instance, so this node alone owns its EOF: it
+        #       emits once both sides reached their expected counts, and the
+        #       downstream waits for `sent` messages.
+        sent = 0
+        for result in self._fn.get_result(client_id):
+            tx.send(result.serialize())
+            sent += 1
+
+        eof = EOF(client_id, expected_count=sent)
 
         logging.info(f"downstreaming eof: {eof.__dict__}")
         tx.send(eof.serialize())
