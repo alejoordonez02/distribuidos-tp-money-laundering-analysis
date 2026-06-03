@@ -56,7 +56,7 @@ services:
       - UC4_TRANSACTIONS_TX=uc4_filtered_transactions
       - UC5_TRANSACTIONS_TX=uc5_filtered_transactions
       - IDX=0
-      - NPEERS=3
+      - NPEERS=2
       - RING_NAME=default_filter_ring
 
   default_filter_1:
@@ -78,29 +78,7 @@ services:
       - UC4_TRANSACTIONS_TX=uc4_filtered_transactions
       - UC5_TRANSACTIONS_TX=uc5_filtered_transactions
       - IDX=1
-      - NPEERS=3
-      - RING_NAME=default_filter_ring
-
-  default_filter_2:
-    build:
-      context: ./src/
-      dockerfile: filter/Dockerfile
-    container_name: default_filter_2
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - RX=client_transactions
-      - UC1_TRANSACTIONS_TX=uc1_join
-      - UC2_TRANSACTIONS_TX=uc2_filtered_transactions
-      - UC3_PERIOD_A_TRANSACTIONS_TX=uc3_transactons_period_A
-      - UC3_PERIOD_B_TRANSACTIONS_TX=uc3_transactons_period_B
-      - UC4_TRANSACTIONS_TX=uc4_filtered_transactions
-      - UC5_TRANSACTIONS_TX=uc5_filtered_transactions
-      - IDX=2
-      - NPEERS=3
+      - NPEERS=2
       - RING_NAME=default_filter_ring
 
   uc3_average_filter_0:
@@ -209,7 +187,7 @@ services:
       - RX=uc2_filtered_transactions
       - TX=uc2_partial_max_amount
       - IDX=0
-      - NPEERS=3
+      - NPEERS=2
       - RING_NAME=uc2_max_amount_group_by_ring
       - PYTHONHASHSEED=2026
 
@@ -228,26 +206,7 @@ services:
       - RX=uc2_filtered_transactions
       - TX=uc2_partial_max_amount
       - IDX=1
-      - NPEERS=3
-      - RING_NAME=uc2_max_amount_group_by_ring
-      - PYTHONHASHSEED=2026
-
-  uc2_max_amount_group_by_2:
-    build:
-      context: ./src/
-      dockerfile: group_by/Dockerfile
-    container_name: uc2_max_amount_group_by_2
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - STRATEGY=uc2_max_amount
-      - RX=uc2_filtered_transactions
-      - TX=uc2_partial_max_amount
-      - IDX=2
-      - NPEERS=3
+      - NPEERS=2
       - RING_NAME=uc2_max_amount_group_by_ring
       - PYTHONHASHSEED=2026
 
@@ -266,7 +225,7 @@ services:
       - RX=client_accounts
       - TX=uc2_partial_bank_names
       - IDX=0
-      - NPEERS=3
+      - NPEERS=2
       - RING_NAME=uc2_bank_names_group_by_ring
       - PYTHONHASHSEED=2026
 
@@ -285,26 +244,7 @@ services:
       - RX=client_accounts
       - TX=uc2_partial_bank_names
       - IDX=1
-      - NPEERS=3
-      - RING_NAME=uc2_bank_names_group_by_ring
-      - PYTHONHASHSEED=2026
-
-  uc2_bank_names_group_by_2:
-    build:
-      context: ./src/
-      dockerfile: group_by/Dockerfile
-    container_name: uc2_bank_names_group_by_2
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - STRATEGY=uc2_bank_names
-      - RX=client_accounts
-      - TX=uc2_partial_bank_names
-      - IDX=2
-      - NPEERS=3
+      - NPEERS=2
       - RING_NAME=uc2_bank_names_group_by_ring
       - PYTHONHASHSEED=2026
 
@@ -323,7 +263,7 @@ services:
       - RX=uc3_transactons_period_A
       - TX=uc3_sum_by_format
       - IDX=0
-      - NPEERS=3
+      - NPEERS=2
       - RING_NAME=uc2_group_by_format_ring
       - PYTHONHASHSEED=2026
 
@@ -342,26 +282,7 @@ services:
       - RX=uc3_transactons_period_A
       - TX=uc3_sum_by_format
       - IDX=1
-      - NPEERS=3
-      - RING_NAME=uc2_group_by_format_ring
-      - PYTHONHASHSEED=2026
-
-  uc3_group_by_format_2:
-    build:
-      context: ./src/
-      dockerfile: group_by/Dockerfile
-    container_name: uc3_group_by_format_2
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - STRATEGY=uc3_sum
-      - RX=uc3_transactons_period_A
-      - TX=uc3_sum_by_format
-      - IDX=2
-      - NPEERS=3
+      - NPEERS=2
       - RING_NAME=uc2_group_by_format_ring
       - PYTHONHASHSEED=2026
 
@@ -380,7 +301,7 @@ services:
       - RX=uc4_filtered_transactions
       - TX=uc4_graphs
       - IDX=0
-      - NPEERS=5
+      - NPEERS=3
       - RING_NAME=uc4_compute_graph_ring
       - NNODES_DOWNSTREAM=3
       - PYTHONHASHSEED=2026
@@ -400,7 +321,7 @@ services:
       - RX=uc4_filtered_transactions
       - TX=uc4_graphs
       - IDX=1
-      - NPEERS=5
+      - NPEERS=3
       - RING_NAME=uc4_compute_graph_ring
       - NNODES_DOWNSTREAM=3
       - PYTHONHASHSEED=2026
@@ -420,47 +341,7 @@ services:
       - RX=uc4_filtered_transactions
       - TX=uc4_graphs
       - IDX=2
-      - NPEERS=5
-      - RING_NAME=uc4_compute_graph_ring
-      - NNODES_DOWNSTREAM=3
-      - PYTHONHASHSEED=2026
-
-  uc4_compute_graph_group_by_3:
-    build:
-      context: ./src/
-      dockerfile: group_by/Dockerfile
-    container_name: uc4_compute_graph_group_by_3
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - STRATEGY=uc4_compute_graph
-      - RX=uc4_filtered_transactions
-      - TX=uc4_graphs
-      - IDX=3
-      - NPEERS=5
-      - RING_NAME=uc4_compute_graph_ring
-      - NNODES_DOWNSTREAM=3
-      - PYTHONHASHSEED=2026
-
-  uc4_compute_graph_group_by_4:
-    build:
-      context: ./src/
-      dockerfile: group_by/Dockerfile
-    container_name: uc4_compute_graph_group_by_4
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - STRATEGY=uc4_compute_graph
-      - RX=uc4_filtered_transactions
-      - TX=uc4_graphs
-      - IDX=4
-      - NPEERS=5
+      - NPEERS=3
       - RING_NAME=uc4_compute_graph_ring
       - NNODES_DOWNSTREAM=3
       - PYTHONHASHSEED=2026
@@ -468,7 +349,7 @@ services:
   uc4_count_paths_0:
     build:
       context: ./src/
-      dockerfile: group_by/Dockerfile
+      dockerfile: aggregate/Dockerfile
     container_name: uc4_count_paths_0
     depends_on:
       rabbitmq:
@@ -488,7 +369,7 @@ services:
   uc4_count_paths_1:
     build:
       context: ./src/
-      dockerfile: group_by/Dockerfile
+      dockerfile: aggregate/Dockerfile
     container_name: uc4_count_paths_1
     depends_on:
       rabbitmq:
@@ -508,7 +389,7 @@ services:
   uc4_count_paths_2:
     build:
       context: ./src/
-      dockerfile: group_by/Dockerfile
+      dockerfile: aggregate/Dockerfile
     container_name: uc4_count_paths_2
     depends_on:
       rabbitmq:
@@ -528,7 +409,7 @@ services:
   uc4_count_paths_3:
     build:
       context: ./src/
-      dockerfile: group_by/Dockerfile
+      dockerfile: aggregate/Dockerfile
     container_name: uc4_count_paths_3
     depends_on:
       rabbitmq:
@@ -548,7 +429,7 @@ services:
   uc4_count_paths_4:
     build:
       context: ./src/
-      dockerfile: group_by/Dockerfile
+      dockerfile: aggregate/Dockerfile
     container_name: uc4_count_paths_4
     depends_on:
       rabbitmq:
