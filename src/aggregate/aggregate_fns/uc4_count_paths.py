@@ -13,8 +13,12 @@ from common.comms.messages.path_count import PathCounts
 
 from .aggregate_fn import AggregateFn
 
-MAX_AMOUNT = 100_000
-SHARDING_FILES = 200
+# Pairs held in memory before spilling. Raised now that aggregate_graphs salts
+# hubs into ~SPLIT_THRESHOLD-sized tiles: no single message can dump a mega-hub
+# here anymore, so we can keep more in RAM (fewer, larger spills — and small/
+# perfect datasets stay entirely in memory) while staying well within 8GB.
+MAX_AMOUNT = 500_000
+SHARDING_FILES = 500
 AFFINITY_SHARDS = 10
 
 
@@ -59,6 +63,19 @@ class UC4CountPaths(AggregateFn):
                     if a != c:
                         path = Path(a, c)
                         paths[path] = paths.get(path, 0) + 1
+
+                # Spill mid-message: a single hub node generates len(preds) *
+                # len(succs) pairs in one Graph message, which can be millions —
+                # far past MAX_AMOUNT — before the per-message check below would
+                # ever run, blowing up RAM. Checking per predecessor caps the
+                # in-memory dict regardless of hub size. _downstream pops
+                # self._paths[client_id], so re-create and re-bind paths after it.
+                # Counts stay correct: spilled partials are summed back per path
+                # in get_result, so the result is identical to never spilling.
+                if len(paths) >= MAX_AMOUNT:
+                    self._downstream(client_id)
+                    self._paths[client_id] = {}
+                    paths = self._paths[client_id]
 
         if len(paths) >= MAX_AMOUNT:
             self._downstream(client_id)
