@@ -8,6 +8,7 @@ from aggregate_fns import (
     UC3AvgAggregateFn,
     UC4AggregateGraphs,
     UC4AggregatePaths,
+    UC4CountPaths,
 )
 
 from aggregate import Aggregate
@@ -32,6 +33,25 @@ def make_uc4_aggregate_graphs():
     NNODES_DOWNSTREAM = int(os.environ["NNODES_DOWNSTREAM"])
 
     fn = UC4AggregateGraphs()
+
+    external_rx = ExchangeRabbitMQ(MOM_HOST, RX, [f"{IDX}"], f"{RX}{IDX}")
+    external_txs = [
+        ExchangeRabbitMQ(MOM_HOST, TX, routing_keys=[f"{n}"], queue_name=f"{TX}{n}")
+        for n in range(NNODES_DOWNSTREAM)
+    ]
+
+    internal_eofs = Queue[EOF]()
+    eof_handler = make_stateful_eof_handler(MOM_HOST, (external_txs[0],), internal_eofs)
+
+    aggregate = Aggregate(fn, external_rx, external_txs, eof_handler, internal_eofs)
+    aggregate.start()
+
+
+def make_uc4_count_paths():
+    IDX = int(os.environ["IDX"])
+    NNODES_DOWNSTREAM = int(os.environ["NNODES_DOWNSTREAM"])
+
+    fn = UC4CountPaths()
 
     external_rx = ExchangeRabbitMQ(MOM_HOST, RX, [f"{IDX}"], f"{RX}{IDX}")
     external_txs = [
@@ -73,6 +93,8 @@ def main():
             fn = UC2BankNamesAggregateFn()
         case "uc3_average":
             fn = UC3AvgAggregateFn()
+        case "uc4_count_paths":
+            return make_uc4_count_paths()
         case "uc4_aggregate_graphs":
             return make_uc4_aggregate_graphs()
         case "uc4_paths":
