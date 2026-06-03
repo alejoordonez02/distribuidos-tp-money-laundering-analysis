@@ -35,17 +35,16 @@ class UC4AggregatePaths(AggregateFn):
         self._paths: dict[UUID, dict[Path, int]] = {}
         self._files: dict[UUID, dict[int, FilePath]] = {}
 
-    def _file_for(self, path: Path, client_id: UUID) -> FilePath:
-        hash = sharding_hash(path, client_id)
+    def _file_for_shard(self, shard: int, client_id: UUID) -> FilePath:
         if client_id not in self._files:
             self._files[client_id] = {}
 
-        if hash not in self._files[client_id]:
-            fd, file_path = tempfile.mkstemp(prefix=f"UC4:{hash}", suffix=".jsonl")
+        if shard not in self._files[client_id]:
+            fd, file_path = tempfile.mkstemp(prefix=f"UC4:{shard}", suffix=".jsonl")
             os.close(fd)
-            self._files[client_id][hash] = FilePath(file_path)
+            self._files[client_id][shard] = FilePath(file_path)
 
-        return self._files[client_id][hash]
+        return self._files[client_id][shard]
 
     def aggregate(self, msg: PathCounts):  # type: ignore[reportIncompatibleMethodOverride]
         if msg.client_id not in self._paths:
@@ -90,15 +89,21 @@ class UC4AggregatePaths(AggregateFn):
     def downstream(self, client_id: UUID):
         logging.info("writing in memory paths in disk")
         paths = self._paths[client_id]
-        # Aca si necesitamos una optimización podemos leer todo paths, agrupar los del mismo hashing
-        # y hacer todo en una sola escritura de archivo
-        for shard in range(SHARDING_FILES):
-            for p, amount in paths.items():
-                if shard != sharding_hash(p, client_id):
-                    continue
 
-                file = self._file_for(p, client_id)
-                with open(file, "a") as f:
-                    f.write(_serialize(PathMsg(client_id, p, amount)) + "\n")
+        # Bucket paths by shard in a single O(N) pass, then write each shard file
+        # once. The previous O(SHARDING_FILES * N) scan with one open() per path
+        # blocked the pika event loop long enough for RabbitMQ to drop the
+        # connection (writer send_failed,timeout).
+        by_shard: dict[int, list[tuple[Path, int]]] = defaultdict(list)
+        for p, amount in paths.items():
+            by_shard[sharding_hash(p, client_id)].append((p, amount))
+
+        for shard, items in by_shard.items():
+            file = self._file_for_shard(shard, client_id)
+            with open(file, "a") as f:
+                f.writelines(
+                    _serialize(PathMsg(client_id, p, amount)) + "\n"
+                    for p, amount in items
+                )
 
         self._paths.pop(client_id)

@@ -40,17 +40,16 @@ class UC4AggregateGraphs(AggregateFn):
         self._succs: dict[UUID, dict[Node, set[Node]]] = {}
         self._files: dict[UUID, dict[int, pathlib.Path]] = {}
 
-    def _file_for(self, node: Node, client_id: UUID) -> pathlib.Path:
-        hash = sharding_hash(node)
+    def _file_for_shard(self, shard: int, client_id: UUID) -> pathlib.Path:
         if client_id not in self._files:
             self._files[client_id] = {}
-        if hash not in self._files[client_id]:
+        if shard not in self._files[client_id]:
             fd, path = tempfile.mkstemp(
-                prefix=f"UC4:{client_id}:{hash}", suffix=".jsonl"
+                prefix=f"UC4:{client_id}:{shard}", suffix=".jsonl"
             )
             os.close(fd)
-            self._files[client_id][hash] = pathlib.Path(path)
-        return self._files[client_id][hash]
+            self._files[client_id][shard] = pathlib.Path(path)
+        return self._files[client_id][shard]
 
     def aggregate(self, msg: Graph):  # type: ignore[reportIncompatibleMethodOverride]
         if msg.client_id not in self._preds:
@@ -106,16 +105,25 @@ class UC4AggregateGraphs(AggregateFn):
         self._succs.pop(client_id, None)
 
     def downstream(self, client_id):
-        logging.info("Downstreaming")
+        logging.info("writing in memory graphs in disk")
         preds = self._preds[client_id]
         succs = self._succs[client_id]
-        for shard in range(SHARDING_FILES):
-            for node, _ in preds.items():
-                if sharding_hash(node) != shard:
-                    continue
-                path = self._file_for(node, client_id)
-                with open(path, "a") as f:
-                    f.write(_serialize(node, preds[node], succs[node]) + "\n")
+
+        # Bucket nodes by shard in a single O(N) pass, then write each shard file
+        # once. The previous O(SHARDING_FILES * N) scan with one open() per node
+        # blocked the pika event loop long enough for RabbitMQ to drop the
+        # connection (writer send_failed,timeout).
+        by_shard: dict[int, list[Node]] = defaultdict(list)
+        for node in preds.keys():
+            by_shard[sharding_hash(node)].append(node)
+
+        for shard, nodes in by_shard.items():
+            file = self._file_for_shard(shard, client_id)
+            with open(file, "a") as f:
+                f.writelines(
+                    _serialize(node, preds[node], succs[node]) + "\n"
+                    for node in nodes
+                )
 
         self._preds.pop(client_id, None)
         self._succs.pop(client_id, None)
