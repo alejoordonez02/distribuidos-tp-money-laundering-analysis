@@ -4,6 +4,10 @@
 # for each client.
 
 import gc
+import os
+import sqlite3
+import tempfile
+from collections import defaultdict
 from datetime import date, datetime
 
 import numpy as np
@@ -17,6 +21,7 @@ from cfg import (
     TRANSACTIONS_PATH,
     TRANSACTIONS_SAMPLE_FRAC,
 )
+
 from pandas.core.generic import DtypeArg # type: ignore
 
 from common.conversion import FrankfurterConversionAPI
@@ -72,14 +77,20 @@ def _get_rates(date_slash: str) -> dict[str, float]:
 def main():
     """
     Generate the input and expected output for each client.
+
+    Mode selection driven by TRANSACTIONS_SAMPLE_FRAC (= 1 / NCLIENTS):
+      - Streaming (frac == 1.0): each client gets a symlink to the full dataset.
+        Used when NCLIENTS=1. UC4 uses an on-disk SQLite accumulator so it never OOMs.
+      - Sampled (frac < 1.0): each client gets a fresh random sample of
+        floor(n_total * TRANSACTIONS_SAMPLE_FRAC) rows. Used when NCLIENTS > 1.
     """
     _log("=== gen_input_output START ===")
     _log(
-        f"NCLIENTS={NCLIENTS}, TRANSACTIONS_SAMPLE_FRAC={TRANSACTIONS_SAMPLE_FRAC}, ACCOUNTS_SAMPLE_SIZE={ACCOUNTS_SAMPLE_SIZE}"
+        f"NCLIENTS={NCLIENTS}, TRANSACTIONS_SAMPLE_FRAC={TRANSACTIONS_SAMPLE_FRAC}, "
+        f"ACCOUNTS_SAMPLE_SIZE={ACCOUNTS_SAMPLE_SIZE}"
     )
     rng = np.random.default_rng(seed=RANDOM_SEED)
 
-    # same accounts dataset for all clients
     _log(f"Loading accounts from {ACCOUNTS_PATH} ...")
     if ACCOUNTS_SAMPLE_SIZE is not None:
         accounts_df = gen_sampled_dataframe(
@@ -93,40 +104,382 @@ def main():
         accounts_df = pd.read_csv(ACCOUNTS_PATH, dtype=_ACCOUNTS_DTYPE)
     _log(f"Accounts loaded: {len(accounts_df)} rows")
 
-    with open(TRANSACTIONS_PATH, "rb") as f:
-        n_total = sum(1 for _ in f) - 1
-    per_client_size = max(1, int(n_total * TRANSACTIONS_SAMPLE_FRAC))
-    _log(f"Total rows: {n_total}, per_client_size={per_client_size} ({TRANSACTIONS_SAMPLE_FRAC*100:.1f}% per client)")
+    use_streaming = TRANSACTIONS_SAMPLE_FRAC >= 1.0
 
-    for n in range(NCLIENTS):
-        _log(f"--- Client {n + 1}/{NCLIENTS} ---")
-        _log(f"Sampling transactions from {TRANSACTIONS_PATH} ...")
-        trans_df = gen_sampled_dataframe(
-            per_client_size,
-            TRANSACTIONS_PATH,
-            CLIENT_DATASETS_PATH + f"transactions_{n}.csv",
-            rng,
-            dtype=_TRANS_DTYPE,
-        )
+    if use_streaming:
+        _log("STREAMING MODE — full dataset per client (NCLIENTS=1, no size cap)")
+        for n in range(NCLIENTS):
+            _log(f"--- Client {n + 1}/{NCLIENTS} ---")
+            _link_or_warn(TRANSACTIONS_PATH, CLIENT_DATASETS_PATH + f"transactions_{n}.csv")
+            gen_results_streaming(
+                TRANSACTIONS_PATH,
+                accounts_df,
+                CLIENT_EXPECTED_RESPONSES_PATH + f"uc1_{n}.csv",
+                CLIENT_EXPECTED_RESPONSES_PATH + f"uc2_{n}.csv",
+                CLIENT_EXPECTED_RESPONSES_PATH + f"uc3_{n}.csv",
+                CLIENT_EXPECTED_RESPONSES_PATH + f"uc4_{n}.csv",
+                CLIENT_EXPECTED_RESPONSES_PATH + f"uc5_{n}.csv",
+            )
+            gc.collect()
+            _log(f"Client {n + 1} done — expected responses written to {CLIENT_EXPECTED_RESPONSES_PATH}")
+    else:
+        _log(f"Counting rows in {TRANSACTIONS_PATH} ...")
+        with open(TRANSACTIONS_PATH, "rb") as f:
+            n_total = sum(1 for _ in f) - 1
+        per_client_size = max(1, int(n_total * TRANSACTIONS_SAMPLE_FRAC))
         _log(
-            f"Transactions sampled: {len(trans_df)} rows → wrote datasets/transactions_{n}.csv"
+            f"SAMPLED MODE — {TRANSACTIONS_SAMPLE_FRAC:.4f} of dataset per client "
+            f"({per_client_size}/{n_total} rows)"
         )
-        gen_results(
-            trans_df,
-            accounts_df,
-            CLIENT_EXPECTED_RESPONSES_PATH + f"uc1_{n}.csv",
-            CLIENT_EXPECTED_RESPONSES_PATH + f"uc2_{n}.csv",
-            CLIENT_EXPECTED_RESPONSES_PATH + f"uc3_{n}.csv",
-            CLIENT_EXPECTED_RESPONSES_PATH + f"uc4_{n}.csv",
-            CLIENT_EXPECTED_RESPONSES_PATH + f"uc5_{n}.csv",
-        )
-        del trans_df
-        gc.collect()
-        _log(
-            f"Client {n + 1} done — expected responses written to {CLIENT_EXPECTED_RESPONSES_PATH}"
-        )
+
+        for n in range(NCLIENTS):
+            _log(f"--- Client {n + 1}/{NCLIENTS} ---")
+            _log(f"Sampling transactions from {TRANSACTIONS_PATH} ...")
+            trans_df = gen_sampled_dataframe(
+                per_client_size,
+                TRANSACTIONS_PATH,
+                CLIENT_DATASETS_PATH + f"transactions_{n}.csv",
+                rng,
+                dtype=_TRANS_DTYPE,
+                n_total=n_total,
+            )
+            _log(
+                f"Transactions sampled: {len(trans_df)} rows → wrote datasets/transactions_{n}.csv"
+            )
+            gen_results(
+                trans_df,
+                accounts_df,
+                CLIENT_EXPECTED_RESPONSES_PATH + f"uc1_{n}.csv",
+                CLIENT_EXPECTED_RESPONSES_PATH + f"uc2_{n}.csv",
+                CLIENT_EXPECTED_RESPONSES_PATH + f"uc3_{n}.csv",
+                CLIENT_EXPECTED_RESPONSES_PATH + f"uc4_{n}.csv",
+                CLIENT_EXPECTED_RESPONSES_PATH + f"uc5_{n}.csv",
+            )
+            del trans_df
+            gc.collect()
+            _log(
+                f"Client {n + 1} done — expected responses written to {CLIENT_EXPECTED_RESPONSES_PATH}"
+            )
 
     _log("=== gen_input_output DONE — all files ready ===")
+
+
+# ── Streaming mode ────────────────────────────────────────────────────────────
+
+
+def _link_or_warn(src: str, dst: str) -> None:
+    """Create a relative symlink at dst → src. Relative so it resolves correctly inside Docker."""
+    abs_src = os.path.abspath(src)
+    rel_src = os.path.relpath(abs_src, start=os.path.dirname(os.path.abspath(dst)))
+    if os.path.islink(dst):
+        if os.path.realpath(dst) == abs_src:
+            _log(f"  Symlink already correct: {dst} → {rel_src}")
+            return
+        os.unlink(dst)
+    if os.path.exists(dst):
+        _log(f"  WARNING: {dst} is a real file — skipping symlink creation. Delete it manually if you want it re-linked.")
+        return
+    os.symlink(rel_src, dst)
+    _log(f"  Symlinked {dst} → {rel_src}")
+
+
+def gen_results_streaming(
+    path: str,
+    accounts_df,
+    uc1_results_path: str,
+    uc2_results_path: str,
+    uc3_results_path: str,
+    uc4_results_path: str,
+    uc5_results_path: str,
+):
+    """
+    Streaming version of gen_results. Makes multiple single-pass reads over the
+    source file so the full dataset never has to be in RAM at once.
+
+    Pass budget (each pass reads the full file once):
+      UC1 — 1 pass
+      UC2 — 1 pass
+      UC3 — 2 passes (period-A averages, then period-B filter)
+      UC4 — 1 pass  (edge collection) + in-memory graph
+      UC5 — 1 pass
+    """
+    _log("  UC1: pass 1/1 ...")
+    uc1_results = _uc1_streaming(path)
+    uc1_results.to_csv(uc1_results_path)
+    _log(f"  UC1: {len(uc1_results)} rows → {uc1_results_path}")
+    del uc1_results
+    gc.collect()
+
+    _log("  UC2: pass 1/1 ...")
+    uc2_results = _uc2_streaming(path, accounts_df)
+    uc2_results.to_csv(uc2_results_path)
+    _log(f"  UC2: {len(uc2_results)} rows → {uc2_results_path}")
+    del uc2_results
+    gc.collect()
+
+    _log("  UC3: pass 1/2 (period-A averages) ...")
+    avg_per_fmt = _uc3_pass1(path)
+    _log(f"  UC3: pass 2/2 (period-B filter) ...")
+    uc3_results = _uc3_pass2(path, avg_per_fmt)
+    uc3_results.to_csv(uc3_results_path)
+    _log(f"  UC3: {len(uc3_results)} rows → {uc3_results_path}")
+    del uc3_results
+    gc.collect()
+
+    _log("  UC4: pass 1/1 (edge collection + graph) ...")
+    uc4_results = _uc4_streaming(path)
+    uc4_results.to_csv(uc4_results_path)
+    _log(f"  UC4: {len(uc4_results)} rows → {uc4_results_path}")
+    del uc4_results
+    gc.collect()
+
+    _log("  UC5: pass 1/1 ...")
+    uc5_result = _uc5_streaming(path)
+    with open(uc5_results_path, "w") as f:
+        f.write(str(uc5_result))
+    _log(f"  UC5: result={uc5_result} → {uc5_results_path}")
+
+
+def _uc1_streaming(path: str) -> pd.DataFrame:
+    """USD transactions with Amount Paid < 50."""
+    chunks = []
+    for chunk in pd.read_csv(path, chunksize=_CHUNK_SIZE, dtype=_TRANS_DTYPE):
+        mask = (chunk["Payment Currency"] == "US Dollar") & (chunk["Amount Paid"] < 50)
+        hit = chunk.loc[mask, ["From Bank", "Account", "To Bank", "Account.1", "Amount Paid"]]
+        if len(hit):
+            chunks.append(hit)
+    return (
+        pd.concat(chunks, ignore_index=True)
+        if chunks
+        else pd.DataFrame(columns=["From Bank", "Account", "To Bank", "Account.1", "Amount Paid"])
+    )
+
+
+def _uc2_streaming(path: str, accounts_df) -> pd.DataFrame:
+    """Max USD transaction per source bank, joined with bank names."""
+    # best[bank_id] = {"From Bank": int, "Account": str, "Amount Paid": float}
+    best: dict[int, dict] = {}
+
+    for chunk in pd.read_csv(path, chunksize=_CHUNK_SIZE, dtype=_TRANS_DTYPE):
+        usd = chunk[chunk["Payment Currency"] == "US Dollar"]
+        if len(usd) == 0:
+            continue
+        # One candidate row per bank in this chunk
+        idx = usd.groupby("From Bank")["Amount Paid"].idxmax()
+        candidates = usd.loc[idx.values, ["From Bank", "Account", "Amount Paid"]]
+        for row in candidates.itertuples(index=False):
+            bank = int(row[0])
+            amt = float(row[2])
+            if bank not in best or amt > best[bank]["Amount Paid"]:
+                best[bank] = {"From Bank": bank, "Account": str(row[1]), "Amount Paid": amt}
+
+    if not best:
+        return pd.DataFrame(columns=["From Bank", "Account", "Bank Name", "Amount Paid"])
+
+    result_df = pd.DataFrame(best.values())
+    bank_names = accounts_df.drop_duplicates("Bank ID")[["Bank ID", "Bank Name"]]
+    merged = result_df.merge(bank_names, left_on="From Bank", right_on="Bank ID")
+    return merged[["From Bank", "Account", "Bank Name", "Amount Paid"]]
+
+
+def _uc3_pass1(path: str) -> dict[str, float]:
+    """
+    Pass 1: compute avg Amount Paid per Payment Format for period A
+    (USD, Timestamp >= 2022/09/01 AND <= 2022/09/06 — effectively Sep 1-5 due to
+    string comparison with "YYYY/MM/DD HH:MM" format).
+    """
+    total: dict[str, float] = {}
+    count: dict[str, int] = {}
+    for chunk in pd.read_csv(path, chunksize=_CHUNK_SIZE, dtype=_TRANS_DTYPE):
+        usd = chunk[chunk["Payment Currency"] == "US Dollar"]
+        period_a = usd[
+            (usd["Timestamp"] >= "2022/09/01") & (usd["Timestamp"] <= "2022/09/06")
+        ]
+        if len(period_a) == 0:
+            continue
+        for fmt, grp in period_a.groupby("Payment Format"):
+            k = str(fmt)
+            total[k] = total.get(k, 0.0) + float(grp["Amount Paid"].sum())
+            count[k] = count.get(k, 0) + len(grp)
+    return {fmt: total[fmt] / count[fmt] for fmt in total}
+
+
+def _uc3_pass2(path: str, avg_per_fmt: dict[str, float]) -> pd.DataFrame:
+    """
+    Pass 2: filter period B (USD, Sep 6-15) rows where Amount Paid < avg/100.
+    """
+    chunks = []
+    for chunk in pd.read_csv(path, chunksize=_CHUNK_SIZE, dtype=_TRANS_DTYPE):
+        usd = chunk[chunk["Payment Currency"] == "US Dollar"]
+        period_b = usd[
+            (usd["Timestamp"] >= "2022/09/06") & (usd["Timestamp"] < "2022/09/16")
+        ]
+        if len(period_b) == 0:
+            continue
+        period_b = period_b.copy()
+        period_b["_avg"] = period_b["Payment Format"].map(avg_per_fmt).astype("float64")
+        matching = period_b[
+            period_b["_avg"].notna() & (period_b["Amount Paid"] < period_b["_avg"] * 0.01)
+        ]
+        if len(matching):
+            chunks.append(matching[["From Bank", "Account", "Payment Format", "Amount Paid"]])
+    return (
+        pd.concat(chunks, ignore_index=True)
+        if chunks
+        else pd.DataFrame(columns=["From Bank", "Account", "Payment Format", "Amount Paid"])
+    )
+
+
+def _uc4_pairs_to_accounts(
+    succs_of: dict[int, set[int]],
+    preds_of: dict[int, set[int]],
+    id_to_node: list[tuple],
+) -> pd.DataFrame:
+    """
+    Count (a,c) pairs using an on-disk SQLite accumulator so the pair_count never
+    lives in RAM. Hub nodes with thousands of predecessors/successors would otherwise
+    generate O(N²) dict entries and OOM the machine.
+    """
+    db_fd, db_path = tempfile.mkstemp(suffix=".db", prefix="uc4_pairs_")
+    os.close(db_fd)
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=OFF")
+        conn.execute("PRAGMA cache_size=-65536")  # 64 MB page cache
+        conn.execute(
+            "CREATE TABLE pc (a INT NOT NULL, c INT NOT NULL, cnt INT NOT NULL, "
+            "PRIMARY KEY (a, c)) WITHOUT ROWID"
+        )
+        conn.commit()
+
+        _PAIR_BATCH = 100_000
+        batch: list[tuple[int, int]] = []
+
+        def _flush() -> None:
+            if batch:
+                conn.executemany(
+                    "INSERT INTO pc(a,c,cnt) VALUES(?,?,1) "
+                    "ON CONFLICT(a,c) DO UPDATE SET cnt=cnt+1",
+                    batch,
+                )
+                conn.commit()
+                batch.clear()
+
+        for b, cs in succs_of.items():
+            if b not in preds_of:
+                continue
+            for a in preds_of[b]:
+                for c in cs:
+                    if a != c:
+                        batch.append((a, c))
+                if len(batch) >= _PAIR_BATCH:
+                    _flush()
+
+        _flush()
+
+        qualifying = conn.execute("SELECT a, c FROM pc WHERE cnt >= 5").fetchall()
+        conn.close()
+    finally:
+        if os.path.exists(db_path):
+            os.unlink(db_path)
+
+    accounts: set[tuple] = set()
+    for a, c in qualifying:
+        accounts.add(id_to_node[a])
+        accounts.add(id_to_node[c])
+    return pd.DataFrame([(bank, acc) for bank, acc in accounts], columns=["Bank", "Account"])
+
+
+def _uc4_streaming(path: str) -> pd.DataFrame:
+    """
+    Scatter-gather graph: collect Sep 1-5 USD edges in a single pass,
+    then find (A, C) pairs with >= 5 distinct intermediaries B (A→B and B→C).
+
+    Memory design:
+      - succs_of / preds_of live in RAM (O(unique_edges) — manageable).
+      - pair_count is stored in a temp SQLite file so hub nodes with thousands of
+        predecessors/successors don't cause an O(N²) RAM explosion.
+      - Both adjacency maps are built in one pass over the deduped edge list.
+    """
+    edge_chunks = []
+    for chunk in pd.read_csv(path, chunksize=_CHUNK_SIZE, dtype=_TRANS_DTYPE):
+        usd = chunk[chunk["Payment Currency"] == "US Dollar"]
+        period = usd[
+            (usd["Timestamp"] >= "2022/09/01") & (usd["Timestamp"] <= "2022/09/06")
+        ]
+        if len(period) == 0:
+            continue
+        edge_chunks.append(
+            period[["From Bank", "Account", "To Bank", "Account.1"]].copy()
+        )
+
+    if not edge_chunks:
+        return pd.DataFrame(columns=["Bank", "Account"])
+
+    edges_df = pd.concat(edge_chunks, ignore_index=True).drop_duplicates()
+    del edge_chunks
+    gc.collect()
+
+    node_to_id: dict[tuple, int] = {}
+    id_to_node: list[tuple] = []
+
+    def node_id(bank, account) -> int:
+        key = (bank, account)
+        if key not in node_to_id:
+            node_to_id[key] = len(id_to_node)
+            id_to_node.append(key)
+        return node_to_id[key]
+
+    edges: list[tuple[int, int]] = [
+        (node_id(int(row[0]), str(row[1])), node_id(int(row[2]), str(row[3])))
+        for row in edges_df.itertuples(index=False)
+    ]
+    del edges_df
+    gc.collect()
+
+    # Build forward (succs_of) AND backward (preds_of) adjacency in one pass
+    succs_of: dict[int, set[int]] = defaultdict(set)
+    preds_of: dict[int, set[int]] = defaultdict(set)
+    for a, b in edges:
+        succs_of[a].add(b)
+        preds_of[b].add(a)
+    del edges
+    gc.collect()
+
+    result = _uc4_pairs_to_accounts(succs_of, preds_of, id_to_node)
+    del succs_of, preds_of
+    gc.collect()
+    return result
+
+
+def _uc5_streaming(path: str) -> int:
+    """
+    Count Wire/ACH transactions in Sep 1-5 whose amount converted to USD is < 1.
+    Frankfurter API is called at most once per day (5 calls total, then cached).
+    """
+    count = 0
+    for chunk in pd.read_csv(path, chunksize=_CHUNK_SIZE, dtype=_TRANS_DTYPE):
+        period = chunk[
+            (chunk["Timestamp"] >= "2022/09/01") & (chunk["Timestamp"] < "2022/09/06")
+        ]
+        wire_ach = period[
+            (period["Payment Format"] == "Wire") | (period["Payment Format"] == "ACH")
+        ].copy()
+        if len(wire_ach) == 0:
+            continue
+        dates = wire_ach["Timestamp"].str[:10].tolist()
+        currencies = wire_ach["Payment Currency"].tolist()
+        amounts = wire_ach["Amount Paid"].tolist()
+        wire_ach["USD Amount"] = [
+            amt * _get_rates(d).get(c, 1.0)
+            for amt, d, c in zip(amounts, dates, currencies)
+        ]
+        count += wire_ach[wire_ach["USD Amount"] < 1.0].shape[0]
+    return count
+
+
+# ── Sampled mode (unchanged) ──────────────────────────────────────────────────
 
 
 def _chunked_sample(
@@ -134,13 +487,19 @@ def _chunked_sample(
     n: int,
     rng: np.random.Generator,
     dtype: DtypeArg | None = None,
+    n_total: int | None = None,
 ) -> pd.DataFrame:
     """Read CSV in chunks, returning n randomly sampled rows without loading the full file."""
-    with open(path, "rb") as f:
-        n_total = sum(1 for _ in f) - 1  # exclude header
+    if n_total is None:
+        with open(path, "rb") as f:
+            n_total = sum(1 for _ in f) - 1  # exclude header
 
     if n >= n_total:
-        return pd.read_csv(path, dtype=dtype)
+        # Read in chunks even for the full file — avoids a single large pd.read_csv call
+        chunks = []
+        for chunk in pd.read_csv(path, chunksize=_CHUNK_SIZE, dtype=dtype):
+            chunks.append(chunk)
+        return pd.concat(chunks, ignore_index=True) if chunks else pd.DataFrame()
 
     chosen = set(int(i) for i in rng.choice(n_total, size=n, replace=False))
     chunks = []
@@ -166,16 +525,18 @@ def gen_sampled_dataframe(
     sampled_path: str,
     rng: np.random.Generator,
     dtype: DtypeArg | None = None,
+    n_total: int | None = None,
 ):
     """
     Samples a dataset, writes it to its corresponding path and returns it.
     When sample_size is None, loads the full file with dtype optimization.
     When sample_size is set, uses chunked reading to avoid loading the full file.
+    Pass n_total to skip the internal line count in _chunked_sample.
     """
     if sample_size is None:
         sampled_df = pd.read_csv(dataframe_path, dtype=dtype)
     else:
-        sampled_df = _chunked_sample(dataframe_path, sample_size, rng, dtype=dtype)
+        sampled_df = _chunked_sample(dataframe_path, sample_size, rng, dtype=dtype, n_total=n_total)
 
     sampled_df.to_csv(sampled_path, index=False)
     return sampled_df
@@ -292,8 +653,6 @@ def gen_uc4_results(trans_df):
 
     Returns a `DataFrame` with columns [Bank, Account].
     """
-    from collections import defaultdict
-
     trans_usd_df = trans_df[trans_df["Payment Currency"] == "US Dollar"]
     trans_usd_sept_1st_df = trans_usd_df[
         (trans_usd_df["Timestamp"] >= "2022/09/01")
@@ -322,25 +681,15 @@ def gen_uc4_results(trans_df):
     del edges_df
 
     succs_of: dict[int, set[int]] = defaultdict(set)
+    preds_of: dict[int, set[int]] = defaultdict(set)
     for a, b in edges:
         succs_of[a].add(b)
+        preds_of[b].add(a)
+    del edges
 
-    pair_intermediaries: dict[tuple[int, int], set[int]] = defaultdict(set)
-    for a, b in edges:
-        for c in succs_of.get(b, set()):
-            if a != c:
-                pair_intermediaries[(a, c)].add(b)
-
-    accounts: set[tuple] = set()
-    for (a, c), bs in pair_intermediaries.items():
-        if len(bs) >= 5:
-            accounts.add(id_to_node[a])
-            accounts.add(id_to_node[c])
-
-    return pd.DataFrame(
-        [(bank, acc) for bank, acc in accounts],
-        columns=["Bank", "Account"],
-    )
+    result = _uc4_pairs_to_accounts(succs_of, preds_of, id_to_node)
+    del succs_of, preds_of
+    return result
 
 
 def gen_uc5_results(trans_df) -> int:
