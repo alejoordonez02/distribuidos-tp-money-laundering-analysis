@@ -36,8 +36,7 @@ class UC4CountPaths(AggregateFn):
         self._paths: dict[UUID, dict[Path, int]] = {}
         self._files: dict[UUID, dict[int, FilePath]] = {}
 
-    def _file_for(self, path: Path, client_id: UUID) -> FilePath:
-        shard = _sharding_hash(path, client_id)
+    def _file_for_shard(self, shard: int, client_id: UUID) -> FilePath:
         if client_id not in self._files:
             self._files[client_id] = {}
         if shard not in self._files[client_id]:
@@ -96,11 +95,20 @@ class UC4CountPaths(AggregateFn):
     def _downstream(self, client_id: UUID):
         logging.info("spilling count_paths to disk")
         paths = self._paths[client_id]
-        for shard in range(SHARDING_FILES):
-            for p, count in paths.items():
-                if _sharding_hash(p, client_id) != shard:
-                    continue
-                file = self._file_for(p, client_id)
-                with open(file, "a") as f:
-                    f.write(_serialize(PathMsg(client_id, p, count)) + "\n")
+
+        # Bucket paths by shard in a single O(N) pass, then write each shard file
+        # once. Avoids the O(SHARDING_FILES * N) scan + one open() per path that
+        # used to block the pika event loop long enough for RabbitMQ to drop us.
+        by_shard: dict[int, list[tuple[Path, int]]] = defaultdict(list)
+        for p, count in paths.items():
+            by_shard[_sharding_hash(p, client_id)].append((p, count))
+
+        for shard, items in by_shard.items():
+            file = self._file_for_shard(shard, client_id)
+            with open(file, "a") as f:
+                f.writelines(
+                    _serialize(PathMsg(client_id, p, count)) + "\n"
+                    for p, count in items
+                )
+
         self._paths.pop(client_id)

@@ -156,9 +156,13 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
             if ring_data.origin == self.id:
                 return
 
+            # propagate the done flag once and stop: falling through to the
+            # steps below would re-emit a second (corrupted) message per node,
+            # duplicating the done message every lap and looping forever.
             ring_data.sent_data = True
             logging.info(f"sending ring sent data done: {ring_data.__dict__}")
             mom_ring_tx.send(ring_data.serialize())
+            return
 
         # 1. no importa quién sea, si alguien no terminó entonces sent data
         # es false y appendeo mi sent_data_amount al msj
