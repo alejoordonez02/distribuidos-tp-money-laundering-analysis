@@ -20,3 +20,4 @@ class MessageType(IntEnum):
     NODEMSG = 15
     PATH_MSG = 16
     RING_SENT_DATA = 17
+    HIGH_DEGREE = 18

@@ -7,6 +7,7 @@ from .eof import EOF
 from .errors import UnknownMessageError
 from .fin import FIN
 from .graph import Graph
+from .high_degree import HighDegree
 from .max_by_bank import MaxByBank
 from .merged_bank_data import MergedBankData
 from .merged_transactions import MergedTransactions
@@ -56,6 +57,8 @@ def deserialize_message(bytes2: bytes) -> Message:
             return MergedBankData.deserialize(bytes2)
         case MessageType.GRAPH:
             return Graph.deserialize(bytes2)
+        case MessageType.HIGH_DEGREE:
+            return HighDegree.deserialize(bytes2)
         case MessageType.PATH_COUNTS:
             return PathCounts.deserialize(bytes2)
         case MessageType.SUM_BY_PAYMENT_FORMAT:
