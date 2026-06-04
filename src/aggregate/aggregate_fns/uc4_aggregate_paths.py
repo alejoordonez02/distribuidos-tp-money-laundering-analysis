@@ -14,7 +14,8 @@ from common.comms.messages.path_count import PathCounts
 from .aggregate_fn import AggregateFn
 
 MAX_AMOUNT = 100_000
-SHARDING_FILES = 200
+SHARDING_FILES = 500
+MIN_PATH_COUNT = 5
 
 
 def sharding_hash(path: Path, client_id: UUID) -> int:
@@ -78,11 +79,13 @@ class UC4AggregatePaths(AggregateFn):
 
             file.unlink()
 
-            # NOTE: the next cluster is a filter one
-            #       so this affinity doesn't matter
-            #       since they are being forwarded to
-            #       a workqueue.
-            yield PathCounts(client_id, paths), 0
+            qualifying = {
+                path: count
+                for path, count in paths.items()
+                if count >= MIN_PATH_COUNT
+            }
+
+            yield PathCounts(client_id, qualifying), 0
 
         self._files.pop(client_id)
 

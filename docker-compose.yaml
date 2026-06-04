@@ -54,6 +54,7 @@ services:
       - UC3_PERIOD_A_TRANSACTIONS_TX=uc3_transactons_period_A
       - UC3_PERIOD_B_TRANSACTIONS_TX=uc3_transactons_period_B
       - UC4_TRANSACTIONS_TX=uc4_filtered_transactions
+      - UC4_DEGREE_TRANSACTIONS_TX=uc4_degree_transactions
       - UC5_TRANSACTIONS_TX=uc5_filtered_transactions
       - IDX=0
       - NPEERS=2
@@ -76,6 +77,7 @@ services:
       - UC3_PERIOD_A_TRANSACTIONS_TX=uc3_transactons_period_A
       - UC3_PERIOD_B_TRANSACTIONS_TX=uc3_transactons_period_B
       - UC4_TRANSACTIONS_TX=uc4_filtered_transactions
+      - UC4_DEGREE_TRANSACTIONS_TX=uc4_degree_transactions
       - UC5_TRANSACTIONS_TX=uc5_filtered_transactions
       - IDX=1
       - NPEERS=2
@@ -98,42 +100,6 @@ services:
       - IDX=0
       - NPEERS=1
       - RING_NAME=uc3_average_filter_ring
-
-  uc4_path_filter_0:
-    build:
-      context: ./src/
-      dockerfile: filter/Dockerfile
-    container_name: uc4_path_filter_0
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - STRATEGY=uc4_path
-      - RX=uc4_aggregated_paths
-      - UC4_FILTERED_PATHS_TX=uc4_join
-      - IDX=0
-      - NPEERS=2
-      - RING_NAME=uc4_path_filter_ring
-
-  uc4_path_filter_1:
-    build:
-      context: ./src/
-      dockerfile: filter/Dockerfile
-    container_name: uc4_path_filter_1
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
-      - STRATEGY=uc4_path
-      - RX=uc4_aggregated_paths
-      - UC4_FILTERED_PATHS_TX=uc4_join
-      - IDX=1
-      - NPEERS=2
-      - RING_NAME=uc4_path_filter_ring
 
   uc5_amount_filter_0:
     build:
@@ -358,7 +324,7 @@ services:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
       - STRATEGY=uc4_count_paths
-      - RX=uc4_aggregated_graphs
+      - RX=uc4_pruned
       - TX=uc4_paths
       - IDX=0
       - NPEERS=5
@@ -378,7 +344,7 @@ services:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
       - STRATEGY=uc4_count_paths
-      - RX=uc4_aggregated_graphs
+      - RX=uc4_pruned
       - TX=uc4_paths
       - IDX=1
       - NPEERS=5
@@ -398,7 +364,7 @@ services:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
       - STRATEGY=uc4_count_paths
-      - RX=uc4_aggregated_graphs
+      - RX=uc4_pruned
       - TX=uc4_paths
       - IDX=2
       - NPEERS=5
@@ -418,7 +384,7 @@ services:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
       - STRATEGY=uc4_count_paths
-      - RX=uc4_aggregated_graphs
+      - RX=uc4_pruned
       - TX=uc4_paths
       - IDX=3
       - NPEERS=5
@@ -438,7 +404,7 @@ services:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
       - STRATEGY=uc4_count_paths
-      - RX=uc4_aggregated_graphs
+      - RX=uc4_pruned
       - TX=uc4_paths
       - IDX=4
       - NPEERS=5
@@ -554,7 +520,7 @@ services:
       - MOM_PORT=5672
       - STRATEGY=uc4_aggregate_graphs
       - RX=uc4_graphs
-      - TX=uc4_aggregated_graphs
+      - TX=uc4_graphs_to_prune
       - IDX=0
       - NPEERS=3
       - RING_NAME=uc4_aggregate_graphs_ring
@@ -574,7 +540,7 @@ services:
       - MOM_PORT=5672
       - STRATEGY=uc4_aggregate_graphs
       - RX=uc4_graphs
-      - TX=uc4_aggregated_graphs
+      - TX=uc4_graphs_to_prune
       - IDX=1
       - NPEERS=3
       - RING_NAME=uc4_aggregate_graphs_ring
@@ -594,12 +560,106 @@ services:
       - MOM_PORT=5672
       - STRATEGY=uc4_aggregate_graphs
       - RX=uc4_graphs
-      - TX=uc4_aggregated_graphs
+      - TX=uc4_graphs_to_prune
       - IDX=2
       - NPEERS=3
       - RING_NAME=uc4_aggregate_graphs_ring
       - NNODES_DOWNSTREAM=5
       - PYTHONHASHSEED=2026
+
+  uc4_degree_compute_graph_0:
+    build:
+      context: ./src/
+      dockerfile: group_by/Dockerfile
+    container_name: uc4_degree_compute_graph_0
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc4_compute_graph
+      - RX=uc4_degree_transactions
+      - TX=uc4_degree_graphs
+      - IDX=0
+      - NPEERS=2
+      - RING_NAME=uc4_degree_compute_graph_ring
+      - NNODES_DOWNSTREAM=2
+      - PYTHONHASHSEED=2026
+
+  uc4_degree_compute_graph_1:
+    build:
+      context: ./src/
+      dockerfile: group_by/Dockerfile
+    container_name: uc4_degree_compute_graph_1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc4_compute_graph
+      - RX=uc4_degree_transactions
+      - TX=uc4_degree_graphs
+      - IDX=1
+      - NPEERS=2
+      - RING_NAME=uc4_degree_compute_graph_ring
+      - NNODES_DOWNSTREAM=2
+      - PYTHONHASHSEED=2026
+
+  uc4_degree_aggregate_0:
+    build:
+      context: ./src/
+      dockerfile: aggregate/Dockerfile
+    container_name: uc4_degree_aggregate_0
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc4_degree
+      - RX=uc4_degree_graphs
+      - TX=uc4_high_degree
+      - IDX=0
+      - NPEERS=2
+      - RING_NAME=uc4_degree_aggregate_ring
+      - PYTHONHASHSEED=2026
+
+  uc4_degree_aggregate_1:
+    build:
+      context: ./src/
+      dockerfile: aggregate/Dockerfile
+    container_name: uc4_degree_aggregate_1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc4_degree
+      - RX=uc4_degree_graphs
+      - TX=uc4_high_degree
+      - IDX=1
+      - NPEERS=2
+      - RING_NAME=uc4_degree_aggregate_ring
+      - PYTHONHASHSEED=2026
+
+  uc4_prune:
+    build:
+      context: ./src/
+      dockerfile: merge/Dockerfile
+    container_name: uc4_prune
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+      - STRATEGY=uc4_prune
+      - LEFT_RX=uc4_high_degree
+      - RIGHT_RX=uc4_graphs_to_prune
+      - TX=uc4_pruned
 
   # después de este estamos usando una working queue
   # por eso no está el NNODES_DOWNSTREAM
@@ -616,7 +676,7 @@ services:
       - MOM_PORT=5672
       - STRATEGY=uc4_paths
       - RX=uc4_paths
-      - TX=uc4_aggregated_paths
+      - TX=uc4_join
       - IDX=0
       - NPEERS=5
       - RING_NAME=uc4_paths_aggregate_ring
@@ -635,7 +695,7 @@ services:
       - MOM_PORT=5672
       - STRATEGY=uc4_paths
       - RX=uc4_paths
-      - TX=uc4_aggregated_paths
+      - TX=uc4_join
       - IDX=1
       - NPEERS=5
       - RING_NAME=uc4_paths_aggregate_ring
@@ -654,7 +714,7 @@ services:
       - MOM_PORT=5672
       - STRATEGY=uc4_paths
       - RX=uc4_paths
-      - TX=uc4_aggregated_paths
+      - TX=uc4_join
       - IDX=2
       - NPEERS=5
       - RING_NAME=uc4_paths_aggregate_ring
@@ -673,7 +733,7 @@ services:
       - MOM_PORT=5672
       - STRATEGY=uc4_paths
       - RX=uc4_paths
-      - TX=uc4_aggregated_paths
+      - TX=uc4_join
       - IDX=3
       - NPEERS=5
       - RING_NAME=uc4_paths_aggregate_ring
@@ -692,7 +752,7 @@ services:
       - MOM_PORT=5672
       - STRATEGY=uc4_paths
       - RX=uc4_paths
-      - TX=uc4_aggregated_paths
+      - TX=uc4_join
       - IDX=4
       - NPEERS=5
       - RING_NAME=uc4_paths_aggregate_ring

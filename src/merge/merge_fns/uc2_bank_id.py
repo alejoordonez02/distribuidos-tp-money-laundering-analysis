@@ -1,4 +1,5 @@
 import logging
+from typing import Iterator
 from uuid import UUID
 
 from common.comms.messages import BankNames, MaxByBank, MergedBankData
@@ -28,7 +29,7 @@ class UC2BankIdMergeFn(MergeFn):
 
         self._bank_names[msg.client_id].data.update(msg.data)
 
-    def get_result(self, client_id: UUID) -> MergedBankData:  # type: ignore[reportIncompatibleMethodOverride]
+    def get_result(self, client_id: UUID) -> Iterator[MergedBankData]:  # type: ignore[reportIncompatibleMethodOverride]
         max_amounts = self._max_amounts.pop(client_id, MaxByBank(client_id, {})).data
         bank_names = self._bank_names.pop(client_id, BankNames(client_id, {})).data
         logging.debug(f"max_amounts:\n{max_amounts}")
@@ -40,6 +41,8 @@ class UC2BankIdMergeFn(MergeFn):
             if bank_id in bank_names
         ]
 
+        # UC2 output is bounded by the number of banks (small), so a single
+        # message is fine; yield to satisfy the streaming MergeFn contract.
         merged = MergedBankData(client_id, entries)
         logging.debug(f"merged:\n{merged.__dict__}")
-        return merged
+        yield merged

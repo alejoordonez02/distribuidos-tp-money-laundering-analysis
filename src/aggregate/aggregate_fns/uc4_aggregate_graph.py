@@ -12,7 +12,7 @@ from common.comms.messages import Graph, Node
 from .aggregate_fn import AggregateFn
 
 MAX_AMOUNT = 100_000
-SHARDING_FILES = 200
+SHARDING_FILES = 500
 
 AFFINITY_SHARDS = 100
 
@@ -86,14 +86,7 @@ class UC4AggregateGraphs(AggregateFn):
 
             for node in preds.keys():
                 affinity_shard_idx = hash(node) % AFFINITY_SHARDS
-                affinity_shard = affinities[affinity_shard_idx]
-
-                if node not in affinity_shard.nodes:
-                    affinity_shard.nodes[node] = (preds[node], succs[node])
-                    continue
-
-                affinities[affinity_shard_idx].nodes[node][0].update(preds[node])
-                affinities[affinity_shard_idx].nodes[node][1].update(succs[node])
+                affinities[affinity_shard_idx].nodes[node] = (preds[node], succs[node])
 
             for affinity, graph in affinities.items():
                 yield graph, affinity

@@ -33,6 +33,7 @@ def make_default_filter() -> tuple[MOM, Sequence[tuple[MOM, FilterFn]], Sequence
     UC3_PERIOD_A_TRANSACTIONS_TX = os.environ["UC3_PERIOD_A_TRANSACTIONS_TX"]
     UC3_PERIOD_B_TRANSACTIONS_TX = os.environ["UC3_PERIOD_B_TRANSACTIONS_TX"]
     UC4_TRANSACTIONS_TX = os.environ["UC4_TRANSACTIONS_TX"]
+    UC4_DEGREE_TRANSACTIONS_TX = os.environ["UC4_DEGREE_TRANSACTIONS_TX"]
     UC5_TRANSACTIONS_TX = os.environ["UC5_TRANSACTIONS_TX"]
 
     transactions_rx = QueueRabbitMQ(MOM_HOST, RX)
@@ -48,6 +49,7 @@ def make_default_filter() -> tuple[MOM, Sequence[tuple[MOM, FilterFn]], Sequence
             UC3FilterPeriodB(),
         ),
         (QueueRabbitMQ(MOM_HOST, UC4_TRANSACTIONS_TX), UC4Filter()),
+        (QueueRabbitMQ(MOM_HOST, UC4_DEGREE_TRANSACTIONS_TX), UC4Filter()),
         (QueueRabbitMQ(MOM_HOST, UC5_TRANSACTIONS_TX), UC5Filter()),
     ]
     # TODO: reescribir esto, las listas se

@@ -7,6 +7,7 @@ from .errors import UnexpectedMessageError, UnknownMessageError
 from .fin import FIN
 from .graph import Graph
 from .graph_src import Node, Path
+from .high_degree import HighDegree
 from .max_by_bank import MaxByBank
 from .merged_bank_data import MergedBankData
 from .merged_transactions import MergedTransactions
