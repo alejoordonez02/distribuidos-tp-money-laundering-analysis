@@ -1,6 +1,5 @@
 import json
 import logging
-import math
 import os
 import pathlib
 import tempfile
@@ -16,13 +15,6 @@ MAX_AMOUNT = 100_000
 SHARDING_FILES = 500
 
 AFFINITY_SHARDS = 100
-
-# Salting threshold (in pairs). A node whose len(preds) * len(succs) exceeds this
-# is a hub: counting its cross product on a single count_paths instance is a
-# mono-core / OOM bottleneck. Such nodes are split into a grid of (preds_chunk,
-# succs_chunk) tiles routed to different instances. Each tile holds ~this many
-# pairs; pick it below count_paths' MAX_AMOUNT so a tile never forces a spill.
-SPLIT_THRESHOLD = 250_000
 
 
 def sharding_hash(node: Node) -> int:
@@ -93,22 +85,8 @@ class UC4AggregateGraphs(AggregateFn):
             affinities: dict[int, Graph] = defaultdict(lambda: Graph(client_id, {}))
 
             for node in preds.keys():
-                node_preds = preds[node]
-                node_succs = succs[node]
-
-                # Salting: split a hub's cross product into a grid of tiles so it
-                # is counted in parallel across instances instead of mono-core on
-                # one. Each tile is a disjoint slice of (a, c) pairs (disjoint in
-                # both a and c), so aggregate_paths' additive sum reconstructs the
-                # exact same counts. Tiles are emitted as their own messages via
-                # yield, so the controller's add_sent_data_count tracks them and
-                # the downstream EOF expected_count stays correct automatically.
-                if len(node_preds) * len(node_succs) > SPLIT_THRESHOLD:
-                    yield from self._salted_tiles(client_id, node, node_preds, node_succs)
-                    continue
-
                 affinity_shard_idx = hash(node) % AFFINITY_SHARDS
-                affinities[affinity_shard_idx].nodes[node] = (node_preds, node_succs)
+                affinities[affinity_shard_idx].nodes[node] = (preds[node], succs[node])
 
             for affinity, graph in affinities.items():
                 yield graph, affinity
@@ -118,32 +96,6 @@ class UC4AggregateGraphs(AggregateFn):
         #        este pop?
         self._preds.pop(client_id, None)
         self._succs.pop(client_id, None)
-
-    def _salted_tiles(
-        self, client_id: UUID, node: Node, node_preds: set[Node], node_succs: set[Node]
-    ) -> Iterable[tuple[Graph, int]]:
-        """Yield (Graph, affinity) tiles that grid-split a hub's cross product.
-
-        Tiles keep the node's preds:succs aspect ratio and hold ~SPLIT_THRESHOLD
-        pairs each. A pred lands in exactly one preds-chunk and a succ in exactly
-        one succs-chunk, so every (a, c) pair is produced by exactly one tile — no
-        double counting. Tiles spread across instances by hashing (node, index) so
-        the hub no longer piles onto a single shard.
-        """
-        p_count, s_count = len(node_preds), len(node_succs)
-        chunk_p = max(1, int(math.sqrt(SPLIT_THRESHOLD * p_count / s_count)))
-        chunk_s = max(1, int(math.sqrt(SPLIT_THRESHOLD * s_count / p_count)))
-        preds_list = list(node_preds)
-        succs_list = list(node_succs)
-
-        tile = 0
-        for pi in range(0, p_count, chunk_p):
-            pchunk = set(preds_list[pi : pi + chunk_p])
-            for si in range(0, s_count, chunk_s):
-                schunk = set(succs_list[si : si + chunk_s])
-                affinity = hash((str(node), tile)) % AFFINITY_SHARDS
-                yield Graph(client_id, {node: (pchunk, schunk)}), affinity
-                tile += 1
 
     def downstream(self, client_id):
         logging.info("writing in memory graphs in disk")
