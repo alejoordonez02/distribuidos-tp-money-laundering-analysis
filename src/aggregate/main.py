@@ -9,6 +9,7 @@ from aggregate_fns import (
     UC4AggregateGraphs,
     UC4AggregatePaths,
     UC4CountPaths,
+    UC4Degree,
 )
 
 from aggregate import Aggregate
@@ -30,15 +31,11 @@ LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
 
 def make_uc4_aggregate_graphs():
     IDX = int(os.environ["IDX"])
-    NNODES_DOWNSTREAM = int(os.environ["NNODES_DOWNSTREAM"])
 
     fn = UC4AggregateGraphs()
 
     external_rx = ExchangeRabbitMQ(MOM_HOST, RX, [f"{IDX}"], f"{RX}{IDX}")
-    external_txs = [
-        ExchangeRabbitMQ(MOM_HOST, TX, routing_keys=[f"{n}"], queue_name=f"{TX}{n}")
-        for n in range(NNODES_DOWNSTREAM)
-    ]
+    external_txs = (QueueRabbitMQ(MOM_HOST, TX),)
 
     internal_eofs = Queue[EOF]()
     eof_handler = make_stateful_eof_handler(MOM_HOST, (external_txs[0],), internal_eofs)
@@ -48,12 +45,11 @@ def make_uc4_aggregate_graphs():
 
 
 def make_uc4_count_paths():
-    IDX = int(os.environ["IDX"])
     NNODES_DOWNSTREAM = int(os.environ["NNODES_DOWNSTREAM"])
 
     fn = UC4CountPaths()
 
-    external_rx = ExchangeRabbitMQ(MOM_HOST, RX, [f"{IDX}"], f"{RX}{IDX}")
+    external_rx = QueueRabbitMQ(MOM_HOST, RX)
     external_txs = [
         ExchangeRabbitMQ(MOM_HOST, TX, routing_keys=[f"{n}"], queue_name=f"{TX}{n}")
         for n in range(NNODES_DOWNSTREAM)
@@ -82,6 +78,21 @@ def make_uc4_aggregate_paths():
     aggregate.start()
 
 
+def make_uc4_degree():
+    IDX = int(os.environ["IDX"])
+
+    fn = UC4Degree()
+
+    external_rx = ExchangeRabbitMQ(MOM_HOST, RX, [f"{IDX}"], f"{RX}{IDX}")
+    external_txs = (QueueRabbitMQ(MOM_HOST, TX),)
+
+    internal_eofs = Queue[EOF]()
+    eof_handler = make_stateful_eof_handler(MOM_HOST, (external_txs[0],), internal_eofs)
+
+    aggregate = Aggregate(fn, external_rx, external_txs, eof_handler, internal_eofs)
+    aggregate.start()
+
+
 def main():
     logging.basicConfig(level=LOGGING_LEVEL)
     logging.getLogger("pika").setLevel(logging.WARNING)
@@ -99,6 +110,8 @@ def main():
             return make_uc4_aggregate_graphs()
         case "uc4_paths":
             return make_uc4_aggregate_paths()
+        case "uc4_degree":
+            return make_uc4_degree()
         case _:
             raise ValueError(f"unknown aggregate strategy: {STRATEGY}")
 
