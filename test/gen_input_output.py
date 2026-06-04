@@ -110,7 +110,7 @@ def main():
         _log("STREAMING MODE — full dataset per client (NCLIENTS=1, no size cap)")
         for n in range(NCLIENTS):
             _log(f"--- Client {n + 1}/{NCLIENTS} ---")
-            _link_or_warn(TRANSACTIONS_PATH, CLIENT_DATASETS_PATH + f"transactions_{n}.csv")
+            _write_normalized(TRANSACTIONS_PATH, CLIENT_DATASETS_PATH + f"transactions_{n}.csv")
             gen_results_streaming(
                 TRANSACTIONS_PATH,
                 accounts_df,
@@ -181,6 +181,31 @@ def _link_or_warn(src: str, dst: str) -> None:
         return
     os.symlink(rel_src, dst)
     _log(f"  Symlinked {dst} → {rel_src}")
+
+
+def _write_normalized(src: str, dst: str) -> None:
+    """Write a dtype-normalized copy of src to dst, chunked so the full dataset
+    never loads into RAM.
+
+    A plain symlink would feed the client the raw CSV, whose bank ids keep their
+    leading zeros ("020"), while the expected results are computed with int banks
+    ("20") — so streaming-mode runs mismatch on every bank-bearing use case. The
+    sampled mode already writes its per-client file with this same dtype pass, so
+    normalizing here makes streaming consistent with the (working) sampled path
+    and with how the oracle renders banks.
+    """
+    # Critical: drop any existing path first. If dst is a stale symlink, opening
+    # it for writing would clobber the source dataset it points at.
+    if os.path.lexists(dst):
+        os.remove(dst)
+
+    first = True
+    rows = 0
+    for chunk in pd.read_csv(src, chunksize=_CHUNK_SIZE, dtype=_TRANS_DTYPE):
+        chunk.to_csv(dst, index=False, header=first, mode="w" if first else "a")
+        rows += len(chunk)
+        first = False
+    _log(f"  Wrote normalized {dst} ({rows} rows) from {src}")
 
 
 def gen_results_streaming(

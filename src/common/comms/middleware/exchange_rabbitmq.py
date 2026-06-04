@@ -10,6 +10,10 @@ from .errors import (
 )
 from .exchange_mom import MOMExchange
 
+# Max messages RabbitMQ delivers without an ack. Keeps the socket write buffer
+# from filling up when callbacks block on heavy processing (e.g. uc4 count paths).
+PREFETCH_COUNT = 10
+
 
 class ExchangeRabbitMQ(MOMExchange):
     def __init__(
@@ -25,7 +29,7 @@ class ExchangeRabbitMQ(MOMExchange):
         self.queue_name = queue_name
 
         # TODO: heartbeat=600 may be starved by blocking callbacks in start_consuming — revisit
-        self.conn = BlockingConnection(ConnectionParameters(host, heartbeat=600))
+        self.conn = BlockingConnection(ConnectionParameters(host, heartbeat=0))
         self.chan = self.conn.channel()
         self.chan.exchange_declare(exchange=exchange_name)
 
@@ -38,6 +42,10 @@ class ExchangeRabbitMQ(MOMExchange):
             self.chan.queue_bind(
                 exchange=self.exchange_name, queue=self.queue_name, routing_key=k
             )
+
+        # Limit unacked messages so a slow consumer doesn't let RabbitMQ fill the
+        # socket write buffer (which closes the connection with send_failed,timeout).
+        self.chan.basic_qos(prefetch_count=PREFETCH_COUNT)
 
         def callback(chan, method, _, body):
             on_message_callback(

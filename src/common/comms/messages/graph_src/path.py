@@ -1,5 +1,7 @@
-from .node import Node
 from typing import Self
+
+from .node import Node
+
 
 class Path:
     def __init__(self, origin: Node, destination: Node):
@@ -20,8 +22,9 @@ class Path:
 
     def __str__(self) -> str:
         return f"{self.origin}_{self.destination}"
-    
+
     @classmethod
     def from_string(cls, s: str) -> Self:
         fields = s.split("_")
         return cls(Node.from_str(fields[0]), Node.from_str(fields[1]))
+

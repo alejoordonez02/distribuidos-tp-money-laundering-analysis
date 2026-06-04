@@ -15,7 +15,7 @@ from common.graceful_shutdown import setup_graceful_shutdown
 NRESPONSES = int(os.getenv("NRESPONSES", "1"))
 # TODO: no way this uuid can be here
 TMP_CLIENT_ID = uuid4()
-BATCH_SIZE = int(os.getenv("BATCH_SIZE", "500"))
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", "50000"))
 
 
 class Client:

@@ -6,7 +6,6 @@ from group_by_fns import (
     UC2MaxAmountGroupByFn,
     UC3SumGroupByFn,
     UC4ComputeGraph,
-    UC4CountPaths,
     UC5CountGroupByFn,
 )
 
@@ -47,6 +46,7 @@ def make_uc4_compute_graph():
     groupby.start()
 
 
+
 def main():
     logging.basicConfig(level=LOGGING_LEVEL)
     logging.getLogger("pika").setLevel(logging.WARNING)
@@ -60,8 +60,6 @@ def main():
             fn = UC3SumGroupByFn()
         case "uc4_compute_graph":
             return make_uc4_compute_graph()
-        case "uc4_count_paths":
-            fn = UC4CountPaths()
         case "uc5_count":
             fn = UC5CountGroupByFn()
         case _:

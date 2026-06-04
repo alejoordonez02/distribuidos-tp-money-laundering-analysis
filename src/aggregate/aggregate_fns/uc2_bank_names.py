@@ -5,7 +5,11 @@ from common.comms.messages import BankNames
 
 from .aggregate_fn import AggregateFn
 
-AFFINITY_SHARDS = 100
+# NOTE: estos no pueden ser más chicos
+#       que la cantidad de controladores
+#       que hay adelante, porque se van
+#       a desperdiciar la diferencia.
+AFFINITY_SHARDS = 10
 
 
 class UC2BankNamesAggregateFn(AggregateFn):

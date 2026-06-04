@@ -14,7 +14,7 @@ class StatelessSingleNodeEOFHandler(StatelessEOFHandler):
         self.external_txs = external_txs
 
         self.processed_counts: dict[UUID, int] = {}
-        self.next_expected_counts: dict[UUID, int] = {}
+        self.sent_data: dict[UUID, int] = {}
 
     def start(self):
         pass
@@ -23,7 +23,7 @@ class StatelessSingleNodeEOFHandler(StatelessEOFHandler):
         pass
 
     def handle(self, eof: EOF):
-        eof.expected_count = self.next_expected_counts[eof.client_id]
+        eof.expected_count = self.sent_data[eof.client_id]
         logging.info(f"downstreaming eof: {eof.__dict__}")
         for tx in self.external_txs:
             tx.send(eof.serialize())
@@ -36,7 +36,7 @@ class StatefulSingleNodeEOFHandler(StatefulEOFHandler):
         self.internal_eofs_tx = internal_eofs_tx
 
         self.processed_counts: dict[UUID, int] = {}
-        self.next_expected_counts: dict[UUID, int] = {}
+        self.sent_data: dict[UUID, int] = {}
 
     def start(self):
         pass
@@ -47,8 +47,11 @@ class StatefulSingleNodeEOFHandler(StatefulEOFHandler):
     def handle(self, eof: EOF):
         self.internal_eofs_tx.put(eof)
 
+    def confirm_sent_data(self, client_id: UUID):
+        pass
+
     def downstream(self, eof: EOF):
-        eof.expected_count = self.next_expected_counts[eof.client_id]
+        eof.expected_count = self.sent_data[eof.client_id]
         logging.info(f"downstreaming eof: {eof.__dict__}")
         for tx in self.external_txs:
             tx.send(eof.serialize())

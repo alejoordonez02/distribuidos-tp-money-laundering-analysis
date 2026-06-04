@@ -3,6 +3,7 @@ import os
 import tempfile
 from datetime import datetime
 from pathlib import Path
+from typing import Iterator
 from uuid import UUID
 
 from common.comms.messages import MergedTransactions, AvgByFormat, Transactions
@@ -11,6 +12,12 @@ from common.data.transaction import Transaction
 from .merge_fn import MergeFn
 
 _DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+
+# Max transactions per emitted MergedTransactions. The right side is already
+# spilled to disk, so get_result streams it back in bounded batches instead of
+# loading every matching transaction into one list / one giant message (which
+# OOM'd uc3_merge on the medium dataset: 3.76M txns ~= 4.7GB in RAM).
+_CHUNK_SIZE = 10_000
 
 
 def _serialize(t: Transaction) -> str:
@@ -49,24 +56,37 @@ class UC3BankIdMergeFn(MergeFn):
             self._averages[msg.client_id][fmt] = avg
 
     def right(self, msg: Transactions):  # type: ignore[reportIncompatibleMethodOverride]
-        avgs = self._averages.get(msg.client_id)
         path = self._file_for(msg.client_id)
         with open(path, "a") as f:
             for t in msg.transactions:
-                if avgs is None or t.payment_format in avgs:
-                    f.write(_serialize(t) + "\n")
+                f.write(_serialize(t) + "\n")
 
-    def get_result(self, client_id: UUID) -> MergedTransactions:
+    def get_result(self, client_id: UUID) -> Iterator[MergedTransactions]:  # type: ignore[reportIncompatibleMethodOverride]
         averages = self._averages.pop(client_id, {})
         path = self._files.pop(client_id, None)
 
-        entries = []
+        # Stream the spilled right side back in bounded batches. Every chunk
+        # carries the (small) averages dict so the downstream filter can process
+        # each message independently — same data, same result as one big message.
+        batch: list[Transaction] = []
+        emitted = False
         if path and path.exists():
             with open(path) as f:
                 for line in f:
                     t = _deserialize(line)
                     if t.payment_format in averages:
-                        entries.append(t)
+                        batch.append(t)
+                        if len(batch) >= _CHUNK_SIZE:
+                            yield MergedTransactions(client_id, batch, averages)
+                            emitted = True
+                            batch = []
             path.unlink()
 
-        return MergedTransactions(client_id, entries, averages)
+        if batch:
+            yield MergedTransactions(client_id, batch, averages)
+            emitted = True
+
+        # Preserve the old contract of always emitting at least one message
+        # (downstream expects >= 1 even when there are no matching transactions).
+        if not emitted:
+            yield MergedTransactions(client_id, [], averages)

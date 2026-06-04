@@ -17,7 +17,7 @@ class QueueRabbitMQ(MOMQueue):
         self.queue_name = queue_name
 
         # TODO: heartbeat=600 may be starved by blocking callbacks in start_consuming — revisit
-        self.conn = BlockingConnection(ConnectionParameters(host, heartbeat=600))
+        self.conn = BlockingConnection(ConnectionParameters(host, heartbeat=0))
         self.chan = self.conn.channel()
         self.chan.queue_declare(queue=queue_name)
         self.chan.basic_qos(prefetch_count=1)
@@ -38,7 +38,12 @@ class QueueRabbitMQ(MOMQueue):
         except Exception as e:
             # TODO: distinguish OSError (socket closed mid-consume) from exceptions
             # raised inside on_message_callback — the latter would pass silently here
-            logging.error("!!! UNHANDLED exception in start_consuming (queue=%s): %s", self.queue_name, e, exc_info=True)
+            logging.error(
+                "!!! UNHANDLED exception in start_consuming (queue=%s): %s",
+                self.queue_name,
+                e,
+                exc_info=True,
+            )
 
     def stop_consuming(self) -> None:
         try:
@@ -47,7 +52,12 @@ class QueueRabbitMQ(MOMQueue):
             raise MOMDisconnectedError(str(e)) from e
         except Exception as e:
             # TODO: handle specific pika shutdown exceptions
-            logging.error("!!! UNHANDLED exception in stop_consuming (queue=%s): %s", self.queue_name, e, exc_info=True)
+            logging.error(
+                "!!! UNHANDLED exception in stop_consuming (queue=%s): %s",
+                self.queue_name,
+                e,
+                exc_info=True,
+            )
 
     def send(self, message: bytes) -> None:
         try:
@@ -64,7 +74,12 @@ class QueueRabbitMQ(MOMQueue):
             self.conn.close()
         except ConnectionWrongStateError as e:
             # TODO: handle specific close-on-wrong-state case
-            logging.error("!!! UNHANDLED ConnectionWrongStateError in close (queue=%s): %s", self.queue_name, e, exc_info=True)
+            logging.error(
+                "!!! UNHANDLED ConnectionWrongStateError in close (queue=%s): %s",
+                self.queue_name,
+                e,
+                exc_info=True,
+            )
         except Exception as e:
             raise MOMMessageError(str(e)) from e
 

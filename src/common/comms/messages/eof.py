@@ -9,9 +9,9 @@ class EOF(Message):
     def __init__(
         self,
         client_id: UUID,
-        processed_count: int = 0,
-        expected_count: int = 0,
-        next_expected_count: int = 0,
+        processed_count: int = -1,
+        expected_count: int = -1,
+        next_expected_count: int = -1,
         origin: int = -1,
     ):
         self.client_id = client_id

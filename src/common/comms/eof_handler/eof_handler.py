@@ -8,7 +8,7 @@ class EOFHandler(ABC):
     """A component for handling end of file messages."""
 
     processed_counts: dict[UUID, int]
-    next_expected_counts: dict[UUID, int]
+    sent_data: dict[UUID, int]
 
     @abstractmethod
     def start(self):
@@ -46,13 +46,13 @@ class EOFHandler(ABC):
 
         self.processed_counts[client_id] += 1
 
-    def add_next_expected_processed_counts(self, client_id: UUID):
+    def add_sent_data_count(self, client_id: UUID):
         # FIXME: esto tiene q estar con el mtx en
         #        en los q van en dos threads?
-        if client_id not in self.next_expected_counts:
-            self.next_expected_counts[client_id] = 0
+        if client_id not in self.sent_data:
+            self.sent_data[client_id] = 0
 
-        self.next_expected_counts[client_id] += 1
+        self.sent_data[client_id] += 1
 
 
 class StatelessEOFHandler(EOFHandler):
@@ -70,3 +70,6 @@ class StatefulEOFHandler(EOFHandler):
 
     @abstractmethod
     def downstream(self, eof: EOF): ...
+
+    @abstractmethod
+    def confirm_sent_data(self, client_id: UUID): ...

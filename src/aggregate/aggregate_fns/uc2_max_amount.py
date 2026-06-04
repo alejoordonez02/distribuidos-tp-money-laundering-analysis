@@ -5,7 +5,7 @@ from common.comms.messages import MaxByBank
 
 from .aggregate_fn import AggregateFn
 
-AFFINITY_SHARDS = 100
+AFFINITY_SHARDS = 10
 
 
 class UC2MaxAmountAggregateFn(AggregateFn):
