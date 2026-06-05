@@ -1,29 +1,33 @@
 import logging
 from threading import Thread
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 from uuid import uuid4
 
 from common.comms.connection import Connection
-from common.comms.messages import (
-    Message,
-    MessageType,
-    deserialize_message,
-)
-from common.comms.messages.errors import UnexpectedMessageError
+from common.comms.messages import Hello, HelloAck, Message, MessageType
 from common.comms.middleware import MOMQueue
 
-UUID = uuid4
+if TYPE_CHECKING:
+    from client_monitor import ClientMonitor
+
+
+def _peek_type(raw: bytes) -> int:
+    """The first byte of a serialized message is its type (1-byte prefix), so the
+    gateway can route a batch without unpacking its msgpack payload."""
+    return raw[0]
 
 
 class ClientHandler:
     def __init__(
         self,
         conn: Connection,
+        clients: "ClientMonitor",
         trans_tx_factory: Callable[[], MOMQueue],
         accs_tx_factory: Callable[[], MOMQueue],
     ):
-        self.id = UUID()
+        self.id = uuid4()
         self.conn = conn
+        self.clients = clients
         self.trans_tx_factory = trans_tx_factory
         self.accs_tx_factory = accs_tx_factory
         self.handle: Thread
@@ -40,52 +44,33 @@ class ClientHandler:
         self.conn.send(msg.serialize())
 
     def _run(self):
-        self._handle_transactions()
-        self._handle_accounts()
-        logging.info("finished sending all client's data")
+        # Handshake: the client sends Hello, the gateway MINTS the client_id and
+        # returns it (HelloAck). The client then stamps that id on every message,
+        # so the gateway keeps forwarding data raw (no per-batch deserialize) while
+        # owning the id namespace — no collisions, no client-chosen ids. The
+        # passthrough lets a client that parses in parallel avoid bottlenecking on
+        # a single gateway core.
+        Hello.deserialize(self.conn.recv())
+        self.id = uuid4()
+        self.clients.add(self)
+        self.conn.send(HelloAck(self.id).serialize())
 
-    def _handle_transactions(self):
-        transactions_tx = self.trans_tx_factory()
-        count = 0
+        self._forward_until_eof(self.trans_tx_factory(), MessageType.TRANSACTIONS)
+        self._forward_until_eof(self.accs_tx_factory(), MessageType.ACCOUNTS)
+        logging.info("finished forwarding all client's data")
 
+    def _forward_until_eof(self, tx: MOMQueue, data_type: MessageType):
         while True:
-            msg = deserialize_message(self.conn.recv())
-            logging.debug(f"received message from client: {msg.__dict__}")
-
-            match msg.type():
-                case MessageType.EOF:
-                    msg.client_id = self.id
-                    msg.expected_count = count  # type: ignore[reportAttributeAccessIssue]
-                    transactions_tx.send(msg.serialize())
-                    break
-                case MessageType.TRANSACTIONS:
-                    msg.client_id = self.id
-                    transactions_tx.send(msg.serialize())
-                    count += 1
-                case _:
-                    raise UnexpectedMessageError(
-                        "client handler received unexpected msg: {msg.__dict__}"
-                    )
-
-    def _handle_accounts(self):
-        accounts_tx = self.accs_tx_factory()
-        count = 0
-
-        while True:
-            msg = deserialize_message(self.conn.recv())
-            logging.debug(f"received message from client: {msg.__dict__}")
-
-            match msg.type():
-                case MessageType.EOF:
-                    msg.client_id = self.id
-                    msg.expected_count = count  # type: ignore[reportAttributeAccessIssue]
-                    accounts_tx.send(msg.serialize())
-                    break
-                case MessageType.ACCOUNTS:
-                    msg.client_id = self.id
-                    accounts_tx.send(msg.serialize())
-                    count += 1
-                case _:
-                    raise UnexpectedMessageError(
-                        "client handler received unexpected msg: {msg.__dict__}"
-                    )
+            raw = self.conn.recv()
+            if not raw:
+                logging.error("client connection closed before EOF")
+                return
+            t = _peek_type(raw)
+            if t == MessageType.EOF:
+                tx.send(raw)  # client already set client_id + expected_count
+                return
+            elif t == data_type:
+                tx.send(raw)  # forward raw; client_id already stamped by client
+            else:
+                logging.error(f"client handler got unexpected msg type {t}")
+                return
