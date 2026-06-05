@@ -80,6 +80,7 @@ class JoinRouteHandler:
     def _handle_message(self, bytes2: bytes, ack: Callable, nack: Callable):
         msg = deserialize_message(bytes2)
         client_id = msg.client_id
+        logging.debug("received message %s", msg.__dict__)  # lazy: str() only if DEBUG
 
         if msg.type() == MessageType.EOF:
             self._expected[client_id] = msg.expected_count  # type: ignore[reportAttributeAccessIssue]
