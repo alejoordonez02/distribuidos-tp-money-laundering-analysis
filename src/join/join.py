@@ -1,5 +1,5 @@
 import logging
-from threading import Thread
+from threading import Lock, Thread
 from typing import Callable
 
 from join_fns import JoinFn
@@ -21,16 +21,19 @@ class Join:
 
     def start(self):
         setup_graceful_shutdown(self.stop)
+        # Shared across all route handlers so each UC's chunks stay contiguous in
+        # the responses queue.
+        responses_lock = Lock()
         handles = []
         for mom_factory, join_fn in self.partial_res_handlers[1:]:
-            rh = JoinRouteHandler(self.responses_tx_factory, mom_factory, join_fn)
+            rh = JoinRouteHandler(self.responses_tx_factory, mom_factory, join_fn, responses_lock)
             self._route_handlers.append(rh)
             t = Thread(target=rh.start, daemon=True)
             t.start()
             handles.append(t)
 
         mom_factory, join_fn = self.partial_res_handlers[0]
-        main_rh = JoinRouteHandler(self.responses_tx_factory, mom_factory, join_fn)
+        main_rh = JoinRouteHandler(self.responses_tx_factory, mom_factory, join_fn, responses_lock)
         self._route_handlers.append(main_rh)
         try:
             main_rh.start()
