@@ -1,5 +1,7 @@
 import logging
+from threading import Lock
 from typing import Callable
+from uuid import UUID
 
 from join_fns import JoinFn
 
@@ -20,6 +22,7 @@ class JoinRouteHandler:
         responses_tx_factory: Callable[[], MOMQueue],
         mom_factory: Callable[[], MOMQueue],
         join_fn: JoinFn,
+        responses_lock: Lock,
     ):
         """
         Create a new `JoinRouteHandler`.
@@ -28,12 +31,25 @@ class JoinRouteHandler:
         * reponses_tx_factory: a factory for the write half queue.
         * mom_factory: a factory for the read half queue.
         * join_fn: the join function to be used.
+        * responses_lock: shared across all route handlers so a UC's (possibly
+          multi-chunk) response is emitted atomically — chunks of different UCs
+          never interleave in the responses queue.
         """
         self.responses_tx_factory = responses_tx_factory
         self.responses_tx: MOMQueue
         self.mom_factory = mom_factory
         self.join_fn = join_fn
+        self._responses_lock = responses_lock
         self._mom: MOMQueue | None = None
+        # Per-client message accounting: the upstream EOF carries `expected_count`
+        # (how many data messages were sent to this queue). We only finalize a
+        # client once that many have actually arrived — otherwise a data message
+        # that gets enqueued *after* the EOF (no publisher confirms upstream, so a
+        # late publish from another filter peer can overtake the EOF under load)
+        # would be dropped, silently losing rows. The stateful nodes already wait
+        # this way; UC1 goes filter->join directly, so the join must too.
+        self._received: dict[UUID, int] = {}
+        self._expected: dict[UUID, int] = {}
 
     def start(self):
         """
@@ -53,18 +69,31 @@ class JoinRouteHandler:
             self._mom.close()
         self.responses_tx.close()
 
-    def _handle_eof(self, eof: EOF):
-        response = self.join_fn.get_response(eof.client_id)
-        self.responses_tx.send(response.serialize())
+    def _finalize(self, client_id: UUID):
+        # Hold the shared lock for the whole UC so its chunks are contiguous in
+        # the responses queue (otherwise UC1/UC3 chunks could interleave and the
+        # client would write a corrupted, mixed response file).
+        with self._responses_lock:
+            for response in self.join_fn.get_responses(client_id):
+                self.responses_tx.send(response.serialize())
 
     def _handle_message(self, bytes2: bytes, ack: Callable, nack: Callable):
         msg = deserialize_message(bytes2)
-        logging.debug(f"received message {msg.__dict__}")
+        client_id = msg.client_id
 
         if msg.type() == MessageType.EOF:
-            logging.info(f"received eof {msg.__dict__}")
-            self._handle_eof(msg)  # type: ignore[reportArgumentType]
+            self._expected[client_id] = msg.expected_count  # type: ignore[reportAttributeAccessIssue]
         else:
             self.join_fn.join(msg)
+            self._received[client_id] = self._received.get(client_id, 0) + 1
+
+        # Finalize only once the EOF has arrived AND every data message it
+        # promised has actually been processed (handles the EOF overtaking late
+        # data messages under load).
+        expected = self._expected.get(client_id)
+        if expected is not None and self._received.get(client_id, 0) >= expected:
+            self._finalize(client_id)
+            self._expected.pop(client_id, None)
+            self._received.pop(client_id, None)
 
         ack()
