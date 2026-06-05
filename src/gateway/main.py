@@ -14,7 +14,7 @@ SERVER_QUEUE_RX = os.environ["SERVER_QUEUE_RX"]
 TRANSACTIONS_TX = os.environ["TRANSACTIONS_TX"]
 ACCOUNTS_TX = os.environ["ACCOUNTS_TX"]
 
-LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
+LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "WARNING")
 
 
 def main():

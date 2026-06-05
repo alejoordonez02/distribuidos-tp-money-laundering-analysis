@@ -35,7 +35,6 @@ class Filter:
 
     def _handle_message(self, bytes2: bytes, ack: Callable, _: Callable):
         msg = deserialize_message(bytes2)
-        logging.debug(f"received msg: {msg.__dict__}")
 
         if msg.type() == MessageType.EOF:
             self.eof_handler.handle(msg)  # type: ignore[reportUndefinedVariable]
@@ -46,7 +45,6 @@ class Filter:
             for destination, filter_fn in self.routes:
                 filtered = filter_fn.filter(msg)
                 destination.send(filtered.serialize())
-                logging.debug(f"filtered: {filtered.__dict__}")
 
             self.eof_handler.add_sent_data_count(msg.client_id)
             self.eof_handler.add_processed_count(msg.client_id)

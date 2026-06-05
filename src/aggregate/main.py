@@ -26,7 +26,7 @@ RX = os.environ["RX"]
 TX = os.environ["TX"]
 STRATEGY = os.environ["STRATEGY"]
 
-LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
+LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "WARNING")
 
 
 def make_uc4_aggregate_graphs():
