@@ -91,7 +91,7 @@ class Merge:
     def _handle_side(
         self,
         side_rx: MOMQueue,
-        _handle_side_message: Callable[[bytes, Callable, Callable, MOMQueue]],
+        _handle_side_message: Callable[[bytes, Callable, Callable, MOMQueue], None],
     ):
         tx = self._tx_factory()
         side_rx.start_consuming(
