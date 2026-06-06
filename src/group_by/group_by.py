@@ -5,7 +5,7 @@ from group_by_fns import GroupByFn
 
 from common.comms.eof_handler import StatelessEOFHandler
 from common.comms.messages import MessageType, deserialize_message
-from common.comms.middleware import MOM, MOMQueue
+from common.comms.middleware import MOM
 from common.graceful_shutdown import setup_graceful_shutdown
 
 
@@ -13,7 +13,7 @@ class GroupBy:
     def __init__(
         self,
         fn: GroupByFn,
-        external_rx: MOMQueue,
+        external_rx: MOM,
         external_txs: Sequence[MOM],
         eof_handler: StatelessEOFHandler,
     ):

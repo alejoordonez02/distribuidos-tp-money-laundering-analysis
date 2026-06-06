@@ -1,24 +1,23 @@
 import logging
 import os
-from typing import Sequence
+from typing import Callable
 
 from filter2 import Filter
-from filter_fns import FilterFn
+from filter_fns import FilterFn, UC3AvgFilter, UC4PathFilter, UC5Filter
 
 from common.comms.eof_handler import make_stateless_eof_handler
-from common.comms.middleware import MOM, QueueRabbitMQ
+from common.comms.middleware import ExchangeRabbitMQ, QueueRabbitMQ
 
 MOM_HOST = os.environ["MOM_HOST"]
 RX = os.environ["RX"]
+STRATEGY = os.environ["STRATEGY"]
 # This reading half varies depending on the controller instance that's being
 # used, thus it does not need to be declared for each strategy.
-
-STRATEGY = os.getenv("STRATEGY", "default")
 
 LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
 
 
-def make_default_filter() -> tuple[MOM, Sequence[tuple[MOM, FilterFn]], Sequence[MOM]]:
+def make_default_filter() -> Filter:
     from filter_fns import (
         UC1Filter,
         UC2Filter,
@@ -37,6 +36,7 @@ def make_default_filter() -> tuple[MOM, Sequence[tuple[MOM, FilterFn]], Sequence
     UC5_TRANSACTIONS_TX = os.environ["UC5_TRANSACTIONS_TX"]
 
     transactions_rx = QueueRabbitMQ(MOM_HOST, RX)
+
     routes = [
         (QueueRabbitMQ(MOM_HOST, UC1_TRANSACTIONS_TX), UC1Filter()),
         (QueueRabbitMQ(MOM_HOST, UC2_TRANSACTIONS_TX), UC2Filter()),
@@ -52,55 +52,61 @@ def make_default_filter() -> tuple[MOM, Sequence[tuple[MOM, FilterFn]], Sequence
         (QueueRabbitMQ(MOM_HOST, UC4_DEGREE_TRANSACTIONS_TX), UC4Filter()),
         (QueueRabbitMQ(MOM_HOST, UC5_TRANSACTIONS_TX), UC5Filter()),
     ]
+
     # TODO: reescribir esto, las listas se
     #       declaran una vez mejor :)
-    eof_txs = [tx for (tx, _) in routes]
+    eof_handler = make_stateless_eof_handler(MOM_HOST, [tx for (tx, _) in routes])
 
-    return (transactions_rx, routes, eof_txs)
+    filter2 = Filter(transactions_rx, routes, eof_handler)
 
-
-def make_uc3_average_filter() -> tuple[
-    MOM, Sequence[tuple[MOM, FilterFn]], Sequence[MOM]
-]:
-    from filter_fns import UC3AvgFilter
-
-    UC3_FILTERED_TX = os.environ["UC3_FILTERED_TX"]
-
-    transactions_rx = QueueRabbitMQ(MOM_HOST, RX)
-    routes = [(QueueRabbitMQ(MOM_HOST, UC3_FILTERED_TX), UC3AvgFilter())]
-    eof_txs = [tx for (tx, _) in routes]
-
-    return (transactions_rx, routes, eof_txs)
+    return filter2
 
 
-def make_uc4_path_filter() -> tuple[MOM, Sequence[tuple[MOM, FilterFn]], Sequence[MOM]]:
-    from filter_fns import UC4PathFilter
+# fn: GroupByFn, idx: int, naffinities_downstream: int, mom_host: str, rx: str, tx: str
+def make_filter(
+    fn_factory: Callable[[], FilterFn],
+    idx: int,
+    affinity_upstream: bool,
+    nnodes_downstream: int,
+    mom_host: str,
+    rx: str,
+    tx: str,
+) -> Filter:
 
-    UC4_FILTERED_PATHS_TX = os.environ["UC4_FILTERED_PATHS_TX"]
+    if affinity_upstream:
+        external_rx = QueueRabbitMQ(MOM_HOST, rx)
+    else:
+        external_rx = ExchangeRabbitMQ(mom_host, rx, [f"{idx}"], f"{rx}{idx}")
 
-    transactions_rx = QueueRabbitMQ(MOM_HOST, RX)
-    routes = [
-        (QueueRabbitMQ(MOM_HOST, UC4_FILTERED_PATHS_TX), UC4PathFilter()),
-    ]
-    eof_txs = [tx for (tx, _) in routes]
+    if nnodes_downstream == 0:
+        external_txs = (QueueRabbitMQ(mom_host, queue_name=f"{tx}"),)
+    elif nnodes_downstream == 1:
+        external_txs = (QueueRabbitMQ(mom_host, queue_name=f"{tx}0"),)
+    elif nnodes_downstream > 1:
+        external_txs = [
+            ExchangeRabbitMQ(mom_host, tx, routing_keys=[f"{n}"], queue_name=f"{tx}{n}")
+            for n in range(nnodes_downstream)
+        ]
+        # TODO: medio q queda paja porq lo había
+        #       hecho pensando más q nada para el
+        #       default
+        raise ValueError("downstream affinity not implemented for filter yet")
 
-    return (transactions_rx, routes, eof_txs)
+    else:
+        raise ValueError("downstream nodes amount cannot be less than 0")
 
+    # FIXME: esto lo estoy dejando porq estaba
+    #        así, pero la verdad ya no me acuerdo
+    #        si le pegábamos el eof a todos los
+    #        de adelante... no debería tener
+    #        mucho sentido
+    eof_handler = make_stateless_eof_handler(MOM_HOST, (external_txs[0],))
 
-def make_uc5_amount_filter() -> tuple[
-    MOM, Sequence[tuple[MOM, FilterFn]], Sequence[MOM]
-]:
-    from filter_fns import UC5AmountFilter
+    filter2 = Filter(
+        external_rx, [(tx, fn_factory()) for tx in external_txs], eof_handler
+    )
 
-    UC5_AMOUNT_FILTERED_TX = os.environ["UC5_AMOUNT_FILTERED_TX"]
-
-    transactions_rx = QueueRabbitMQ(MOM_HOST, RX)
-    routes = [
-        (QueueRabbitMQ(MOM_HOST, UC5_AMOUNT_FILTERED_TX), UC5AmountFilter()),
-    ]
-    eof_txs = [tx for (tx, _) in routes]
-
-    return (transactions_rx, routes, eof_txs)
+    return filter2
 
 
 def main():
@@ -109,19 +115,36 @@ def main():
 
     match STRATEGY:
         case "default":
-            rx, txs, eof_txs = make_default_filter()
+            filter2 = make_default_filter()
+            return filter2.start()
+
         case "uc3_avg":
-            rx, txs, eof_txs = make_uc3_average_filter()
+            fn = UC3AvgFilter
         case "uc4_path":
-            rx, txs, eof_txs = make_uc4_path_filter()
+            fn = UC4PathFilter
         case "uc5_amount":
-            rx, txs, eof_txs = make_uc5_amount_filter()
+            fn = UC5Filter
         case _:
             raise ValueError(f"unknown filter strategy: {STRATEGY}")
 
-    eof_handler = make_stateless_eof_handler(MOM_HOST, eof_txs)
+    TX = os.environ["TX"]
 
-    filter2 = Filter(rx, txs, eof_handler)
+    IDX = int(os.getenv("IDX", 0))
+    AFFINITY_UPSTREAM = bool(os.environ["AFFINITY_UPSTREAM"])
+    NAFFINITY_DOWNSTREAM = int(os.environ["NAFFINITY_DOWNSTREAM"])
+
+    filter2 = make_filter(
+        fn, IDX, AFFINITY_UPSTREAM, NAFFINITY_DOWNSTREAM, MOM_HOST, RX, TX
+    )
+
+    logging.info(
+        f"""
+        starting filter: fn={type(fn)}, \
+        idx={IDX}, affinity_upstream={AFFINITY_UPSTREAM}, \
+        nnodes_downstream={NAFFINITY_DOWNSTREAM}, \
+        mom_host={MOM_HOST}, rx={RX}, tx={TX}"\
+        """
+    )
     filter2.start()
 
 

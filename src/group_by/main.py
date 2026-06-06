@@ -2,6 +2,7 @@ import logging
 import os
 
 from group_by_fns import (
+    GroupByFn,
     UC2BankNamesGroupByFn,
     UC2MaxAmountGroupByFn,
     UC3SumGroupByFn,
@@ -17,34 +18,51 @@ MOM_HOST = os.environ["MOM_HOST"]
 RX = os.environ["RX"]
 TX = os.environ["TX"]
 STRATEGY = os.environ["STRATEGY"]
-NPEERS_UPSTREAM = int(os.getenv("NPEERS_UPSTREAM", "1"))
+
+IDX = int(os.getenv("IDX", 0))
+AFFINITY_UPSTREAM = bool(os.environ["AFFINITY_UPSTREAM"])
+NAFFINITY_DOWNSTREAM = int(os.environ["NAFFINITY_DOWNSTREAM"])
+# fulero...
 
 LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
 
 
-def make_uc4_compute_graph():
-    NNODES_DOWNSTREAM = int(os.environ["NNODES_DOWNSTREAM"])
+def make_groupby(
+    fn: GroupByFn,
+    idx: int,
+    affinity_upstream: bool,
+    naffinities_downstream: int,
+    mom_host: str,
+    rx: str,
+    tx: str,
+) -> GroupBy:
 
-    if NNODES_DOWNSTREAM <= 0:
+    if affinity_upstream:
+        external_rx = QueueRabbitMQ(MOM_HOST, rx)
+    else:
+        external_rx = ExchangeRabbitMQ(mom_host, rx, [f"{idx}"], f"{rx}{idx}")
+
+    if naffinities_downstream == 0:
+        external_txs = (QueueRabbitMQ(mom_host, queue_name=f"{tx}"),)
+    elif naffinities_downstream == 1:
+        external_txs = (QueueRabbitMQ(mom_host, queue_name=f"{tx}0"),)
+    elif naffinities_downstream > 1:
+        external_txs = [
+            ExchangeRabbitMQ(mom_host, TX, routing_keys=[f"{n}"], queue_name=f"{tx}{n}")
+            for n in range(naffinities_downstream)
+        ]
+
+    else:
         raise ValueError("downstream nodes amount cannot be less than 0")
 
-    fn = UC4ComputeGraph()
-
-    external_rx = QueueRabbitMQ(MOM_HOST, RX)
-    external_txs = [
-        ExchangeRabbitMQ(MOM_HOST, TX, routing_keys=[f"{n}"], queue_name=f"{TX}{n}")
-        for n in range(NNODES_DOWNSTREAM)
-    ]
-
-    # TODO: quizás estaría bueno elegir
-    #       random de manera dinámica?
-    #       para no mandar siempre al
-    #       mismo.
+    # TODO: tengo que cambiar el external_txs[0]
+    #       porq va a traer problemas para fault
+    #       tolerance
     eof_handler = make_stateless_eof_handler(MOM_HOST, (external_txs[0],))
 
     groupby = GroupBy(fn, external_rx, external_txs, eof_handler)
-    groupby.start()
 
+    return groupby
 
 
 def main():
@@ -59,17 +77,23 @@ def main():
         case "uc3_sum":
             fn = UC3SumGroupByFn()
         case "uc4_compute_graph":
-            return make_uc4_compute_graph()
+            fn = UC4ComputeGraph()
         case "uc5_count":
             fn = UC5CountGroupByFn()
         case _:
             raise ValueError(f"unknown group_by strategy: {STRATEGY}")
 
-    external_rx = QueueRabbitMQ(MOM_HOST, RX)
-    external_txs = (QueueRabbitMQ(MOM_HOST, TX),)
-    eof_handler = make_stateless_eof_handler(MOM_HOST, external_txs)
+    groupby = make_groupby(
+        fn, IDX, AFFINITY_UPSTREAM, NAFFINITY_DOWNSTREAM, MOM_HOST, RX, TX
+    )
 
-    groupby = GroupBy(fn, external_rx, external_txs, eof_handler)
+    logging.info(
+        f"""
+        starting groupby: fn={type(fn)}, \
+        idx={IDX}, nnodes_downstream={NAFFINITY_DOWNSTREAM}, \
+        mom_host={MOM_HOST}, rx={RX}, tx={TX}"\
+        """
+    )
     groupby.start()
 
 
