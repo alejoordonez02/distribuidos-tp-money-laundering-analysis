@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 PWD := $(shell pwd)
 PYTHON_PM := /bin/uv
-COMPOSE := docker compose -f docker-compose.yaml -f docker-compose.clients.yaml
+COMPOSE := docker compose -f test.yaml -f docker-compose.clients.yaml
 RABBIT_CONTAINER := rabbitmq
 
 .PHONY: help gen_input_output gen_compose up stop_server down logs test report demo
@@ -18,7 +18,7 @@ gen_input_output:
 	PYTHONPATH=src uv run test/gen_input_output.py # TODO: este script hay q limpiarlo después
 
 gen_compose:
-	PYTHONPATH=test uv run gen_compose.py
+	PYTHONPATH=test uv run -m scripts.gen_compose.gen_compose
 
 up: gen_compose
 	mkdir -p responses
