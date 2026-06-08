@@ -74,9 +74,9 @@ def make_filter(
 ) -> Filter:
 
     if affinity_upstream:
-        external_rx = QueueRabbitMQ(MOM_HOST, rx)
-    else:
         external_rx = ExchangeRabbitMQ(mom_host, rx, [f"{idx}"], f"{rx}{idx}")
+    else:
+        external_rx = QueueRabbitMQ(MOM_HOST, rx)
 
     if nnodes_downstream == 0:
         external_txs = (QueueRabbitMQ(mom_host, queue_name=f"{tx}"),)
@@ -130,7 +130,7 @@ def main():
     TX = os.environ["TX"]
 
     IDX = int(os.getenv("IDX", 0))
-    AFFINITY_UPSTREAM = bool(os.environ["AFFINITY_UPSTREAM"])
+    AFFINITY_UPSTREAM = os.environ["AFFINITY_UPSTREAM"] == "1"
     NAFFINITY_DOWNSTREAM = int(os.environ["NAFFINITY_DOWNSTREAM"])
 
     filter2 = make_filter(

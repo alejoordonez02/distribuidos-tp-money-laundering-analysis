@@ -44,9 +44,9 @@ def make_aggregate(
 ) -> Aggregate:
 
     if affinity_upstream:
-        external_rx = QueueRabbitMQ(MOM_HOST, rx)
-    else:
         external_rx = ExchangeRabbitMQ(mom_host, rx, [f"{idx}"], f"{rx}{idx}")
+    else:
+        external_rx = QueueRabbitMQ(MOM_HOST, rx)
 
     if nnodes_downstream == 0:
         external_txs = (QueueRabbitMQ(mom_host, queue_name=f"{tx}"),)
