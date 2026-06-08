@@ -20,7 +20,7 @@ TX = os.environ["TX"]
 STRATEGY = os.environ["STRATEGY"]
 
 IDX = int(os.getenv("IDX", 0))
-AFFINITY_UPSTREAM = bool(os.environ["AFFINITY_UPSTREAM"])
+AFFINITY_UPSTREAM = os.environ["AFFINITY_UPSTREAM"] == "1"
 NAFFINITY_DOWNSTREAM = int(os.environ["NAFFINITY_DOWNSTREAM"])
 # fulero...
 
@@ -48,7 +48,7 @@ def make_groupby(
         external_txs = (QueueRabbitMQ(mom_host, queue_name=f"{tx}0"),)
     elif naffinities_downstream > 1:
         external_txs = [
-            ExchangeRabbitMQ(mom_host, TX, routing_keys=[f"{n}"], queue_name=f"{tx}{n}")
+            ExchangeRabbitMQ(mom_host, tx, routing_keys=[f"{n}"], queue_name=f"{tx}{n}")
             for n in range(naffinities_downstream)
         ]
 
