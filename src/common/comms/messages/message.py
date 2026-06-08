@@ -29,6 +29,14 @@ def _mp_default(o):
     raise TypeError(f"Object of type {type(o).__name__} is not msgpack-serializable")
 
 
+# Wire-format offsets, defined once so the gateway can reuse them when it stamps
+# the id (see ClientStreamHandler._stamp_id) instead of repeating magic numbers.
+TYPE_RANGE = slice(0, 1)
+PREFIX_RANGE = slice(1, 17)
+MSG_RANGE = slice(17, None)
+DEFAULT_PREFIX = b"\x00" * 16
+
+
 class Message:
     client_id: UUID
 
@@ -56,11 +64,11 @@ class Message:
         """
         fields = self._fields()
         client_id = getattr(self, "client_id", None)
-        if client_id is not None:
+        if client_id:
             prefix = client_id.bytes
             fields = fields[1:]
         else:
-            prefix = b"\x00" * 16
+            prefix = DEFAULT_PREFIX
         return (
             bytes([int(self._type())])
             + prefix
@@ -96,9 +104,9 @@ class Message:
                 f"wrong message type\n\texpected: {cls._type()}\n\tgot: {bytes2[0]}"
             )
 
-        client_id = UUID(bytes=bytes2[1:17])
+        client_id = UUID(bytes=bytes2[PREFIX_RANGE])
         fields = msgpack.unpackb(
-            bytes2[17:], raw=False, use_list=True, strict_map_key=False
+            bytes2[MSG_RANGE], raw=False, use_list=True, strict_map_key=False
         )
         return cls._from_fields([str(client_id), *fields])
 

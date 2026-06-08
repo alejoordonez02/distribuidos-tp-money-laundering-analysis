@@ -4,7 +4,15 @@ from typing import Callable
 from uuid import uuid4
 
 from common.comms.connection import Connection
-from common.comms.messages import Hello, HelloAck, Message, MessageType, peek_type
+from common.comms.messages import (
+    MSG_RANGE,
+    TYPE_RANGE,
+    Hello,
+    HelloAck,
+    Message,
+    MessageType,
+    peek_type,
+)
 from common.comms.middleware import MOMQueue
 
 
@@ -60,4 +68,4 @@ class ClientStreamHandler:
     def _stamp_id(self, raw: bytes) -> bytes:
         """Overwrite the 16-byte client_id prefix with the gateway-minted id,
         without unpacking the msgpack payload."""
-        return raw[:1] + self.id.bytes + raw[17:]
+        return raw[TYPE_RANGE] + self.id.bytes + raw[MSG_RANGE]
