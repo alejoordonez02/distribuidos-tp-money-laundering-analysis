@@ -1,6 +1,6 @@
 import os
 
-from cfg import ACCOUNTS_PATH, NCLIENTS  # type: ignore[reportMissingImports]
+from scripts.cfg import ACCOUNTS_PATH, NCLIENTS  # type: ignore[reportMissingImports]
 
 # The client must read the SAME accounts file the dataset/cfg uses, otherwise the
 # bank-id → bank-name join (UC2) is built from the wrong universe of banks. This
