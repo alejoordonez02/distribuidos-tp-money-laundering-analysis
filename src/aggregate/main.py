@@ -56,24 +56,37 @@ def make_aggregate(
     return aggregate
 
 
+from enum import StrEnum
+
+
+class AggregateStrategy(StrEnum):
+    UC2_MAX_AMOUNT = "uc2_max_amount"
+    UC2_BANK_NAMES = "uc2_bank_names"
+    UC3_AVERAGE = "uc3_average"
+    UC4_COUNT_PATHS = "uc4_count_paths"
+    UC4_AGGREGATE_GRAPHS = "uc4_aggregate_graphs"
+    UC4_PATHS = "uc4_paths"
+    UC4_DEGREE = "uc4_degree"
+
+
 def main():
     logging.basicConfig(level=LOGGING_LEVEL)
     logging.getLogger("pika").setLevel(logging.WARNING)
 
     match STRATEGY:
-        case "uc2_max_amount":
+        case AggregateStrategy.UC2_MAX_AMOUNT:
             fn = UC2MaxAmountAggregateFn()
-        case "uc2_bank_names":
+        case AggregateStrategy.UC2_BANK_NAMES:
             fn = UC2BankNamesAggregateFn()
-        case "uc3_average":
+        case AggregateStrategy.UC3_AVERAGE:
             fn = UC3AvgAggregateFn()
-        case "uc4_count_paths":
+        case AggregateStrategy.UC4_COUNT_PATHS:
             fn = UC4CountPaths()
-        case "uc4_aggregate_graphs":
+        case AggregateStrategy.UC4_AGGREGATE_GRAPHS:
             fn = UC4AggregateGraphs()
-        case "uc4_paths":
+        case AggregateStrategy.UC4_PATHS:
             fn = UC4AggregatePaths()
-        case "uc4_degree":
+        case AggregateStrategy.UC4_DEGREE:
             fn = UC4Degree()
         case _:
             raise ValueError(f"unknown aggregate strategy: {STRATEGY}")
