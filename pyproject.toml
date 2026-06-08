@@ -13,3 +13,9 @@ dependencies = [
 ]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
+
+[tool.ruff.lint]
+extend-select = ["W505"] # docstrings largos
+
+[tool.ruff.lint.pycodestyle]
+max-doc-length = 72 # pep 8
