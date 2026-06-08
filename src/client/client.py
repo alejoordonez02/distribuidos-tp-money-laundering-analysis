@@ -4,6 +4,7 @@ import shutil
 import tempfile
 import time
 from multiprocessing import Process, Queue
+from typing import TextIO
 from uuid import UUID
 
 from parser import AccountParser, TransactionParser
@@ -134,7 +135,7 @@ class Client:
         count = 0
         batch = []
         with open(self.accounts_path, "r") as f:
-            f.readline()
+            f.readline()  # skip header
             while line := f.readline():
                 batch.append(parser.parse(line))
                 if len(batch) >= BATCH_SIZE:
@@ -147,26 +148,26 @@ class Client:
         return count
 
     def _receive_and_write_responses(self):
-        handles: dict[int, object] = {}
+        handles: dict[int, TextIO] = {}
         paths: dict[int, str] = {}
         completed: set[int] = set()
         while len(completed) < NRESPONSES:
             response = Response.deserialize(self.conn.recv())
             uc_id = response.uc_id  # type: ignore[reportAttributeAccessIssue]
             handle = handles.get(uc_id)
-            if handle is None:
+            if not handle:
                 fd, path = tempfile.mkstemp(prefix=f"resp_{uc_id}_", suffix=".txt")
                 handle = os.fdopen(fd, "w")
                 handles[uc_id] = handle
                 paths[uc_id] = path
-            handle.write(response.body)  # type: ignore[attr-defined]
+            handle.write(response.body)  # type: ignore[reportAttributeAccessIssue]
             if response.last:  # type: ignore[reportAttributeAccessIssue]
                 completed.add(uc_id)
                 logging.info("received UC %d (%d/%d)", uc_id, len(completed), NRESPONSES)
 
         with open(self.responses_path, "w") as out:
             for uc_id in sorted(paths):
-                handles[uc_id].close()  # type: ignore[attr-defined]
+                handles[uc_id].close()
                 with open(paths[uc_id], "r") as f:
                     shutil.copyfileobj(f, out)
                 os.unlink(paths[uc_id])
