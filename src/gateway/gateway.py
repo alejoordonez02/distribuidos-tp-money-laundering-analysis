@@ -3,7 +3,7 @@ from socket import SHUT_RDWR, socket
 from threading import Thread
 from typing import Callable
 
-from client_handler import ClientHandler
+from client_stream_handler import ClientStreamHandler
 from client_monitor import ClientMonitor, ClientNotFoundError
 
 from common.comms.connection import Connection
@@ -103,10 +103,7 @@ class Gateway:
                 logging.error("!!! UNHANDLED OSError in gateway accept loop: %s", e, exc_info=True)
                 break
             conn = Connection(skt)
-            # The handler self-registers in ClientMonitor after reading the
-            # client's Hello (keyed by the client-chosen id), so we pass the
-            # monitor in instead of adding here with a not-yet-known id.
-            client = ClientHandler(conn, self.clients, self.trans_tx_factory, self.accs_tx_factory)
+            client = ClientStreamHandler(conn, self.clients.add, self.trans_tx_factory, self.accs_tx_factory)
             client.start()
 
         self.server_handle.join()
