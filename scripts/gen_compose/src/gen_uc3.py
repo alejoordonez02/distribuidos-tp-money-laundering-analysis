@@ -1,3 +1,5 @@
+from src import AggregateStrategy, FilterStrategy, GroupByStrategy, MergeStrategy
+
 from .common_queues import (
     UC3_JOIN,
     UC3_PERIOD_A_TRANSACTIONS,
@@ -14,7 +16,7 @@ def gen_uc3() -> str:
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,
         name="uc3_group_by_format",
-        strategy="uc3_sum",
+        strategy=GroupByStrategy.UC3_SUM,
         npeers=2,
         affinity_upstream=False,
         naffinity_downstream=0,  # FIXME
@@ -25,7 +27,7 @@ def gen_uc3() -> str:
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
         name="uc3_average_aggregate",
-        strategy="uc3_average",
+        strategy=AggregateStrategy.UC3_AVERAGE,
         npeers=1,
         affinity_upstream=False,
         naffinity_downstream=0,  # FIXME
@@ -35,7 +37,7 @@ def gen_uc3() -> str:
     queue2 = "uc3_average_merged"
     compose += gen_merge(
         name="uc3_merge",
-        strategy="uc3_merge",
+        strategy=MergeStrategy.UC3_MERGE,
         left_rx_name=queue1,
         right_rx_name=UC3_PERIOD_B_TRANSACTIONS,
         tx_name=queue2,
@@ -43,7 +45,7 @@ def gen_uc3() -> str:
     compose += gen_nodes(
         type2=ContainerType.FILTER,
         name="uc3_average_filter",
-        strategy="uc3_avg",
+        strategy=FilterStrategy.UC3_AVG,
         npeers=1,
         affinity_upstream=False,
         naffinity_downstream=0,  # FIXME

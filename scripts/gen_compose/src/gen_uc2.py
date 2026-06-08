@@ -1,3 +1,5 @@
+from src import AggregateStrategy, GroupByStrategy, MergeStrategy
+
 from .common_queues import CLIENT_ACCOUNTS, UC2_FILTERED_TRANSACTIONS, UC2_JOIN
 from .container_type import ContainerType
 from .gen_merge import gen_merge
@@ -10,7 +12,7 @@ def gen_uc2() -> str:
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,
         name="uc2_max_amount_group_by",
-        strategy="uc2_max_amount",
+        strategy=GroupByStrategy.UC2_MAX_AMOUNT,
         npeers=2,
         affinity_upstream=False,
         naffinity_downstream=0,  # FIXME
@@ -21,7 +23,7 @@ def gen_uc2() -> str:
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
         name="uc2_max_amount_aggregate",
-        strategy="uc2_max_amount",
+        strategy=AggregateStrategy.UC2_MAX_AMOUNT,
         npeers=1,
         affinity_upstream=False,
         naffinity_downstream=0,  # FIXME
@@ -32,7 +34,7 @@ def gen_uc2() -> str:
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,
         name="uc2_bank_names_group_by",
-        strategy="uc2_bank_names",
+        strategy=GroupByStrategy.UC2_BANK_NAMES,
         npeers=2,
         affinity_upstream=False,
         naffinity_downstream=0,  # FIXME
@@ -43,7 +45,7 @@ def gen_uc2() -> str:
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
         name="uc2_bank_names_aggregate",
-        strategy="uc2_bank_names",
+        strategy=AggregateStrategy.UC2_BANK_NAMES,
         npeers=1,
         affinity_upstream=False,
         naffinity_downstream=0,  # FIXME
@@ -52,7 +54,7 @@ def gen_uc2() -> str:
     )
     compose += gen_merge(
         name="uc2_merge",
-        strategy="uc2_merge",
+        strategy=MergeStrategy.UC2_MERGE,
         left_rx_name=queue1,
         right_rx_name=queue3,
         tx_name=UC2_JOIN,

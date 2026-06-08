@@ -1,3 +1,5 @@
+from src import AggregateStrategy, GroupByStrategy, MergeStrategy
+
 from .common_queues import UC4_DEGREE_TRANSACTIONS, UC4_JOIN, UC4_TRANSACTIONS
 from .container_type import ContainerType
 from .gen_merge import gen_merge
@@ -10,7 +12,8 @@ def gen_uc4() -> str:
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,
         name="uc4_compute_graph_group_by",
-        strategy="uc4_compute_graph",
+        # strategy="uc4_compute_graph",
+        strategy=GroupByStrategy.UC4_COMPUTE_GRAPH,
         npeers=3,
         affinity_upstream=False,
         naffinity_downstream=3,
@@ -21,7 +24,7 @@ def gen_uc4() -> str:
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
         name="uc4_aggregate_graphs",
-        strategy="uc4_aggregate_graphs",
+        strategy=AggregateStrategy.UC4_AGGREGATE_GRAPHS,
         npeers=3,
         affinity_upstream=True,
         naffinity_downstream=0,
@@ -32,7 +35,7 @@ def gen_uc4() -> str:
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,
         name="uc4_degree_compute_graph",
-        strategy="uc4_compute_graph",
+        strategy=GroupByStrategy.UC4_COMPUTE_GRAPH,
         npeers=2,
         affinity_upstream=False,
         naffinity_downstream=2,
@@ -43,7 +46,7 @@ def gen_uc4() -> str:
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
         name="uc4_degree_aggregate",
-        strategy="uc4_degree",
+        strategy=AggregateStrategy.UC4_DEGREE,
         npeers=2,
         affinity_upstream=True,
         naffinity_downstream=0,
@@ -53,7 +56,7 @@ def gen_uc4() -> str:
     queue4 = "uc4_pruned"
     compose += gen_merge(
         name="uc4_prune",
-        strategy="uc4_prune",
+        strategy=MergeStrategy.UC4_PRUNE,
         left_rx_name=queue3,
         right_rx_name=queue1,
         tx_name=queue4,
@@ -62,7 +65,7 @@ def gen_uc4() -> str:
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
         name="uc4_count_paths",
-        strategy="uc4_count_paths",
+        strategy=AggregateStrategy.UC4_COUNT_PATHS,
         npeers=5,
         affinity_upstream=False,
         naffinity_downstream=5,
@@ -72,7 +75,7 @@ def gen_uc4() -> str:
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
         name="uc4_paths_aggregate",
-        strategy="uc4_paths",
+        strategy=AggregateStrategy.UC4_PATHS,
         npeers=5,
         affinity_upstream=True,
         naffinity_downstream=0,

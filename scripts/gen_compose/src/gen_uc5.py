@@ -1,3 +1,5 @@
+from src import FilterStrategy, GroupByStrategy
+
 from .common_queues import UC5_JOIN, UC5_TRANSACTIONS
 from .container_type import ContainerType
 from .gen_nodes import gen_nodes
@@ -23,7 +25,7 @@ def gen_uc5() -> str:
     compose += gen_nodes(
         type2=ContainerType.FILTER,
         name="uc5_amount_filter",
-        strategy="uc5_amount",  # este no la usa
+        strategy=FilterStrategy.UC5_AMOUNT,
         npeers=2,
         affinity_upstream=False,
         naffinity_downstream=0,
@@ -33,7 +35,7 @@ def gen_uc5() -> str:
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,
         name="uc5_count_group_by",
-        strategy="uc5_count",  # este no la usa
+        strategy=GroupByStrategy.UC5_COUNT,
         npeers=1,
         affinity_upstream=False,
         naffinity_downstream=0,
