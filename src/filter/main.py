@@ -3,7 +3,7 @@ import os
 from typing import Callable
 
 from filter2 import Filter
-from filter_fns import FilterFn, UC3AvgFilter, UC4PathFilter, UC5Filter
+from filter_fns import FilterFn, UC3AvgFilter, UC4PathFilter, UC5AmountFilter, UC5Filter
 
 from common.comms.eof_handler import make_stateless_eof_handler
 from common.comms.middleware import ExchangeRabbitMQ, QueueRabbitMQ
@@ -123,7 +123,7 @@ def main():
         case "uc4_path":
             fn = UC4PathFilter
         case "uc5_amount":
-            fn = UC5Filter
+            fn = UC5AmountFilter
         case _:
             raise ValueError(f"unknown filter strategy: {STRATEGY}")
 
