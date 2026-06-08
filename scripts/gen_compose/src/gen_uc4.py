@@ -24,7 +24,7 @@ def gen_uc4() -> str:
         strategy="uc4_aggregate_graphs",
         npeers=3,
         affinity_upstream=True,
-        naffinity_downstream=5,
+        naffinity_downstream=0,
         rx_name=queue0,
         tx_name=queue1,
     )
@@ -46,7 +46,7 @@ def gen_uc4() -> str:
         strategy="uc4_degree",
         npeers=2,
         affinity_upstream=True,
-        naffinity_downstream=1,
+        naffinity_downstream=0,
         rx_name=queue2,
         tx_name=queue3,
     )
