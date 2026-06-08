@@ -4,8 +4,8 @@ from typing import Callable
 
 from filter2 import Filter
 from filter_fns import FilterFn, UC3AvgFilter, UC4PathFilter, UC5AmountFilter
+from strategies import FilterStrategy
 
-from aggregate.main import AggregateStrategy
 from common.comms.eof_handler import make_stateless_eof_handler
 from common.comms.middleware import QueueRabbitMQ, make_rx_tx
 
@@ -82,16 +82,6 @@ def make_filter(
     )
 
     return filter2
-
-
-from enum import StrEnum
-
-
-class FilterStrategy(StrEnum):
-    DEFAULT = "default"
-    UC3_AVG = "uc3_avg"
-    UC4_PATH = "uc4_path"
-    UC5_AMOUNT = "uc5_amount"
 
 
 def main():

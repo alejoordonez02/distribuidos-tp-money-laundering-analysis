@@ -9,9 +9,10 @@ from group_by_fns import (
     UC4ComputeGraph,
     UC5CountGroupByFn,
 )
+from strategies import GroupByStrategy
 
 from common.comms.eof_handler import make_stateless_eof_handler
-from common.comms.middleware import ExchangeRabbitMQ, QueueRabbitMQ, make_rx_tx
+from common.comms.middleware import make_rx_tx
 from group_by import GroupBy
 
 MOM_HOST = os.environ["MOM_HOST"]
@@ -48,17 +49,6 @@ def make_groupby(
     groupby = GroupBy(fn, external_rx, external_txs, eof_handler)
 
     return groupby
-
-
-from enum import StrEnum
-
-
-class GroupByStrategy(StrEnum):
-    UC2_MAX_AMOUNT = "uc2_max_amount"
-    UC2_BANK_NAMES = "uc2_bank_names"
-    UC3_SUM = "uc3_sum"
-    UC4_COMPUTE_GRAPH = "uc4_compute_graph"
-    UC5_COUNT = "uc5_count"
 
 
 def main():

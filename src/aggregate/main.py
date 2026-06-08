@@ -12,12 +12,12 @@ from aggregate_fns import (
     UC4CountPaths,
     UC4Degree,
 )
+from strategies import AggregateStrategy
 
 from aggregate import Aggregate
-from common.comms.eof_handler.make_eof_handler import make_stateful_eof_handler
-from common.comms.messages.eof import EOF
-from common.comms.middleware import QueueRabbitMQ, make_rx_tx
-from common.comms.middleware.exchange_rabbitmq import ExchangeRabbitMQ
+from common.comms.eof_handler import make_stateful_eof_handler
+from common.comms.messages import EOF
+from common.comms.middleware import make_rx_tx
 
 MOM_HOST = os.environ["MOM_HOST"]
 RX = os.environ["RX"]
@@ -54,19 +54,6 @@ def make_aggregate(
     aggregate = Aggregate(fn, external_rx, external_txs, eof_handler, internal_eofs)
 
     return aggregate
-
-
-from enum import StrEnum
-
-
-class AggregateStrategy(StrEnum):
-    UC2_MAX_AMOUNT = "uc2_max_amount"
-    UC2_BANK_NAMES = "uc2_bank_names"
-    UC3_AVERAGE = "uc3_average"
-    UC4_COUNT_PATHS = "uc4_count_paths"
-    UC4_AGGREGATE_GRAPHS = "uc4_aggregate_graphs"
-    UC4_PATHS = "uc4_paths"
-    UC4_DEGREE = "uc4_degree"
 
 
 def main():
