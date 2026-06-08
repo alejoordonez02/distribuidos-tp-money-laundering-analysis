@@ -1,3 +1,5 @@
+import sys
+
 from .src import (
     gen_clients,
     gen_default_filters,
@@ -15,6 +17,13 @@ NDEFAULT_FILTERS = 2
 
 
 def main():
+    args = sys.argv
+
+    if len(args) != 2:
+        sys.exit(1)
+
+    filename = args[1]
+
     compose = "services:"
     compose += gen_rabbitmq()
     compose += gen_gateway()
@@ -27,7 +36,7 @@ def main():
     compose += gen_join()
     compose += gen_clients()
 
-    with open("test.yaml", "w") as f:
+    with open(filename, "w") as f:
         f.write(compose)
 
 
