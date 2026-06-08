@@ -15,7 +15,7 @@ NDEFAULT_FILTERS = 2
 
 
 def main():
-    compose = "services:\n"
+    compose = "services:"
     compose += gen_rabbitmq()
     compose += gen_gateway()
     compose += gen_default_filters(NDEFAULT_FILTERS)

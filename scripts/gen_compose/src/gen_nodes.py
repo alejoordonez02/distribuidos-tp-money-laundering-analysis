@@ -17,7 +17,7 @@ def gen_nodes(
     compose = ""
 
     for idx in range(npeers):
-        compose += f"""
+        compose += f"""\n
   {name}_{idx}:
     build:
       context: ./src/
@@ -37,7 +37,6 @@ def gen_nodes(
       - RING_NAME={name}_ring
       - AFFINITY_UPSTREAM={1 if affinity_upstream else 0}
       - NAFFINITY_DOWNSTREAM={naffinity_downstream}
-      - PYTHONHASHSEED=2026
-      """
+      - PYTHONHASHSEED=2026"""
 
     return compose

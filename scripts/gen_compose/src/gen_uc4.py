@@ -5,7 +5,7 @@ from .gen_nodes import gen_nodes
 
 
 def gen_uc4() -> str:
-    compose = "\n# === uc4 ===\n"
+    compose = "\n# === uc4 ==="
     queue0 = "uc4_graphs"
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,

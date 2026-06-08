@@ -2,7 +2,9 @@ def gen_default_filters(npeers: int) -> str:
     compose = ""
 
     for idx in range(npeers):
-        compose += f"""
+        compose += f"""\n
+# === default filters ===
+
   default_filter_{idx}:
     build:
       context: ./src/
@@ -25,7 +27,6 @@ def gen_default_filters(npeers: int) -> str:
       - IDX={idx}
       - NPEERS={npeers}
       - RING_NAME=default_filter_ring
-      - STRATEGY=default
-      """
+      - STRATEGY=default"""
 
     return compose

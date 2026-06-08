@@ -1,5 +1,7 @@
 def gen_gateway():
-    return """
+    return """\n
+# === gateway ===
+
   gateway:
     build:
       context: ./src/
@@ -15,5 +17,4 @@ def gen_gateway():
       - MOM_PORT=5672
       - SERVER_QUEUE_RX=responses
       - TRANSACTIONS_TX=client_transactions
-      - ACCOUNTS_TX=client_accounts
-      """
+      - ACCOUNTS_TX=client_accounts"""

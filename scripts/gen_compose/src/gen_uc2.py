@@ -5,7 +5,7 @@ from .gen_nodes import gen_nodes
 
 
 def gen_uc2() -> str:
-    compose = "\n# === uc2 ===\n"
+    compose = "\n# === uc2 ==="
     queue0 = "uc2_partial_max_amount"
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,

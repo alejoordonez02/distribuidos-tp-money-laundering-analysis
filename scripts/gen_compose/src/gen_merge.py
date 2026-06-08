@@ -5,7 +5,7 @@ def gen_merge(
     right_rx_name: str,
     tx_name: str,
 ):
-    return f"""
+    return f"""\n
   {name}:
     build:
       context: ./src/
@@ -20,5 +20,4 @@ def gen_merge(
       - LEFT_RX={left_rx_name}
       - RIGHT_RX={right_rx_name}
       - TX={tx_name}
-      - STRATEGY={strategy}
-      """
+      - STRATEGY={strategy}"""

@@ -4,7 +4,7 @@ from .gen_nodes import gen_nodes
 
 
 def gen_uc5() -> str:
-    compose = "\n# === uc5 ===\n"
+    compose = "\n# === uc5 ==="
     queue0 = "uc5_converted_transactions"
     # TODO: claramente esto tiene q ser otro
     #       groupby, o sea simplemente un

@@ -1,7 +1,8 @@
 def gen_rabbitmq():
-    return """
-  # --- rabbitmq ---
-  rabbitmq: # no le cambien nombre porq se usa en make down_server !!!
+    return """\n
+# === rabbitmq ===
+
+  rabbitmq:
     build:
       context: ./src/rabbitmq
       dockerfile: Dockerfile
@@ -17,5 +18,4 @@ def gen_rabbitmq():
       timeout: 3s
     ports:
       - 5672:5672
-      - 15672:15672
-"""
+      - 15672:15672"""

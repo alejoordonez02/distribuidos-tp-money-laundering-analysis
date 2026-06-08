@@ -9,7 +9,7 @@ from .gen_nodes import gen_nodes
 
 
 def gen_uc3() -> str:
-    compose = "\n# === uc3 ===\n"
+    compose = "\n# === uc3 ==="
     queue0 = "uc3_sum_by_format"
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,

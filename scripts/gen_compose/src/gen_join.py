@@ -1,5 +1,7 @@
 def gen_join():
-    return """
+    return """\n
+# === join ===
+
   join:
     build:
       context: ./src/
@@ -16,5 +18,4 @@ def gen_join():
       - UC3_RX=uc3_join
       - UC4_RX=uc4_join
       - UC5_RX=uc5_join
-      - RESPONSES_TX=responses
-      """
+      - RESPONSES_TX=responses"""
