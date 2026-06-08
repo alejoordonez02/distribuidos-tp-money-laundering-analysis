@@ -1,10 +1,10 @@
 def gen_merge(
-    name: str,
     strategy: str,
     left_rx_name: str,
     right_rx_name: str,
     tx_name: str,
 ):
+    name = strategy
     return f"""\n
   {name}:
     build:

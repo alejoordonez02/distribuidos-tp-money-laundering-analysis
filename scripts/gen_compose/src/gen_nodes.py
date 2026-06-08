@@ -6,7 +6,6 @@ from .container_type import ContainerType
 #       lados
 def gen_nodes(
     type2: ContainerType,
-    name: str,
     strategy: str,
     npeers: int,
     affinity_upstream: bool,
@@ -35,6 +34,7 @@ def gen_nodes(
     A string containing the nodes compose declaration.
     """
 
+    name = strategy
     compose = ""
 
     for idx in range(npeers):

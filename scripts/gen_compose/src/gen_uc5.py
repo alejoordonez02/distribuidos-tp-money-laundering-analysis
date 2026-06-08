@@ -13,7 +13,6 @@ def gen_uc5() -> str:
     #       stateless controller
     compose += gen_nodes(
         type2=ContainerType.CONVERTER,
-        name="uc5_converter",
         strategy=GroupByStrategy.UC5_CONVERTER,  # este no la usa
         npeers=2,
         affinity_upstream=False,
@@ -24,7 +23,6 @@ def gen_uc5() -> str:
     queue1 = "uc5_filtered_converted_transactions"
     compose += gen_nodes(
         type2=ContainerType.FILTER,
-        name="uc5_amount_filter",
         strategy=FilterStrategy.UC5_AMOUNT,
         npeers=2,
         affinity_upstream=False,
@@ -34,7 +32,6 @@ def gen_uc5() -> str:
     )
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,
-        name="uc5_count_group_by",
         strategy=GroupByStrategy.UC5_COUNT,
         npeers=1,
         affinity_upstream=False,

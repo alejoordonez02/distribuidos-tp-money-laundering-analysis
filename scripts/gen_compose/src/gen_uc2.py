@@ -17,7 +17,6 @@ def gen_uc2() -> str:
     max_amounts_to_aggregate = "uc2_partial_max_amount"
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,
-        name="uc2_max_amount_group_by",
         strategy=GroupByStrategy.UC2_MAX_AMOUNT,
         npeers=MAX_AMOUNT_GROUPBYS,
         affinity_upstream=False,
@@ -28,7 +27,6 @@ def gen_uc2() -> str:
     max_amounts_to_merge = "uc2_max_amounts_by_bank"
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
-        name="uc2_max_amount_aggregate",
         strategy=AggregateStrategy.UC2_MAX_AMOUNT,
         npeers=MAX_AMOUNT_AGGREGATES,
         affinity_upstream=True,
@@ -40,7 +38,6 @@ def gen_uc2() -> str:
     bank_names_to_aggregate = "uc2_partial_bank_names"
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,
-        name="uc2_bank_names_group_by",
         strategy=GroupByStrategy.UC2_BANK_NAMES,
         npeers=BANK_NAMES_GROUPBYS,
         affinity_upstream=False,
@@ -51,7 +48,6 @@ def gen_uc2() -> str:
     bank_names_to_merge = "uc2_bank_id_name_mappings"
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
-        name="uc2_bank_names_aggregate",
         strategy=AggregateStrategy.UC2_BANK_NAMES,
         npeers=BANK_NAMES_AGGREGATES,
         affinity_upstream=True,
@@ -61,7 +57,6 @@ def gen_uc2() -> str:
     )
 
     compose += gen_merge(
-        name="uc2_merge",
         strategy=MergeStrategy.UC2_MERGE,
         left_rx_name=max_amounts_to_merge,
         right_rx_name=bank_names_to_merge,

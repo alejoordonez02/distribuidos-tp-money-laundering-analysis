@@ -11,7 +11,6 @@ def gen_uc4() -> str:
     queue0 = "uc4_graphs"
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,
-        name="uc4_compute_graph_group_by",
         strategy=GroupByStrategy.UC4_COMPUTE_GRAPH,
         npeers=3,
         affinity_upstream=False,
@@ -22,7 +21,6 @@ def gen_uc4() -> str:
     queue1 = "uc4_graphs_to_prune"
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
-        name="uc4_aggregate_graphs",
         strategy=AggregateStrategy.UC4_AGGREGATE_GRAPHS,
         npeers=3,
         affinity_upstream=True,
@@ -33,7 +31,6 @@ def gen_uc4() -> str:
     queue2 = "uc4_degree_graphs"
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,
-        name="uc4_degree_compute_graph",
         strategy=GroupByStrategy.UC4_DEGREE_COMPUTE_GRAPH,
         npeers=2,
         affinity_upstream=False,
@@ -44,7 +41,6 @@ def gen_uc4() -> str:
     queue3 = "uc4_high_degree"
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
-        name="uc4_degree_aggregate",
         strategy=AggregateStrategy.UC4_DEGREE,
         npeers=2,
         affinity_upstream=True,
@@ -54,7 +50,6 @@ def gen_uc4() -> str:
     )
     queue4 = "uc4_pruned"
     compose += gen_merge(
-        name="uc4_prune",
         strategy=MergeStrategy.UC4_PRUNE,
         left_rx_name=queue3,
         right_rx_name=queue1,
@@ -63,7 +58,6 @@ def gen_uc4() -> str:
     queue5 = "uc4_paths"
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
-        name="uc4_count_paths",
         strategy=AggregateStrategy.UC4_COUNT_PATHS,
         npeers=5,
         affinity_upstream=False,
@@ -73,7 +67,6 @@ def gen_uc4() -> str:
     )
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
-        name="uc4_paths_aggregate",
         strategy=AggregateStrategy.UC4_PATHS,
         npeers=5,
         affinity_upstream=True,
