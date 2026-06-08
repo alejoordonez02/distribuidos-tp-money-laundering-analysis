@@ -12,7 +12,6 @@ def gen_uc4() -> str:
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,
         name="uc4_compute_graph_group_by",
-        # strategy="uc4_compute_graph",
         strategy=GroupByStrategy.UC4_COMPUTE_GRAPH,
         npeers=3,
         affinity_upstream=False,
@@ -35,7 +34,7 @@ def gen_uc4() -> str:
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,
         name="uc4_degree_compute_graph",
-        strategy=GroupByStrategy.UC4_COMPUTE_GRAPH,
+        strategy=GroupByStrategy.UC4_DEGREE_COMPUTE_GRAPH,
         npeers=2,
         affinity_upstream=False,
         naffinity_downstream=2,

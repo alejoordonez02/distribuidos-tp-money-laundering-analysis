@@ -14,7 +14,7 @@ def gen_uc5() -> str:
     compose += gen_nodes(
         type2=ContainerType.CONVERTER,
         name="uc5_converter",
-        strategy="",  # este no la usa
+        strategy=GroupByStrategy.UC5_CONVERTER,  # este no la usa
         npeers=2,
         affinity_upstream=False,
         naffinity_downstream=0,
