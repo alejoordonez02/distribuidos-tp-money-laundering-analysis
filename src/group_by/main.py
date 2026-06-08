@@ -24,7 +24,7 @@ IDX = int(os.getenv("IDX", 0))
 AFFINITY_UPSTREAM = os.environ["AFFINITY_UPSTREAM"] == "1"
 NAFFINITY_DOWNSTREAM = int(os.environ["NAFFINITY_DOWNSTREAM"])
 
-LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
+LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "WARNING")
 
 
 def make_groupby(

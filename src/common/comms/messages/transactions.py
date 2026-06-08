@@ -1,13 +1,10 @@
-from datetime import datetime
 from typing import Any, Self
 from uuid import UUID
 
-from common.data import Transaction
+from common.data import Transaction, fast_datetime
 
 from .message import Message
 from .message_types import MessageType
-
-DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
 class Transactions(Message):
@@ -43,7 +40,7 @@ class Transactions(Message):
     def _from_fields(cls, fields: list[Any]) -> Self:
         client_id = UUID(fields[0])
         transactions = [
-            Transaction(datetime.strptime(t_fields[0], DATETIME_FORMAT), *t_fields[1:])
+            Transaction(fast_datetime(t_fields[0]), *t_fields[1:])
             for t_fields in fields[1:]
         ]
 

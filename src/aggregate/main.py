@@ -28,7 +28,7 @@ IDX = int(os.getenv("IDX", 0))
 AFFINITY_UPSTREAM = os.environ["AFFINITY_UPSTREAM"] == "1"
 NAFFINITY_DOWNSTREAM = int(os.getenv("NAFFINITY_DOWNSTREAM", 0))
 
-LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
+LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "WARNING")
 
 
 def make_aggregate(

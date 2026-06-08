@@ -15,7 +15,7 @@ STRATEGY = os.environ["STRATEGY"]
 # This reading half varies depending on the controller instance that's being
 # used, thus it does not need to be declared for each strategy.
 
-LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
+LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "WARNING")
 
 
 def make_default_filter() -> Filter:

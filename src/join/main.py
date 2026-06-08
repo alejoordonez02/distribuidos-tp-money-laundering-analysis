@@ -14,7 +14,7 @@ UC4_RX = os.environ["UC4_RX"]
 UC5_RX = os.environ["UC5_RX"]
 RESPONSES_TX = os.environ["RESPONSES_TX"]
 
-LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
+LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "WARNING")
 
 
 def main():
