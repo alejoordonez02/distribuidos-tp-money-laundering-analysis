@@ -1,3 +1,6 @@
+# compose is generated in each target
+docker-compose.yaml
+
 # temp files
 tmp/
 

@@ -2,49 +2,53 @@ import logging
 import os
 
 from group_by_fns import (
+    GroupByFn,
     UC2BankNamesGroupByFn,
     UC2MaxAmountGroupByFn,
     UC3SumGroupByFn,
     UC4ComputeGraph,
     UC5CountGroupByFn,
 )
+from strategies import GroupByStrategy
 
 from common.comms.eof_handler import make_stateless_eof_handler
-from common.comms.middleware import ExchangeRabbitMQ, QueueRabbitMQ
+from common.comms.middleware import make_rx_tx
 from group_by import GroupBy
 
 MOM_HOST = os.environ["MOM_HOST"]
 RX = os.environ["RX"]
 TX = os.environ["TX"]
 STRATEGY = os.environ["STRATEGY"]
-NPEERS_UPSTREAM = int(os.getenv("NPEERS_UPSTREAM", "1"))
+
+IDX = int(os.getenv("IDX", 0))
+AFFINITY_UPSTREAM = os.environ["AFFINITY_UPSTREAM"] == "1"
+NAFFINITY_DOWNSTREAM = int(os.environ["NAFFINITY_DOWNSTREAM"])
 
 LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "WARNING")
 
 
-def make_uc4_compute_graph():
-    NNODES_DOWNSTREAM = int(os.environ["NNODES_DOWNSTREAM"])
+def make_groupby(
+    fn: GroupByFn,
+    idx: int,
+    affinity_upstream: bool,
+    naffinities_downstream: int,
+    mom_host: str,
+    rx_name: str,
+    tx_name: str,
+) -> GroupBy:
 
-    if NNODES_DOWNSTREAM <= 0:
-        raise ValueError("downstream nodes amount cannot be less than 0")
+    external_rx, external_txs = make_rx_tx(
+        idx, rx_name, tx_name, mom_host, naffinities_downstream, affinity_upstream
+    )
 
-    fn = UC4ComputeGraph()
-
-    external_rx = QueueRabbitMQ(MOM_HOST, RX)
-    external_txs = [
-        ExchangeRabbitMQ(MOM_HOST, TX, routing_keys=[f"{n}"], queue_name=f"{TX}{n}")
-        for n in range(NNODES_DOWNSTREAM)
-    ]
-
-    # TODO: quizás estaría bueno elegir
-    #       random de manera dinámica?
-    #       para no mandar siempre al
-    #       mismo.
+    # TODO: tengo que cambiar el external_txs[0]
+    #       porq va a traer problemas para fault
+    #       tolerance
     eof_handler = make_stateless_eof_handler(MOM_HOST, (external_txs[0],))
 
     groupby = GroupBy(fn, external_rx, external_txs, eof_handler)
-    groupby.start()
 
+    return groupby
 
 
 def main():
@@ -52,24 +56,33 @@ def main():
     logging.getLogger("pika").setLevel(logging.WARNING)
 
     match STRATEGY:
-        case "uc2_max_amount":
+        case GroupByStrategy.UC2_MAX_AMOUNT:
             fn = UC2MaxAmountGroupByFn()
-        case "uc2_bank_names":
+        case GroupByStrategy.UC2_BANK_NAMES:
             fn = UC2BankNamesGroupByFn()
-        case "uc3_sum":
+        case GroupByStrategy.UC3_SUM:
             fn = UC3SumGroupByFn()
-        case "uc4_compute_graph":
-            return make_uc4_compute_graph()
-        case "uc5_count":
+        # esto de acá no me queda claro por qué se usa el mismo
+        case (
+            GroupByStrategy.UC4_COMPUTE_GRAPH | GroupByStrategy.UC4_DEGREE_COMPUTE_GRAPH
+        ):
+            fn = UC4ComputeGraph()
+        case GroupByStrategy.UC5_COUNT:
             fn = UC5CountGroupByFn()
         case _:
             raise ValueError(f"unknown group_by strategy: {STRATEGY}")
 
-    external_rx = QueueRabbitMQ(MOM_HOST, RX)
-    external_txs = (QueueRabbitMQ(MOM_HOST, TX),)
-    eof_handler = make_stateless_eof_handler(MOM_HOST, external_txs)
+    groupby = make_groupby(
+        fn, IDX, AFFINITY_UPSTREAM, NAFFINITY_DOWNSTREAM, MOM_HOST, RX, TX
+    )
 
-    groupby = GroupBy(fn, external_rx, external_txs, eof_handler)
+    logging.info(
+        f"""
+        starting groupby: fn={type(fn)}, \
+        idx={IDX}, nnodes_downstream={NAFFINITY_DOWNSTREAM}, \
+        mom_host={MOM_HOST}, rx={RX}, tx={TX}"\
+        """
+    )
     groupby.start()
 
 

@@ -1,4 +1,4 @@
-from .cfg import (
+from scripts.cfg import (
     CLIENT_EXPECTED_RESPONSES_PATH,
     CLIENT_RESPONSES_PATH,
     NCLIENTS,

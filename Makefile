@@ -1,24 +1,24 @@
 SHELL := /bin/bash
 PWD := $(shell pwd)
 PYTHON_PM := /bin/uv
-COMPOSE := docker compose -f docker-compose.yaml -f docker-compose.clients.yaml
+COMPOSE_FILE := docker-compose.yaml
+COMPOSE := docker compose -f $(COMPOSE_FILE)
 RABBIT_CONTAINER := rabbitmq
+SCRIPTS_DIR := scripts
 
 .PHONY: help gen_input_output gen_compose up stop_server down logs test report demo
 
 help:
-	@echo '* opciones: help (esto) - gen_input_output - gen_compose - up - stop_server - down - logs - test - report'
-	@echo '* para up tienen que tener bajado los datasets LI-Small y dejarlos en `datasets/`'
-	@echo '  no los pusheé porque son demasiado grandes hasta comprimidos'
+	@echo '* opciones: help (esto) - gen_input_output - gen_compose - up - stop_server - down - logs - test - report - demo'
+	@echo '* los datasets a usar se configuran en `scripts/cfg.py`, hay que tenerlos bajados en `datasets/`'
 	@echo '* para los targets que se corren en python se usa `uv`. Hay que tenerlo instalado'
-	@echo '* NCLIENTS se configura en test/cfg.py — gen_compose regenera docker-compose.clients.yaml'
 
 gen_input_output:
 	mkdir -p test/expected_responses
-	PYTHONPATH=src uv run test/gen_input_output.py # TODO: este script hay q limpiarlo después
+	PYTHONPATH=src uv run $(SCRIPTS_DIR)/gen_input_output.py # TODO: este script hay q limpiarlo después
 
 gen_compose:
-	PYTHONPATH=test uv run gen_compose.py
+	PYTHONPATH=test uv run -m $(SCRIPTS_DIR).gen_compose.gen_compose $(COMPOSE_FILE)
 
 up: gen_compose
 	mkdir -p responses
@@ -47,4 +47,4 @@ report:
 
 demo:
 	mkdir -p demo/files
-	PYTHONPATH=test uv run test/gen_demo_files.py
+	PYTHONPATH=test uv run $(SCRIPTS_DIR)/gen_demo_files.py

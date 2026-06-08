@@ -3,6 +3,7 @@ import os
 from queue import Queue
 
 from aggregate_fns import (
+    AggregateFn,
     UC2BankNamesAggregateFn,
     UC2MaxAmountAggregateFn,
     UC3AvgAggregateFn,
@@ -11,86 +12,48 @@ from aggregate_fns import (
     UC4CountPaths,
     UC4Degree,
 )
+from strategies import AggregateStrategy
 
 from aggregate import Aggregate
-from common.comms.eof_handler.make_eof_handler import make_stateful_eof_handler
-from common.comms.eof_handler.single_node_eof_handler import (
-    StatefulSingleNodeEOFHandler,
-)
-from common.comms.messages.eof import EOF
-from common.comms.middleware import QueueRabbitMQ
-from common.comms.middleware.exchange_rabbitmq import ExchangeRabbitMQ
+from common.comms.eof_handler import make_stateful_eof_handler
+from common.comms.messages import EOF
+from common.comms.middleware import make_rx_tx
 
 MOM_HOST = os.environ["MOM_HOST"]
 RX = os.environ["RX"]
 TX = os.environ["TX"]
 STRATEGY = os.environ["STRATEGY"]
 
+IDX = int(os.getenv("IDX", 0))
+AFFINITY_UPSTREAM = os.environ["AFFINITY_UPSTREAM"] == "1"
+NAFFINITY_DOWNSTREAM = int(os.getenv("NAFFINITY_DOWNSTREAM", 0))
+
 LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "WARNING")
 
 
-def make_uc4_aggregate_graphs():
-    IDX = int(os.environ["IDX"])
+def make_aggregate(
+    fn: AggregateFn,
+    idx: int,
+    affinity_upstream: bool,
+    naffinities_downstream: int,
+    mom_host: str,
+    rx_name: str,
+    tx_name: str,
+) -> Aggregate:
 
-    fn = UC4AggregateGraphs()
-
-    external_rx = ExchangeRabbitMQ(MOM_HOST, RX, [f"{IDX}"], f"{RX}{IDX}")
-    external_txs = (QueueRabbitMQ(MOM_HOST, TX),)
+    external_rx, external_txs = make_rx_tx(
+        idx, rx_name, tx_name, mom_host, naffinities_downstream, affinity_upstream
+    )
 
     internal_eofs = Queue[EOF]()
+    # TODO: tengo que cambiar el external_txs[0]
+    #       porq va a traer problemas para fault
+    #       tolerance
     eof_handler = make_stateful_eof_handler(MOM_HOST, (external_txs[0],), internal_eofs)
 
     aggregate = Aggregate(fn, external_rx, external_txs, eof_handler, internal_eofs)
-    aggregate.start()
 
-
-def make_uc4_count_paths():
-    NNODES_DOWNSTREAM = int(os.environ["NNODES_DOWNSTREAM"])
-
-    fn = UC4CountPaths()
-
-    external_rx = QueueRabbitMQ(MOM_HOST, RX)
-    external_txs = [
-        ExchangeRabbitMQ(MOM_HOST, TX, routing_keys=[f"{n}"], queue_name=f"{TX}{n}")
-        for n in range(NNODES_DOWNSTREAM)
-    ]
-
-    internal_eofs = Queue[EOF]()
-    eof_handler = make_stateful_eof_handler(MOM_HOST, (external_txs[0],), internal_eofs)
-
-    aggregate = Aggregate(fn, external_rx, external_txs, eof_handler, internal_eofs)
-    aggregate.start()
-
-
-# TODO: deduplicar este código porfa
-def make_uc4_aggregate_paths():
-    IDX = int(os.environ["IDX"])
-
-    fn = UC4AggregatePaths()
-
-    external_rx = ExchangeRabbitMQ(MOM_HOST, RX, [f"{IDX}"], f"{RX}{IDX}")
-    external_txs = (QueueRabbitMQ(MOM_HOST, TX),)
-
-    internal_eofs = Queue[EOF]()
-    eof_handler = make_stateful_eof_handler(MOM_HOST, (external_txs[0],), internal_eofs)
-
-    aggregate = Aggregate(fn, external_rx, external_txs, eof_handler, internal_eofs)
-    aggregate.start()
-
-
-def make_uc4_degree():
-    IDX = int(os.environ["IDX"])
-
-    fn = UC4Degree()
-
-    external_rx = ExchangeRabbitMQ(MOM_HOST, RX, [f"{IDX}"], f"{RX}{IDX}")
-    external_txs = (QueueRabbitMQ(MOM_HOST, TX),)
-
-    internal_eofs = Queue[EOF]()
-    eof_handler = make_stateful_eof_handler(MOM_HOST, (external_txs[0],), internal_eofs)
-
-    aggregate = Aggregate(fn, external_rx, external_txs, eof_handler, internal_eofs)
-    aggregate.start()
+    return aggregate
 
 
 def main():
@@ -98,33 +61,34 @@ def main():
     logging.getLogger("pika").setLevel(logging.WARNING)
 
     match STRATEGY:
-        case "uc2_max_amount":
+        case AggregateStrategy.UC2_MAX_AMOUNT:
             fn = UC2MaxAmountAggregateFn()
-        case "uc2_bank_names":
+        case AggregateStrategy.UC2_BANK_NAMES:
             fn = UC2BankNamesAggregateFn()
-        case "uc3_average":
+        case AggregateStrategy.UC3_AVERAGE:
             fn = UC3AvgAggregateFn()
-        case "uc4_count_paths":
-            return make_uc4_count_paths()
-        case "uc4_aggregate_graphs":
-            return make_uc4_aggregate_graphs()
-        case "uc4_paths":
-            return make_uc4_aggregate_paths()
-        case "uc4_degree":
-            return make_uc4_degree()
+        case AggregateStrategy.UC4_COUNT_PATHS:
+            fn = UC4CountPaths()
+        case AggregateStrategy.UC4_AGGREGATE_GRAPHS:
+            fn = UC4AggregateGraphs()
+        case AggregateStrategy.UC4_PATHS:
+            fn = UC4AggregatePaths()
+        case AggregateStrategy.UC4_DEGREE:
+            fn = UC4Degree()
         case _:
             raise ValueError(f"unknown aggregate strategy: {STRATEGY}")
 
-    external_rx = QueueRabbitMQ(MOM_HOST, RX)
-    external_txs = (QueueRabbitMQ(MOM_HOST, TX),)
+    aggregate = make_aggregate(
+        fn, IDX, AFFINITY_UPSTREAM, NAFFINITY_DOWNSTREAM, MOM_HOST, RX, TX
+    )
 
-    internal_eofs = Queue[EOF]()
-    eof_handler = make_stateful_eof_handler(MOM_HOST, external_txs, internal_eofs)
-    # TODO: tmp
-    if not isinstance(eof_handler, StatefulSingleNodeEOFHandler):
-        raise ValueError("scalability is not implemented for aggregator yet")
-
-    aggregate = Aggregate(fn, external_rx, external_txs, eof_handler, internal_eofs)
+    logging.info(
+        f"""
+        starting aggregate: fn={type(fn)}, \
+        idx={IDX}, nnodes_downstream={NAFFINITY_DOWNSTREAM}, \
+        mom_host={MOM_HOST}, rx={RX}, tx={TX}"\
+        """
+    )
     aggregate.start()
 
 

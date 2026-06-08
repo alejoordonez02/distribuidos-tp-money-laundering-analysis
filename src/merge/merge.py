@@ -5,6 +5,7 @@ from typing import Callable
 from uuid import UUID
 
 from merge_fns import MergeFn
+from strategies import MergeStrategy
 
 from common.comms.messages import EOF, MessageType, deserialize_message
 from common.comms.middleware import MOMQueue

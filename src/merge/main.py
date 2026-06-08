@@ -1,10 +1,11 @@
 import logging
 import os
 
-from merge import Merge
 from merge_fns import UC2BankIdMergeFn, UC3BankIdMergeFn, UC4PruneMergeFn
+from strategies import MergeStrategy
 
 from common.comms.middleware import QueueRabbitMQ
+from merge import Merge
 
 MOM_HOST = os.environ["MOM_HOST"]
 LEFT_RX = os.environ["LEFT_RX"]
@@ -26,11 +27,11 @@ def main():
         return QueueRabbitMQ(MOM_HOST, TX)
 
     match STRATEGY:
-        case "uc2_merge":
+        case MergeStrategy.UC2_MERGE:
             fn = UC2BankIdMergeFn()
-        case "uc3_merge":
+        case MergeStrategy.UC3_MERGE:
             fn = UC3BankIdMergeFn()
-        case "uc4_prune":
+        case MergeStrategy.UC4_PRUNE:
             fn = UC4PruneMergeFn()
         case _:
             raise ValueError(f"unknown group_by strategy: {STRATEGY}")
