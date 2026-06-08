@@ -9,7 +9,7 @@ from uuid import UUID
 
 from common.comms.messages import Graph, Node
 
-from .aggregate_fn import AggregateFn
+from .stateful_fn import StatefulFn
 
 MAX_AMOUNT = 100_000
 SHARDING_FILES = 500
@@ -34,7 +34,7 @@ def _deserialize(line: str) -> tuple[Node, set[Node], set[Node]]:
     )
 
 
-class UC4AggregateGraphs(AggregateFn):
+class UC4AggregateGraphs(StatefulFn):
     def __init__(self):
         self._preds: dict[UUID, dict[Node, set[Node]]] = {}
         self._succs: dict[UUID, dict[Node, set[Node]]] = {}
@@ -51,7 +51,7 @@ class UC4AggregateGraphs(AggregateFn):
             self._files[client_id][shard] = pathlib.Path(path)
         return self._files[client_id][shard]
 
-    def aggregate(self, msg: Graph):  # type: ignore[reportIncompatibleMethodOverride]
+    def transform(self, msg: Graph):  # type: ignore[reportIncompatibleMethodOverride]
         if msg.client_id not in self._preds:
             self._preds[msg.client_id] = {}
             self._succs[msg.client_id] = {}
@@ -114,8 +114,7 @@ class UC4AggregateGraphs(AggregateFn):
             file = self._file_for_shard(shard, client_id)
             with open(file, "a") as f:
                 f.writelines(
-                    _serialize(node, preds[node], succs[node]) + "\n"
-                    for node in nodes
+                    _serialize(node, preds[node], succs[node]) + "\n" for node in nodes
                 )
 
         self._preds.pop(client_id, None)

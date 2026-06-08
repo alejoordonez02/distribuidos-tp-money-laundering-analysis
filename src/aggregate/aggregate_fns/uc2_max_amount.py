@@ -3,16 +3,16 @@ from uuid import UUID
 
 from common.comms.messages import MaxByBank
 
-from .aggregate_fn import AggregateFn
+from .stateful_fn import StatefulFn
 
 AFFINITY_SHARDS = 10
 
 
-class UC2MaxAmountAggregateFn(AggregateFn):
+class UC2MaxAmountAggregateFn(StatefulFn):
     def __init__(self):
         self.client_maxes_by_bank: dict[UUID, MaxByBank] = {}
 
-    def aggregate(self, msg: MaxByBank):  # type: ignore[reportIncompatibleMethodOverride]
+    def transform(self, msg: MaxByBank):  # type: ignore[reportIncompatibleMethodOverride]
         if msg.client_id not in self.client_maxes_by_bank:
             self.client_maxes_by_bank[msg.client_id] = MaxByBank(msg.client_id, {})
 

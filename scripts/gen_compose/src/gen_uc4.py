@@ -1,4 +1,4 @@
-from src import AggregateStrategy, GroupByStrategy, MergeStrategy
+from src import GroupByStrategy, MergeStrategy, StatefulStrategy
 
 from .common_queues import UC4_DEGREE_TRANSACTIONS, UC4_JOIN, UC4_TRANSACTIONS
 from .container_type import ContainerType
@@ -21,7 +21,7 @@ def gen_uc4() -> str:
     queue1 = "uc4_graphs_to_prune"
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
-        strategy=AggregateStrategy.UC4_AGGREGATE_GRAPHS,
+        strategy=StatefulStrategy.UC4_GRAPHS_AGGREGATE,
         npeers=3,
         affinity_upstream=True,
         naffinity_downstream=0,
@@ -41,7 +41,7 @@ def gen_uc4() -> str:
     queue3 = "uc4_high_degree"
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
-        strategy=AggregateStrategy.UC4_DEGREE,
+        strategy=StatefulStrategy.UC4_DEGREE_AGGREGATE,
         npeers=2,
         affinity_upstream=True,
         naffinity_downstream=0,
@@ -58,7 +58,7 @@ def gen_uc4() -> str:
     queue5 = "uc4_paths"
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
-        strategy=AggregateStrategy.UC4_COUNT_PATHS,
+        strategy=StatefulStrategy.UC4_COUNT_PATHS,
         npeers=5,
         affinity_upstream=False,
         naffinity_downstream=5,
@@ -67,7 +67,7 @@ def gen_uc4() -> str:
     )
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
-        strategy=AggregateStrategy.UC4_PATHS,
+        strategy=StatefulStrategy.UC4_PATHS_AGGREGATE,
         npeers=5,
         affinity_upstream=True,
         naffinity_downstream=0,

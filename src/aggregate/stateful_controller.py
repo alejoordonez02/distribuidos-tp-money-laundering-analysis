@@ -3,18 +3,18 @@ from queue import Queue
 from threading import Thread
 from typing import Callable, Sequence
 
-from aggregate_fns import AggregateFn
+from aggregate_fns import StatefulFn
 
-from common.comms.eof_handler.eof_handler import StatefulEOFHandler
+from common.comms.eof_handler import StatefulEOFHandler
 from common.comms.messages import EOF, MessageType, deserialize_message
 from common.comms.middleware import MOM
 from common.graceful_shutdown import setup_graceful_shutdown
 
 
-class Aggregate:
+class StatefulController:
     def __init__(
         self,
-        fn: AggregateFn,
+        fn: StatefulFn,
         external_rx: MOM,
         external_txs: Sequence[MOM],
         eof_handler: StatefulEOFHandler,
@@ -86,7 +86,7 @@ class Aggregate:
         if msg.type() == MessageType.EOF:
             self.eof_handler.handle(msg)  # type: ignore[reportArgumentType]
         else:
-            self.fn.aggregate(msg)
+            self.fn.transform(msg)
             self.eof_handler.add_processed_count(msg.client_id)
 
         ack()

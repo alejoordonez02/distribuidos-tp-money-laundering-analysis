@@ -1,4 +1,4 @@
-from src import AggregateStrategy, FilterStrategy, GroupByStrategy, MergeStrategy
+from src import FilterStrategy, GroupByStrategy, MergeStrategy, StatefulStrategy
 
 from .common_queues import (
     UC3_JOIN,
@@ -25,7 +25,7 @@ def gen_uc3() -> str:
     queue1 = "uc3_avg"
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
-        strategy=AggregateStrategy.UC3_AVERAGE,
+        strategy=StatefulStrategy.UC3_AVERAGE_AGGREGATE,
         npeers=1,
         affinity_upstream=False,
         naffinity_downstream=0,

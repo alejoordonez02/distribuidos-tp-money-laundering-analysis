@@ -3,14 +3,14 @@ from uuid import UUID
 
 from common.comms.messages import AvgByFormat, SumByPaymentFormat
 
-from .aggregate_fn import AggregateFn
+from .stateful_fn import StatefulFn
 
 
-class UC3AvgAggregateFn(AggregateFn):
+class UC3AvgAggregateFn(StatefulFn):
     def __init__(self):
         self.sum_counts: dict[UUID, SumByPaymentFormat] = {}
 
-    def aggregate(self, msg: SumByPaymentFormat):  # type: ignore[reportIncompatibleMethodOverride]
+    def transform(self, msg: SumByPaymentFormat):  # type: ignore[reportIncompatibleMethodOverride]
         if msg.client_id not in self.sum_counts:
             self.sum_counts[msg.client_id] = SumByPaymentFormat(msg.client_id, {})
 

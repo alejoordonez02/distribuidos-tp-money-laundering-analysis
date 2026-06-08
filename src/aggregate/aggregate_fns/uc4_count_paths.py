@@ -11,7 +11,7 @@ from common.comms.messages import Graph, Path, PathMsg
 from common.comms.messages.message import MessageJSONEncoder
 from common.comms.messages.path_count import PathCounts
 
-from .aggregate_fn import AggregateFn
+from .stateful_fn import StatefulFn
 
 # Pairs held in memory before spilling. Raised now that aggregate_graphs salts
 # hubs into ~SPLIT_THRESHOLD-sized tiles: no single message can dump a mega-hub
@@ -35,7 +35,7 @@ def _deserialize(line: str) -> tuple[Path, int]:
     return p.path, p.counts
 
 
-class UC4CountPaths(AggregateFn):
+class UC4CountPaths(StatefulFn):
     def __init__(self):
         self._paths: dict[UUID, dict[Path, int]] = {}
         self._files: dict[UUID, dict[int, FilePath]] = {}
@@ -51,7 +51,7 @@ class UC4CountPaths(AggregateFn):
             self._files[client_id][shard] = FilePath(file_path)
         return self._files[client_id][shard]
 
-    def aggregate(self, msg: Graph):  # type: ignore[reportIncompatibleMethodOverride]
+    def transform(self, msg: Graph):  # type: ignore[reportIncompatibleMethodOverride]
         client_id = msg.client_id
         if client_id not in self._paths:
             self._paths[client_id] = {}

@@ -147,18 +147,17 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
     def _handle_ring_sent_data(
         self, ring_data: RingSentData, mom_ring_tx: MOMRing, external_txs: Sequence[MOM]
     ):
-        # 6. si ya terminamos limpio los recursos, y sólo corto si soy el líder
+        # 6. si ya terminamos limpio los recursos
         if ring_data.done:
             logging.info(f"ring sent data done: {ring_data.__dict__}")
             self.sent_data.pop(ring_data.client_id, None)
             self.confirmed_sent_data.pop(ring_data.client_id, None)
 
+            # si soy el líder corto
             if ring_data.origin == self.id:
                 return
 
-            # propagate the done flag once and stop: falling through to the
-            # steps below would re-emit a second (corrupted) message per node,
-            # duplicating the done message every lap and looping forever.
+            # si no soy el líder reenvío
             ring_data.sent_data = True
             logging.info(f"sending ring sent data done: {ring_data.__dict__}")
             mom_ring_tx.send(ring_data.serialize())

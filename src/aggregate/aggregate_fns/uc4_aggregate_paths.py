@@ -11,7 +11,7 @@ from common.comms.messages import Path, PathMsg
 from common.comms.messages.message import MessageJSONEncoder
 from common.comms.messages.path_count import PathCounts
 
-from .aggregate_fn import AggregateFn
+from .stateful_fn import StatefulFn
 
 MAX_AMOUNT = 100_000
 SHARDING_FILES = 500
@@ -31,7 +31,7 @@ def _deserialize(line: str) -> tuple[Path, int]:
     return p.path, p.counts
 
 
-class UC4AggregatePaths(AggregateFn):
+class UC4AggregatePaths(StatefulFn):
     def __init__(self):
         self._paths: dict[UUID, dict[Path, int]] = {}
         self._files: dict[UUID, dict[int, FilePath]] = {}
@@ -47,7 +47,7 @@ class UC4AggregatePaths(AggregateFn):
 
         return self._files[client_id][shard]
 
-    def aggregate(self, msg: PathCounts):  # type: ignore[reportIncompatibleMethodOverride]
+    def transform(self, msg: PathCounts):  # type: ignore[reportIncompatibleMethodOverride]
         if msg.client_id not in self._paths:
             self._paths[msg.client_id] = {}
 
@@ -80,9 +80,7 @@ class UC4AggregatePaths(AggregateFn):
             file.unlink()
 
             qualifying = {
-                path: count
-                for path, count in paths.items()
-                if count >= MIN_PATH_COUNT
+                path: count for path, count in paths.items() if count >= MIN_PATH_COUNT
             }
 
             yield PathCounts(client_id, qualifying), 0

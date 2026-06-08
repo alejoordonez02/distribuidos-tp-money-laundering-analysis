@@ -3,7 +3,7 @@ import os
 from queue import Queue
 
 from aggregate_fns import (
-    AggregateFn,
+    StatefulFn,
     UC2BankNamesAggregateFn,
     UC2MaxAmountAggregateFn,
     UC3AvgAggregateFn,
@@ -12,9 +12,9 @@ from aggregate_fns import (
     UC4CountPaths,
     UC4Degree,
 )
-from strategies import AggregateStrategy
+from stateful_controller import StatefulController
+from strategies import StatefulStrategy
 
-from aggregate import Aggregate
 from common.comms.eof_handler import make_stateful_eof_handler
 from common.comms.messages import EOF
 from common.comms.middleware import make_rx_tx
@@ -31,15 +31,15 @@ NAFFINITY_DOWNSTREAM = int(os.getenv("NAFFINITY_DOWNSTREAM", 0))
 LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "WARNING")
 
 
-def make_aggregate(
-    fn: AggregateFn,
+def make_stateful_controller(
+    fn: StatefulFn,
     idx: int,
     affinity_upstream: bool,
     naffinities_downstream: int,
     mom_host: str,
     rx_name: str,
     tx_name: str,
-) -> Aggregate:
+) -> StatefulController:
 
     external_rx, external_txs = make_rx_tx(
         idx, rx_name, tx_name, mom_host, naffinities_downstream, affinity_upstream
@@ -51,7 +51,9 @@ def make_aggregate(
     #       tolerance
     eof_handler = make_stateful_eof_handler(MOM_HOST, (external_txs[0],), internal_eofs)
 
-    aggregate = Aggregate(fn, external_rx, external_txs, eof_handler, internal_eofs)
+    aggregate = StatefulController(
+        fn, external_rx, external_txs, eof_handler, internal_eofs
+    )
 
     return aggregate
 
@@ -61,24 +63,24 @@ def main():
     logging.getLogger("pika").setLevel(logging.WARNING)
 
     match STRATEGY:
-        case AggregateStrategy.UC2_MAX_AMOUNT:
+        case StatefulStrategy.UC2_MAX_AMOUNT_AGGREGATE:
             fn = UC2MaxAmountAggregateFn()
-        case AggregateStrategy.UC2_BANK_NAMES:
+        case StatefulStrategy.UC2_BANK_NAMES_AGGREGATE:
             fn = UC2BankNamesAggregateFn()
-        case AggregateStrategy.UC3_AVERAGE:
+        case StatefulStrategy.UC3_AVERAGE_AGGREGATE:
             fn = UC3AvgAggregateFn()
-        case AggregateStrategy.UC4_COUNT_PATHS:
+        case StatefulStrategy.UC4_COUNT_PATHS:
             fn = UC4CountPaths()
-        case AggregateStrategy.UC4_AGGREGATE_GRAPHS:
+        case StatefulStrategy.UC4_GRAPHS_AGGREGATE:
             fn = UC4AggregateGraphs()
-        case AggregateStrategy.UC4_PATHS:
+        case StatefulStrategy.UC4_PATHS_AGGREGATE:
             fn = UC4AggregatePaths()
-        case AggregateStrategy.UC4_DEGREE:
+        case StatefulStrategy.UC4_DEGREE_AGGREGATE:
             fn = UC4Degree()
         case _:
             raise ValueError(f"unknown aggregate strategy: {STRATEGY}")
 
-    aggregate = make_aggregate(
+    aggregate = make_stateful_controller(
         fn, IDX, AFFINITY_UPSTREAM, NAFFINITY_DOWNSTREAM, MOM_HOST, RX, TX
     )
 

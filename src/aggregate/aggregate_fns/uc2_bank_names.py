@@ -3,7 +3,7 @@ from uuid import UUID
 
 from common.comms.messages import BankNames
 
-from .aggregate_fn import AggregateFn
+from .stateful_fn import StatefulFn
 
 # NOTE: estos no pueden ser más chicos
 #       que la cantidad de controladores
@@ -12,11 +12,11 @@ from .aggregate_fn import AggregateFn
 AFFINITY_SHARDS = 10
 
 
-class UC2BankNamesAggregateFn(AggregateFn):
+class UC2BankNamesAggregateFn(StatefulFn):
     def __init__(self):
         self._state: dict[UUID, BankNames] = {}
 
-    def aggregate(self, msg: BankNames):  # type: ignore[reportIncompatibleMethodOverride]
+    def transform(self, msg: BankNames):  # type: ignore[reportIncompatibleMethodOverride]
         if msg.client_id not in self._state:
             self._state[msg.client_id] = BankNames(msg.client_id, {})
 

@@ -1,4 +1,4 @@
-from src import AggregateStrategy, GroupByStrategy, MergeStrategy
+from src import GroupByStrategy, MergeStrategy, StatefulStrategy
 
 from .common_queues import CLIENT_ACCOUNTS, UC2_FILTERED_TRANSACTIONS, UC2_JOIN
 from .container_type import ContainerType
@@ -27,7 +27,7 @@ def gen_uc2() -> str:
     max_amounts_to_merge = "uc2_max_amounts_by_bank"
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
-        strategy=AggregateStrategy.UC2_MAX_AMOUNT,
+        strategy=StatefulStrategy.UC2_MAX_AMOUNT_AGGREGATE,
         npeers=MAX_AMOUNT_AGGREGATES,
         affinity_upstream=True,
         naffinity_downstream=0,
@@ -48,7 +48,7 @@ def gen_uc2() -> str:
     bank_names_to_merge = "uc2_bank_id_name_mappings"
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
-        strategy=AggregateStrategy.UC2_BANK_NAMES,
+        strategy=StatefulStrategy.UC2_BANK_NAMES_AGGREGATE,
         npeers=BANK_NAMES_AGGREGATES,
         affinity_upstream=True,
         naffinity_downstream=0,
