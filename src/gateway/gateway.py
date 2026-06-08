@@ -4,7 +4,7 @@ from threading import Thread
 from typing import Callable
 
 from client_stream_handler import ClientStreamHandler
-from client_monitor import ClientMonitor, ClientNotFoundError
+from client_monitor import ClientStreamMonitor, ClientNotFoundError
 
 from common.comms.connection import Connection
 from common.comms.messages import (
@@ -47,7 +47,7 @@ class Gateway:
         self.accs_tx_factory = accs_tx_factory
 
         self.server_handle: Thread
-        self.clients = ClientMonitor()
+        self.clients = ClientStreamMonitor()
 
     def start(self):
         """

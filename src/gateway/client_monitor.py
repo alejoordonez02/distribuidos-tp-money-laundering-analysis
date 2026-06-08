@@ -8,7 +8,7 @@ class ClientNotFoundError(Exception):
     pass
 
 
-class ClientMonitor:
+class ClientStreamMonitor:
     """
     A thread-safe wrapper for the clients dict.
     """
