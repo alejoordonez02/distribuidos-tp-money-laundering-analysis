@@ -14,16 +14,15 @@ GATEWAY_PORT = os.environ["GATEWAY_PORT"]
 
 LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
 
+GATEWAY_CONNECT_RETRIES = 30
+
 
 def main():
     logging.basicConfig(level=LOGGING_LEVEL)
     logging.getLogger("pika").setLevel(logging.WARNING)
 
-    # Retry the connect: `depends_on` only guarantees the gateway container has
-    # started, not that it is already listening (it waits for RabbitMQ first), so
-    # the client can race ahead and get ECONNREFUSED.
     conn = None
-    for _ in range(30):
+    for _ in range(GATEWAY_CONNECT_RETRIES):
         try:
             skt = socket(AF_INET, SOCK_STREAM)
             skt.connect((GATEWAY_HOST, int(GATEWAY_PORT)))
@@ -34,8 +33,6 @@ def main():
     if conn is None:
         raise ConnectionError("could not connect to gateway after retries")
 
-    # The client gets its id from the gateway during the handshake (HelloAck),
-    # then stamps it on every message so the gateway can forward batches raw.
     client = Client(
         conn,
         TRANSACTIONS_PATH,
