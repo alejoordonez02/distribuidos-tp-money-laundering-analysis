@@ -1,12 +1,11 @@
+from enum import StrEnum
+
 from .container_type import ContainerType
 
 
-# TODO: strategy debería ser el nombre pero
-#       alta paja cambiarlo ahora en todos
-#       lados
 def gen_nodes(
     type2: ContainerType,
-    strategy: str,
+    strategy: StrEnum,
     npeers: int,
     affinity_upstream: bool,
     naffinity_downstream: int,
