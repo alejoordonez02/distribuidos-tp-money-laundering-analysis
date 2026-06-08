@@ -2,6 +2,7 @@ import logging
 import os
 
 from join_fns import UC1Join, UC2Join, UC3Join, UC4Join, UC5Join
+from join_fns.line_spill import LineSpill
 
 from common.comms.middleware import QueueRabbitMQ
 from join import Join
@@ -22,11 +23,11 @@ def main():
     logging.getLogger("pika").setLevel(logging.WARNING)
 
     partial_res_handlers = [
-        (lambda: QueueRabbitMQ(MOM_HOST, UC1_RX), UC1Join()),
-        (lambda: QueueRabbitMQ(MOM_HOST, UC2_RX), UC2Join()),
-        (lambda: QueueRabbitMQ(MOM_HOST, UC3_RX), UC3Join()),
-        (lambda: QueueRabbitMQ(MOM_HOST, UC4_RX), UC4Join()),
-        (lambda: QueueRabbitMQ(MOM_HOST, UC5_RX), UC5Join()),
+        (lambda: QueueRabbitMQ(MOM_HOST, UC1_RX), UC1Join(LineSpill("UC1Join")), 1),
+        (lambda: QueueRabbitMQ(MOM_HOST, UC2_RX), UC2Join(), 2),
+        (lambda: QueueRabbitMQ(MOM_HOST, UC3_RX), UC3Join(LineSpill("UC3Join")), 3),
+        (lambda: QueueRabbitMQ(MOM_HOST, UC4_RX), UC4Join(), 4),
+        (lambda: QueueRabbitMQ(MOM_HOST, UC5_RX), UC5Join(), 5),
     ]
 
     def responses_tx_factory():

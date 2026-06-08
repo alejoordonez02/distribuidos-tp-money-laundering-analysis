@@ -1,24 +1,24 @@
 import os
 import tempfile
-from typing import Iterator
+from typing import Iterator, Protocol
 from uuid import UUID
 
 from common.comms.messages import Response
 
 
+class Spill(Protocol):
+    def append(self, client_id: UUID, line: str) -> None: ...
+
+    def iter_chunks_and_clear(
+        self, client_id: UUID, batch_lines: int
+    ) -> Iterator[str]: ...
+
+
 class LineSpill:
-    """Append-only on-disk buffer of pre-formatted response lines, keyed by client.
+    """Append-only on-disk buffer of response lines, keyed by client.
 
-    The join nodes that materialize one result line per transaction (UC1, UC3)
-    accumulate every line until the client's EOF arrives. On the Large dataset
-    that is millions of lines (UC1 ~7.7M, UC3 ~3.5M); keeping the underlying
-    `Transaction` objects in RAM OOMs the node, so each line is written straight
-    to a temp file as it is produced and read back only at EOF.
-
-    Mirrors the tempfile-based spill idiom used by `UC4CountPaths` in the
-    aggregate node, but stripped down: the join only appends and replays an
-    ordered log, so there is no per-key merge, threshold or sharding — RAM stays
-    O(1) by construction (one buffered write handle per client).
+    Keeps RAM O(1) by writing each line to a per-client temp file and replaying
+    it at EOF, instead of holding millions of Transaction objects in memory.
     """
 
     def __init__(self, tag: str):
@@ -50,8 +50,7 @@ class LineSpill:
     def iter_chunks_and_clear(
         self, client_id: UUID, batch_lines: int
     ) -> Iterator[str]:
-        """Yield the spilled lines in batches of `batch_lines` (each a single
-        string), then delete the file. Memory stays bounded to one batch."""
+        """Yield the spilled lines in batches of `batch_lines`, then delete the file."""
         handle = self._handles.pop(client_id, None)
         path = self._paths.pop(client_id, None)
         if handle is None or path is None:
@@ -72,19 +71,17 @@ class LineSpill:
 
 
 def stream_responses(
-    spill: LineSpill, client_id: UUID, header: str, batch_lines: int = 200_000
+    spill: Spill, client_id: UUID, header: str, batch_lines: int = 200_000
 ) -> Iterator[Response]:
-    """Stream a UC's result from its spill as Response chunks: header on the
-    first, trailing newline on the last, ``last=True`` only on the final chunk.
-    Uses a 1-chunk lookahead so no single message exceeds the broker's
-    max_message_size and memory stays bounded to ~2 chunks."""
+    """Stream a UC's spilled result as Response chunks: header on the first,
+    `last=True` only on the final one, keeping memory bounded to ~2 chunks."""
     chunks = spill.iter_chunks_and_clear(client_id, batch_lines)
     prev = next(chunks, None)
     if prev is None:
-        yield Response(client_id, header + "\n")  # empty result → one (last) chunk
+        yield Response(client_id, header + "\n")
         return
     prev = header + prev
     for nxt in chunks:
         yield Response(client_id, prev, last=False)
         prev = nxt
-    yield Response(client_id, prev + "\n")  # final chunk (last=True by default)
+    yield Response(client_id, prev + "\n")

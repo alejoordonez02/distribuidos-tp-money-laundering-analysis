@@ -6,10 +6,10 @@ from .gen_merge import gen_merge
 from .gen_nodes import gen_nodes
 
 MAX_AMOUNT_GROUPBYS = 2
-MAX_AMOUNT_AGGREGATES = 5
+MAX_AMOUNT_AGGREGATES = 1
 
-BANK_NAMES_GROUPBYS = 5
-BANK_NAMES_AGGREGATES = 5
+BANK_NAMES_GROUPBYS = 2
+BANK_NAMES_AGGREGATES = 1
 
 
 def gen_uc2() -> str:

@@ -1,13 +1,11 @@
-DEFAULT_FILTERS = 8
+DEFAULT_FILTERS = 2
 
 
 def gen_default_filters() -> str:
-    compose = ""
+    compose = "\n# === default filters ==="
 
     for idx in range(DEFAULT_FILTERS):
         compose += f"""\n
-# === default filters ===
-
   default_filter_{idx}:
     build:
       context: ./src/

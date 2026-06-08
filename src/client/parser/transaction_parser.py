@@ -19,11 +19,6 @@ class TransactionParser(Parser[Transaction]):
             _,  # label
         ) = line.rstrip("\n").split(",")
 
-        # Normalize bank ids to their integer form (drop leading zeros: "020" ->
-        # "20"). The raw dataset writes banks with leading zeros, but the oracle
-        # reads them as int32, so the client must match or every bank-bearing
-        # result (UC1/UC2/UC3) mismatches. Doing it here lets the client read the
-        # ORIGINAL dataset directly — no normalized 15GB copy needed.
         transaction = Transaction(
             fast_datetime(timestamp),
             str(int(from_bank)),

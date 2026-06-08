@@ -1,23 +1,23 @@
 from threading import Lock
 from uuid import UUID
 
-from client_handler import ClientHandler
+from client_stream_handler import ClientStreamHandler
 
 
 class ClientNotFoundError(Exception):
     pass
 
 
-class ClientMonitor:
+class ClientStreamMonitor:
     """
     A thread-safe wrapper for the clients dict.
     """
 
     def __init__(self):
         self.mtx = Lock()
-        self.clients: dict[UUID, ClientHandler] = {}
+        self.clients: dict[UUID, ClientStreamHandler] = {}
 
-    def add(self, client: ClientHandler):
+    def add(self, client: ClientStreamHandler):
         """
         Add a client to the list.
         """

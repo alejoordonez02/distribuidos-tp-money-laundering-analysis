@@ -1,7 +1,10 @@
 import logging
 import os
+import shutil
+import tempfile
 import time
 from multiprocessing import Process, Queue
+from typing import TextIO
 from uuid import UUID
 
 from parser import AccountParser, TransactionParser
@@ -12,12 +15,9 @@ from common.graceful_shutdown import setup_graceful_shutdown
 
 NRESPONSES = int(os.getenv("NRESPONSES", "1"))
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "2000"))
-# Number of parser processes. Parsing (split + strptime + float) is CPU-bound and
-# single-threaded per process, so we fan it out across cores; a single sender
-# loop drains the shared queue and writes to the one gateway connection.
 N_WORKERS = int(os.getenv("CLIENT_WORKERS", "4"))
-_QUEUE_MAXSIZE = 256  # bounds in-flight batches → backpressure → bounded RAM
-_DONE = b""  # per-worker end-of-range sentinel on the queue
+_QUEUE_MAXSIZE = 256
+_DONE = b""
 
 
 def _transactions_worker(
@@ -31,7 +31,7 @@ def _transactions_worker(
     batch = []
     with open(path, "rb") as f:
         f.seek(start)
-        f.readline()  # skip header (worker 0) or the partial line owned by prev worker
+        f.readline()
         while f.tell() < end:
             line = f.readline()
             if not line:
@@ -55,7 +55,7 @@ class Client:
         n_workers: int = N_WORKERS,
     ):
         self.conn = conn
-        self.client_id: UUID  # assigned by the gateway during the handshake
+        self.client_id: UUID
         self.transactions_path = transactions_path
         self.accounts_path = accounts_path
         self.responses_path = responses_path
@@ -74,11 +74,10 @@ class Client:
             logging.error("!!! UNHANDLED OSError in client stop: %s", e, exc_info=True)
 
     def _run(self):
-        # Handshake: ask the gateway for an id; it mints one and returns it in a
-        # HelloAck. We stamp that gateway-assigned id on every message — and only
-        # after receiving it can we spawn the workers, since they need it.
         self.conn.send(Hello().serialize())
-        self.client_id = HelloAck.deserialize(self.conn.recv()).client_id
+        HelloAck.deserialize(self.conn.recv())
+        # placeholder id; the gateway stamps the real one onto every forwarded message
+        self.client_id = UUID(int=0)
 
         count = self._send_transactions_parallel()
         self.conn.send(EOF(self.client_id, expected_count=count).serialize())
@@ -123,7 +122,7 @@ class Client:
             if item == _DONE:
                 finished += 1
             else:
-                self.conn.send(item)  # raw serialized Transactions bytes
+                self.conn.send(item)
                 count += 1
 
         for p in procs:
@@ -149,14 +148,26 @@ class Client:
         return count
 
     def _receive_and_write_responses(self):
-        # Each UC's result may arrive as several Response chunks (UC1/UC3 are
-        # chunked to stay under the broker's max_message_size); a chunk with
-        # last=True marks a completed UC. Count NRESPONSES completed UCs.
-        completed = 0
-        with open(self.responses_path, "w") as file:
-            while completed < NRESPONSES:
-                response = Response.deserialize(self.conn.recv())
-                file.write(response.body)  # type: ignore[reportAttributeAccessIssue]
-                if response.last:  # type: ignore[reportAttributeAccessIssue]
-                    completed += 1
-                    logging.info(f"received server response ({completed}/{NRESPONSES})")
+        handles: dict[int, TextIO] = {}
+        paths: dict[int, str] = {}
+        completed: set[int] = set()
+        while len(completed) < NRESPONSES:
+            response = Response.deserialize(self.conn.recv())
+            uc_id = response.uc_id  # type: ignore[reportAttributeAccessIssue]
+            handle = handles.get(uc_id)
+            if not handle:
+                fd, path = tempfile.mkstemp(prefix=f"resp_{uc_id}_", suffix=".txt")
+                handle = os.fdopen(fd, "w")
+                handles[uc_id] = handle
+                paths[uc_id] = path
+            handle.write(response.body)  # type: ignore[reportAttributeAccessIssue]
+            if response.last:  # type: ignore[reportAttributeAccessIssue]
+                completed.add(uc_id)
+                logging.info("received UC %d (%d/%d)", uc_id, len(completed), NRESPONSES)
+
+        with open(self.responses_path, "w") as out:
+            for uc_id in sorted(paths):
+                handles[uc_id].close()
+                with open(paths[uc_id], "r") as f:
+                    shutil.copyfileobj(f, out)
+                os.unlink(paths[uc_id])

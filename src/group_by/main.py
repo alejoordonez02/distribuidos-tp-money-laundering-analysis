@@ -62,7 +62,6 @@ def main():
             fn = UC2BankNamesGroupByFn()
         case GroupByStrategy.UC3_SUM:
             fn = UC3SumGroupByFn()
-        # esto de acá no me queda claro por qué se usa el mismo
         case (
             GroupByStrategy.UC4_COMPUTE_GRAPH | GroupByStrategy.UC4_DEGREE_COMPUTE_GRAPH
         ):

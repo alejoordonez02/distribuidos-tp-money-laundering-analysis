@@ -1,7 +1,7 @@
 from .accounts import Accounts
 from .avg_by_format import AvgByFormat
 from .bank_names import BankNames
-from .deserialize_message import deserialize_message
+from .deserialize_message import deserialize_message, peek_type
 from .eof import EOF
 from .errors import UnexpectedMessageError, UnknownMessageError
 from .fin import FIN
@@ -13,7 +13,13 @@ from .high_degree import HighDegree
 from .max_by_bank import MaxByBank
 from .merged_bank_data import MergedBankData
 from .merged_transactions import MergedTransactions
-from .message import Message
+from .message import (
+    DEFAULT_PREFIX,
+    MSG_RANGE,
+    PREFIX_RANGE,
+    TYPE_RANGE,
+    Message,
+)
 from .message_types import MessageType
 from .node_msg import NodeMsg
 from .path_count import PathCounts
