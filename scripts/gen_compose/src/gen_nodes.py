@@ -25,7 +25,9 @@ def gen_nodes(
     * `affinity_upstream` - wheter the controller is supposed to
       expect upstream messages with affinity routing.
     * `naffinity_downstream` - the amount of downstream affinities
-      ready to handle this controller's downstream messages.
+      ready to handle this controller's downstream messages. If none,
+      this can be set to zero (which does not mean that there are not
+      controllers waiting for messages on the other side).
     * `rx_name` - the name prefix of the upstream channel.
     * `tx_name` - the name prefix of the downstream channel.
 

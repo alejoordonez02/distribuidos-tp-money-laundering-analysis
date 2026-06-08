@@ -5,58 +5,66 @@ from .container_type import ContainerType
 from .gen_merge import gen_merge
 from .gen_nodes import gen_nodes
 
+MAX_AMOUNT_GROUPBYS = 2
+MAX_AMOUNT_AGGREGATES = 5
+
+BANK_NAMES_GROUPBYS = 5
+BANK_NAMES_AGGREGATES = 5
+
 
 def gen_uc2() -> str:
     compose = "\n# === uc2 ==="
-    queue0 = "uc2_partial_max_amount"
+    max_amounts_to_aggregate = "uc2_partial_max_amount"
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,
         name="uc2_max_amount_group_by",
         strategy=GroupByStrategy.UC2_MAX_AMOUNT,
-        npeers=2,
+        npeers=MAX_AMOUNT_GROUPBYS,
         affinity_upstream=False,
-        naffinity_downstream=0,
+        naffinity_downstream=MAX_AMOUNT_AGGREGATES,
         rx_name=UC2_FILTERED_TRANSACTIONS,
-        tx_name=queue0,
+        tx_name=max_amounts_to_aggregate,
     )
-    queue1 = "uc2_max_amounts_by_bank"
+    max_amounts_to_merge = "uc2_max_amounts_by_bank"
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
         name="uc2_max_amount_aggregate",
         strategy=AggregateStrategy.UC2_MAX_AMOUNT,
-        npeers=1,
-        affinity_upstream=False,
+        npeers=MAX_AMOUNT_AGGREGATES,
+        affinity_upstream=True,
         naffinity_downstream=0,
-        rx_name=queue0,
-        tx_name=queue1,
+        rx_name=max_amounts_to_aggregate,
+        tx_name=max_amounts_to_merge,
     )
-    queue2 = "uc2_partial_bank_names"
+
+    bank_names_to_aggregate = "uc2_partial_bank_names"
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,
         name="uc2_bank_names_group_by",
         strategy=GroupByStrategy.UC2_BANK_NAMES,
-        npeers=2,
+        npeers=BANK_NAMES_GROUPBYS,
         affinity_upstream=False,
-        naffinity_downstream=0,
+        naffinity_downstream=BANK_NAMES_AGGREGATES,
         rx_name=CLIENT_ACCOUNTS,
-        tx_name=queue2,
+        tx_name=bank_names_to_aggregate,
     )
-    queue3 = "uc2_bank_id_name_mappings"
+    bank_names_to_merge = "uc2_bank_id_name_mappings"
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
         name="uc2_bank_names_aggregate",
         strategy=AggregateStrategy.UC2_BANK_NAMES,
-        npeers=1,
-        affinity_upstream=False,
+        npeers=BANK_NAMES_AGGREGATES,
+        affinity_upstream=True,
         naffinity_downstream=0,
-        rx_name=queue2,
-        tx_name=queue3,
+        rx_name=bank_names_to_aggregate,
+        tx_name=bank_names_to_merge,
     )
+
     compose += gen_merge(
         name="uc2_merge",
         strategy=MergeStrategy.UC2_MERGE,
-        left_rx_name=queue1,
-        right_rx_name=queue3,
+        left_rx_name=max_amounts_to_merge,
+        right_rx_name=bank_names_to_merge,
         tx_name=UC2_JOIN,
     )
     return compose
