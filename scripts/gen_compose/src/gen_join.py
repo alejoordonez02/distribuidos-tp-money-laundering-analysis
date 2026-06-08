@@ -1,5 +1,8 @@
+from .common_queues import RESPONSES, UC1_JOIN, UC2_JOIN, UC3_JOIN, UC4_JOIN, UC5_JOIN
+
+
 def gen_join():
-    return """\n
+    return f"""\n
 # === join ===
 
   join:
@@ -13,9 +16,9 @@ def gen_join():
     environment:
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
-      - UC1_RX=uc1_join
-      - UC2_RX=uc2_join
-      - UC3_RX=uc3_join
-      - UC4_RX=uc4_join
-      - UC5_RX=uc5_join
-      - RESPONSES_TX=responses"""
+      - UC1_RX={UC1_JOIN}
+      - UC2_RX={UC2_JOIN}
+      - UC3_RX={UC3_JOIN}
+      - UC4_RX={UC4_JOIN}
+      - UC5_RX={UC5_JOIN}
+      - RESPONSES_TX={RESPONSES}"""

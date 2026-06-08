@@ -13,3 +13,5 @@ UC2_JOIN = "uc2_join"
 UC3_JOIN = "uc3_join"
 UC4_JOIN = "uc4_join"
 UC5_JOIN = "uc5_join"
+
+RESPONSES = "responses"

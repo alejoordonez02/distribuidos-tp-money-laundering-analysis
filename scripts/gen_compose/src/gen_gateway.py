@@ -1,5 +1,8 @@
+from .common_queues import CLIENT_ACCOUNTS, CLIENT_TRANSACTIONS, RESPONSES
+
+
 def gen_gateway():
-    return """\n
+    return f"""\n
 # === gateway ===
 
   gateway:
@@ -15,6 +18,6 @@ def gen_gateway():
       - GATEWAY_PORT=12345
       - MOM_HOST=rabbitmq
       - MOM_PORT=5672
-      - SERVER_QUEUE_RX=responses
-      - TRANSACTIONS_TX=client_transactions
-      - ACCOUNTS_TX=client_accounts"""
+      - SERVER_QUEUE_RX={RESPONSES}
+      - TRANSACTIONS_TX={CLIENT_TRANSACTIONS}
+      - ACCOUNTS_TX={CLIENT_ACCOUNTS}"""
