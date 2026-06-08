@@ -16,7 +16,7 @@ class TransactionParser(Parser[Transaction]):
             amount_paid,
             payment_currency,
             payment_format,
-            _,
+            _,  # label
         ) = line.rstrip("\n").split(",")
 
         transaction = Transaction(
