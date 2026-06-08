@@ -30,8 +30,6 @@ def _make_tx(mom_host: str, tx_name: str, naffinity_downstream: int):
 
     if naffinity_downstream == 0:
         return (QueueRabbitMQ(mom_host, queue_name=f"{tx_name}"),)
-    elif naffinity_downstream == 1:
-        return (QueueRabbitMQ(mom_host, queue_name=f"{tx_name}0"),)
 
     return [
         ExchangeRabbitMQ(
