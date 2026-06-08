@@ -19,32 +19,48 @@ class StateMonitor:
 
         self._mtx = Lock()
         self._processed_count: dict[UUID, int] = defaultdict(lambda: 0)
-        self._transformed_count: dict[UUID, int] = defaultdict(lambda: 0)
+        self._sent_count: dict[UUID, tuple[int, bool]] = defaultdict(lambda: (0, False))
+        # self._expected_count: dict[UUID, int] = defaultdict(lambda: 0)
 
-    def get_transformed_count(self, client_id: UUID) -> int:
+    def pop_processed_count(self, client_id: UUID) -> int:
         """
-        Reuturns the amount of transformed data amount for a client.
+        Returns the amount of data that entered the state and was
+        processed for a client and clears it.
 
-        For example, aggregating the count of some field on an input
-        with of three rows of the of that field results in a 3 to 1
+        # Args
+        * `client_id` - the client id for which to return the count.
+        """
+        with self._mtx:
+            count = self._processed_count[client_id]
+            self._processed_count[client_id] = 0
+            return count
+
+    def pop_sent_count(self, client_id: UUID) -> int:
+        """
+        Reuturns the amount of sent data for a client and clears it.
+
+        For example, transforming the count of some field on an input
+        with 3 rows of the of that same field results in a 3 to 1
         processed to transformed resulting count.
 
         # Args
         * `client_id` - the client id for which to return the count.
         """
         with self._mtx:
-            return self._transformed_count[client_id]
+            count, confirmed = self._sent_count[client_id]
+            self._sent_count[client_id] = (0, confirmed)
+            return count
 
-    def get_processed_count(self, client_id: UUID) -> int:
+    def get_confirmed(self, client_id: UUID) -> bool:
         """
-        Returns the amount of data that entered the state and was
-        processed for a client.
+        Reuturns wheter data has already been sent for a client.
 
         # Args
-        * `client_id` - the client id for which to return the count.
+        * `client_id` - the client id for which to return the
+          confirmation.
         """
         with self._mtx:
-            return self._processed_count[client_id]
+            return self._sent_count[client_id][1]
 
     def transform(self, msg: Message):
         """
@@ -70,4 +86,11 @@ class StateMonitor:
             for aggregated, affinity in affinity_groups:
                 affinity_idx = affinity % len(txs)
                 txs[affinity_idx].send(aggregated.serialize())
-                self._transformed_count[client_id] += 1
+
+                old_count, confirmed = self._sent_count[client_id]
+                new = (old_count + 1, confirmed)
+                self._sent_count[client_id] = new
+
+            count, _ = self._sent_count[client_id]
+            new = (count, True)
+            self._sent_count[client_id] = new
