@@ -1,7 +1,10 @@
-def gen_default_filters(npeers: int) -> str:
+DEFAULT_FILTERS = 8
+
+
+def gen_default_filters() -> str:
     compose = ""
 
-    for idx in range(npeers):
+    for idx in range(DEFAULT_FILTERS):
         compose += f"""\n
 # === default filters ===
 
@@ -25,7 +28,7 @@ def gen_default_filters(npeers: int) -> str:
       - UC4_DEGREE_TRANSACTIONS_TX=uc4_degree_transactions
       - UC5_TRANSACTIONS_TX=uc5_filtered_transactions
       - IDX={idx}
-      - NPEERS={npeers}
+      - NPEERS={DEFAULT_FILTERS}
       - RING_NAME=default_filter_ring
       - STRATEGY=default"""
 

@@ -27,7 +27,7 @@ def main():
     compose = "services:"
     compose += gen_rabbitmq()
     compose += gen_gateway()
-    compose += gen_default_filters(NDEFAULT_FILTERS)
+    compose += gen_default_filters()
     compose += gen_uc1()
     compose += gen_uc2()
     compose += gen_uc3()
