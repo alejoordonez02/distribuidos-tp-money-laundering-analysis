@@ -11,7 +11,7 @@ from group_by_fns import (
 )
 
 from common.comms.eof_handler import make_stateless_eof_handler
-from common.comms.middleware import ExchangeRabbitMQ, QueueRabbitMQ
+from common.comms.middleware import ExchangeRabbitMQ, QueueRabbitMQ, make_rx_tx
 from group_by import GroupBy
 
 MOM_HOST = os.environ["MOM_HOST"]
@@ -22,7 +22,6 @@ STRATEGY = os.environ["STRATEGY"]
 IDX = int(os.getenv("IDX", 0))
 AFFINITY_UPSTREAM = os.environ["AFFINITY_UPSTREAM"] == "1"
 NAFFINITY_DOWNSTREAM = int(os.environ["NAFFINITY_DOWNSTREAM"])
-# fulero...
 
 LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
 
@@ -33,27 +32,13 @@ def make_groupby(
     affinity_upstream: bool,
     naffinities_downstream: int,
     mom_host: str,
-    rx: str,
-    tx: str,
+    rx_name: str,
+    tx_name: str,
 ) -> GroupBy:
 
-    if affinity_upstream:
-        external_rx = ExchangeRabbitMQ(mom_host, rx, [f"{idx}"], f"{rx}{idx}")
-    else:
-        external_rx = QueueRabbitMQ(MOM_HOST, rx)
-
-    if naffinities_downstream == 0:
-        external_txs = (QueueRabbitMQ(mom_host, queue_name=f"{tx}"),)
-    elif naffinities_downstream == 1:
-        external_txs = (QueueRabbitMQ(mom_host, queue_name=f"{tx}0"),)
-    elif naffinities_downstream > 1:
-        external_txs = [
-            ExchangeRabbitMQ(mom_host, tx, routing_keys=[f"{n}"], queue_name=f"{tx}{n}")
-            for n in range(naffinities_downstream)
-        ]
-
-    else:
-        raise ValueError("downstream nodes amount cannot be less than 0")
+    external_rx, external_txs = make_rx_tx(
+        idx, rx_name, tx_name, mom_host, naffinities_downstream, affinity_upstream
+    )
 
     # TODO: tengo que cambiar el external_txs[0]
     #       porq va a traer problemas para fault

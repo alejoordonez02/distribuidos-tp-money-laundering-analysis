@@ -3,10 +3,10 @@ import os
 from typing import Callable
 
 from filter2 import Filter
-from filter_fns import FilterFn, UC3AvgFilter, UC4PathFilter, UC5AmountFilter, UC5Filter
+from filter_fns import FilterFn, UC3AvgFilter, UC4PathFilter, UC5AmountFilter
 
 from common.comms.eof_handler import make_stateless_eof_handler
-from common.comms.middleware import ExchangeRabbitMQ, QueueRabbitMQ
+from common.comms.middleware import QueueRabbitMQ, make_rx_tx
 
 MOM_HOST = os.environ["MOM_HOST"]
 RX = os.environ["RX"]
@@ -53,8 +53,6 @@ def make_default_filter() -> Filter:
         (QueueRabbitMQ(MOM_HOST, UC5_TRANSACTIONS_TX), UC5Filter()),
     ]
 
-    # TODO: reescribir esto, las listas se
-    #       declaran una vez mejor :)
     eof_handler = make_stateless_eof_handler(MOM_HOST, [tx for (tx, _) in routes])
 
     filter2 = Filter(transactions_rx, routes, eof_handler)
@@ -62,44 +60,20 @@ def make_default_filter() -> Filter:
     return filter2
 
 
-# fn: GroupByFn, idx: int, naffinities_downstream: int, mom_host: str, rx: str, tx: str
 def make_filter(
     fn_factory: Callable[[], FilterFn],
     idx: int,
     affinity_upstream: bool,
-    nnodes_downstream: int,
+    naffinities_downstream: int,
     mom_host: str,
-    rx: str,
-    tx: str,
+    rx_name: str,
+    tx_name: str,
 ) -> Filter:
 
-    if affinity_upstream:
-        external_rx = ExchangeRabbitMQ(mom_host, rx, [f"{idx}"], f"{rx}{idx}")
-    else:
-        external_rx = QueueRabbitMQ(MOM_HOST, rx)
+    external_rx, external_txs = make_rx_tx(
+        idx, rx_name, tx_name, mom_host, naffinities_downstream, affinity_upstream
+    )
 
-    if nnodes_downstream == 0:
-        external_txs = (QueueRabbitMQ(mom_host, queue_name=f"{tx}"),)
-    elif nnodes_downstream == 1:
-        external_txs = (QueueRabbitMQ(mom_host, queue_name=f"{tx}0"),)
-    elif nnodes_downstream > 1:
-        external_txs = [
-            ExchangeRabbitMQ(mom_host, tx, routing_keys=[f"{n}"], queue_name=f"{tx}{n}")
-            for n in range(nnodes_downstream)
-        ]
-        # TODO: medio q queda paja porq lo había
-        #       hecho pensando más q nada para el
-        #       default
-        raise ValueError("downstream affinity not implemented for filter yet")
-
-    else:
-        raise ValueError("downstream nodes amount cannot be less than 0")
-
-    # FIXME: esto lo estoy dejando porq estaba
-    #        así, pero la verdad ya no me acuerdo
-    #        si le pegábamos el eof a todos los
-    #        de adelante... no debería tener
-    #        mucho sentido
     eof_handler = make_stateless_eof_handler(MOM_HOST, (external_txs[0],))
 
     filter2 = Filter(

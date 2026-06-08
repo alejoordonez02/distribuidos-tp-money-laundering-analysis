@@ -6,6 +6,7 @@ from .errors import (
 )
 from .exchange_mom import MOMExchange
 from .exchange_rabbitmq import ExchangeRabbitMQ
+from .make_rx_tx import make_rx_tx
 from .mom import MOM
 from .queue_mom import MOMQueue
 from .queue_rabbitmq import QueueRabbitMQ
