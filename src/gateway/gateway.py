@@ -4,7 +4,7 @@ from threading import Thread
 from typing import Callable
 
 from client_stream_handler import ClientStreamHandler
-from client_monitor import ClientStreamMonitor, ClientNotFoundError
+from client_stream_monitor import ClientStreamMonitor, ClientNotFoundError
 
 from common.comms.connection import Connection
 from common.comms.messages import (
