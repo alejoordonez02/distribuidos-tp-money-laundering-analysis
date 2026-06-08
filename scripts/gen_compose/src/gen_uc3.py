@@ -19,7 +19,7 @@ def gen_uc3() -> str:
         strategy=GroupByStrategy.UC3_SUM,
         npeers=2,
         affinity_upstream=False,
-        naffinity_downstream=0,  # FIXME
+        naffinity_downstream=0,
         rx_name=UC3_PERIOD_A_TRANSACTIONS,
         tx_name=queue0,
     )
@@ -30,7 +30,7 @@ def gen_uc3() -> str:
         strategy=AggregateStrategy.UC3_AVERAGE,
         npeers=1,
         affinity_upstream=False,
-        naffinity_downstream=0,  # FIXME
+        naffinity_downstream=0,
         rx_name=queue0,
         tx_name=queue1,
     )
@@ -48,7 +48,7 @@ def gen_uc3() -> str:
         strategy=FilterStrategy.UC3_AVG,
         npeers=1,
         affinity_upstream=False,
-        naffinity_downstream=0,  # FIXME
+        naffinity_downstream=0,
         rx_name=queue2,
         tx_name=UC3_JOIN,
     )

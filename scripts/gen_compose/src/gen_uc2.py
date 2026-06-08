@@ -15,7 +15,7 @@ def gen_uc2() -> str:
         strategy=GroupByStrategy.UC2_MAX_AMOUNT,
         npeers=2,
         affinity_upstream=False,
-        naffinity_downstream=0,  # FIXME
+        naffinity_downstream=0,
         rx_name=UC2_FILTERED_TRANSACTIONS,
         tx_name=queue0,
     )
@@ -26,7 +26,7 @@ def gen_uc2() -> str:
         strategy=AggregateStrategy.UC2_MAX_AMOUNT,
         npeers=1,
         affinity_upstream=False,
-        naffinity_downstream=0,  # FIXME
+        naffinity_downstream=0,
         rx_name=queue0,
         tx_name=queue1,
     )
@@ -37,7 +37,7 @@ def gen_uc2() -> str:
         strategy=GroupByStrategy.UC2_BANK_NAMES,
         npeers=2,
         affinity_upstream=False,
-        naffinity_downstream=0,  # FIXME
+        naffinity_downstream=0,
         rx_name=CLIENT_ACCOUNTS,
         tx_name=queue2,
     )
@@ -48,7 +48,7 @@ def gen_uc2() -> str:
         strategy=AggregateStrategy.UC2_BANK_NAMES,
         npeers=1,
         affinity_upstream=False,
-        naffinity_downstream=0,  # FIXME
+        naffinity_downstream=0,
         rx_name=queue2,
         tx_name=queue3,
     )
