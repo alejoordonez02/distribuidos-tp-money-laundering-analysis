@@ -110,7 +110,14 @@ def main():
         _log("STREAMING MODE — full dataset per client (NCLIENTS=1, no size cap)")
         for n in range(NCLIENTS):
             _log(f"--- Client {n + 1}/{NCLIENTS} ---")
-            _write_normalized(TRANSACTIONS_PATH, CLIENT_DATASETS_PATH + f"transactions_{n}.csv")
+            # Symlink the client's input straight to the full dataset — no 15GB
+            # normalized copy. The client now normalizes bank ids in its parser
+            # (str(int(...))), so reading the raw dataset is consistent with the
+            # oracle. Drop any stale real copy / old symlink first.
+            dst = CLIENT_DATASETS_PATH + f"transactions_{n}.csv"
+            if os.path.lexists(dst):
+                os.remove(dst)
+            _link_or_warn(TRANSACTIONS_PATH, dst)
             gen_results_streaming(
                 TRANSACTIONS_PATH,
                 accounts_df,
@@ -183,29 +190,37 @@ def _link_or_warn(src: str, dst: str) -> None:
     _log(f"  Symlinked {dst} → {rel_src}")
 
 
-def _write_normalized(src: str, dst: str) -> None:
-    """Write a dtype-normalized copy of src to dst, chunked so the full dataset
-    never loads into RAM.
+class _CsvSink:
+    """Append rows to a CSV, reproducing exactly what
+    ``pd.concat(chunks, ignore_index=True).to_csv(path)`` would have written:
+    a continuous integer index column plus a single header line.
 
-    A plain symlink would feed the client the raw CSV, whose bank ids keep their
-    leading zeros ("020"), while the expected results are computed with int banks
-    ("20") — so streaming-mode runs mismatch on every bank-bearing use case. The
-    sampled mode already writes its per-client file with this same dtype pass, so
-    normalizing here makes streaming consistent with the (working) sampled path
-    and with how the oracle renders banks.
+    Writing chunk-by-chunk keeps RAM bounded — the full result set never lives
+    in memory at once (the old streaming helpers accumulated every matching row
+    in a list and concatenated at the end, which OOMs on the Large dataset).
     """
-    # Critical: drop any existing path first. If dst is a stale symlink, opening
-    # it for writing would clobber the source dataset it points at.
-    if os.path.lexists(dst):
-        os.remove(dst)
 
-    first = True
-    rows = 0
-    for chunk in pd.read_csv(src, chunksize=_CHUNK_SIZE, dtype=_TRANS_DTYPE):
-        chunk.to_csv(dst, index=False, header=first, mode="w" if first else "a")
-        rows += len(chunk)
-        first = False
-    _log(f"  Wrote normalized {dst} ({rows} rows) from {src}")
+    def __init__(self, path: str, columns: list[str]):
+        self._path = path
+        self._columns = columns
+        self._offset = 0
+        self._first = True
+
+    def write(self, df) -> None:
+        if len(df) == 0:
+            return
+        df = df.copy()
+        df.index = range(self._offset, self._offset + len(df))
+        self._offset += len(df)
+        df.to_csv(self._path, mode="w" if self._first else "a", header=self._first)
+        self._first = False
+
+    def close(self) -> int:
+        if self._first:
+            # No rows matched — emit a header-only file, exactly like
+            # an empty DataFrame's to_csv would.
+            pd.DataFrame(columns=self._columns).to_csv(self._path)
+        return self._offset
 
 
 def gen_results_streaming(
@@ -229,10 +244,8 @@ def gen_results_streaming(
       UC5 — 1 pass
     """
     _log("  UC1: pass 1/1 ...")
-    uc1_results = _uc1_streaming(path)
-    uc1_results.to_csv(uc1_results_path)
-    _log(f"  UC1: {len(uc1_results)} rows → {uc1_results_path}")
-    del uc1_results
+    n_uc1 = _uc1_streaming(path, uc1_results_path)
+    _log(f"  UC1: {n_uc1} rows → {uc1_results_path}")
     gc.collect()
 
     _log("  UC2: pass 1/1 ...")
@@ -245,10 +258,8 @@ def gen_results_streaming(
     _log("  UC3: pass 1/2 (period-A averages) ...")
     avg_per_fmt = _uc3_pass1(path)
     _log(f"  UC3: pass 2/2 (period-B filter) ...")
-    uc3_results = _uc3_pass2(path, avg_per_fmt)
-    uc3_results.to_csv(uc3_results_path)
-    _log(f"  UC3: {len(uc3_results)} rows → {uc3_results_path}")
-    del uc3_results
+    n_uc3 = _uc3_pass2(path, avg_per_fmt, uc3_results_path)
+    _log(f"  UC3: {n_uc3} rows → {uc3_results_path}")
     gc.collect()
 
     _log("  UC4: pass 1/1 (edge collection + graph) ...")
@@ -265,19 +276,15 @@ def gen_results_streaming(
     _log(f"  UC5: result={uc5_result} → {uc5_results_path}")
 
 
-def _uc1_streaming(path: str) -> pd.DataFrame:
-    """USD transactions with Amount Paid < 50."""
-    chunks = []
+def _uc1_streaming(path: str, out_path: str) -> int:
+    """USD transactions with Amount Paid < 50, written straight to disk so the
+    full result set never accumulates in RAM."""
+    cols = ["From Bank", "Account", "To Bank", "Account.1", "Amount Paid"]
+    sink = _CsvSink(out_path, cols)
     for chunk in pd.read_csv(path, chunksize=_CHUNK_SIZE, dtype=_TRANS_DTYPE):
         mask = (chunk["Payment Currency"] == "US Dollar") & (chunk["Amount Paid"] < 50)
-        hit = chunk.loc[mask, ["From Bank", "Account", "To Bank", "Account.1", "Amount Paid"]]
-        if len(hit):
-            chunks.append(hit)
-    return (
-        pd.concat(chunks, ignore_index=True)
-        if chunks
-        else pd.DataFrame(columns=["From Bank", "Account", "To Bank", "Account.1", "Amount Paid"])
-    )
+        sink.write(chunk.loc[mask, cols])
+    return sink.close()
 
 
 def _uc2_streaming(path: str, accounts_df) -> pd.DataFrame:
@@ -329,11 +336,13 @@ def _uc3_pass1(path: str) -> dict[str, float]:
     return {fmt: total[fmt] / count[fmt] for fmt in total}
 
 
-def _uc3_pass2(path: str, avg_per_fmt: dict[str, float]) -> pd.DataFrame:
+def _uc3_pass2(path: str, avg_per_fmt: dict[str, float], out_path: str) -> int:
     """
     Pass 2: filter period B (USD, Sep 6-15) rows where Amount Paid < avg/100.
+    Written straight to disk so the matching rows never accumulate in RAM.
     """
-    chunks = []
+    cols = ["From Bank", "Account", "Payment Format", "Amount Paid"]
+    sink = _CsvSink(out_path, cols)
     for chunk in pd.read_csv(path, chunksize=_CHUNK_SIZE, dtype=_TRANS_DTYPE):
         usd = chunk[chunk["Payment Currency"] == "US Dollar"]
         period_b = usd[
@@ -346,13 +355,8 @@ def _uc3_pass2(path: str, avg_per_fmt: dict[str, float]) -> pd.DataFrame:
         matching = period_b[
             period_b["_avg"].notna() & (period_b["Amount Paid"] < period_b["_avg"] * 0.01)
         ]
-        if len(matching):
-            chunks.append(matching[["From Bank", "Account", "Payment Format", "Amount Paid"]])
-    return (
-        pd.concat(chunks, ignore_index=True)
-        if chunks
-        else pd.DataFrame(columns=["From Bank", "Account", "Payment Format", "Amount Paid"])
-    )
+        sink.write(matching[cols])
+    return sink.close()
 
 
 def _uc4_pairs_to_accounts(

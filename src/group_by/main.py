@@ -19,7 +19,7 @@ TX = os.environ["TX"]
 STRATEGY = os.environ["STRATEGY"]
 NPEERS_UPSTREAM = int(os.getenv("NPEERS_UPSTREAM", "1"))
 
-LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
+LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "WARNING")
 
 
 def make_uc4_compute_graph():

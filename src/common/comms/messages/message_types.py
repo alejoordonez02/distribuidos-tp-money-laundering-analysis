@@ -21,3 +21,5 @@ class MessageType(IntEnum):
     PATH_MSG = 16
     RING_SENT_DATA = 17
     HIGH_DEGREE = 18
+    HELLO = 19
+    HELLO_ACK = 20

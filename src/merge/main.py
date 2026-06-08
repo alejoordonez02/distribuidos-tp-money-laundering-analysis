@@ -12,7 +12,7 @@ RIGHT_RX = os.environ["RIGHT_RX"]
 TX = os.environ["TX"]
 STRATEGY = os.environ["STRATEGY"]
 
-LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
+LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "WARNING")
 
 
 def main():

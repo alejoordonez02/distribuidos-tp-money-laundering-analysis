@@ -15,7 +15,7 @@ RX = os.environ["RX"]
 
 STRATEGY = os.getenv("STRATEGY", "default")
 
-LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
+LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "WARNING")
 
 
 def make_default_filter() -> tuple[MOM, Sequence[tuple[MOM, FilterFn]], Sequence[MOM]]:

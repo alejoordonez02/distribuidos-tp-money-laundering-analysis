@@ -18,7 +18,7 @@ class AccountParser(Parser[Account]):
 
         account = Account(
             bank_name,
-            bank_id,
+            str(int(bank_id)),  # normalize to int form, consistent with the oracle
             account_number,
             entity_id,
             entity_name,

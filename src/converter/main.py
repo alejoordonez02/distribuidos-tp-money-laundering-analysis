@@ -11,7 +11,7 @@ MOM_HOST = os.environ["MOM_HOST"]
 RX = os.environ["RX"]
 TX = os.environ["TX"]
 
-LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
+LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "WARNING")
 
 
 def main():

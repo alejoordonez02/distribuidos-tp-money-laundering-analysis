@@ -103,9 +103,11 @@ class Gateway:
                 logging.error("!!! UNHANDLED OSError in gateway accept loop: %s", e, exc_info=True)
                 break
             conn = Connection(skt)
-            client = ClientHandler(conn, self.trans_tx_factory, self.accs_tx_factory)
+            # The handler self-registers in ClientMonitor after reading the
+            # client's Hello (keyed by the client-chosen id), so we pass the
+            # monitor in instead of adding here with a not-yet-known id.
+            client = ClientHandler(conn, self.clients, self.trans_tx_factory, self.accs_tx_factory)
             client.start()
-            self.clients.add(client)
 
         self.server_handle.join()
         self.server_rx.close()

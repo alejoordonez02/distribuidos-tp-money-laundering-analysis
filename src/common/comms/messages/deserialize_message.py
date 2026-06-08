@@ -1,5 +1,3 @@
-import json
-
 from .accounts import Accounts
 from .avg_by_format import AvgByFormat
 from .bank_names import BankNames
@@ -7,6 +5,8 @@ from .eof import EOF
 from .errors import UnknownMessageError
 from .fin import FIN
 from .graph import Graph
+from .hello import Hello
+from .hello_ack import HelloAck
 from .high_degree import HighDegree
 from .max_by_bank import MaxByBank
 from .merged_bank_data import MergedBankData
@@ -37,8 +37,11 @@ def deserialize_message(bytes2: bytes) -> Message:
     # Errors
     * `UnknownMessageError` if the type field is unknown.
     """
-    fields = json.loads(bytes2.decode("utf-8"))
-    match fields[0]:
+    match bytes2[0]:  # 1-byte message-type prefix
+        case MessageType.HELLO:
+            return Hello.deserialize(bytes2)
+        case MessageType.HELLO_ACK:
+            return HelloAck.deserialize(bytes2)
         case MessageType.EOF:
             return EOF.deserialize(bytes2)
         case MessageType.TRANSACTIONS:
@@ -78,6 +81,4 @@ def deserialize_message(bytes2: bytes) -> Message:
         case MessageType.RING_SENT_DATA:
             return RingSentData.deserialize(bytes2)
         case _:
-            raise UnknownMessageError(
-                f"unknown message type {fields[0]} with contents {fields[1:]}"
-            )
+            raise UnknownMessageError(f"unknown message type {bytes2[0]}")
