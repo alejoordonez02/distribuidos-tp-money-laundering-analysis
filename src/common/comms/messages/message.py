@@ -45,15 +45,26 @@ class Message:
         """
         Serializes a `Message` into `bytes`.
 
+        Layout: ``[1-byte type][16-byte client_id][msgpack payload]``. The
+        client_id is carried as a fixed-position prefix (not inside the msgpack)
+        so the gateway can stamp it without unpacking the payload. By convention
+        it is the first field of `_fields()`; messages without one (Hello) get a
+        null prefix.
+
         # Returns
         The `bytes` of the serialized message.
         """
-        # 1-byte message-type prefix + msgpack of the fields. The prefix lets the
-        # gateway route a message by peeking byte 0 without unpacking the payload;
-        # msgpack replaces JSON (far cheaper encode/decode in the hot path, and
-        # works on both CPython (C ext) and PyPy (pure-Python fallback)).
-        return bytes([int(self._type())]) + msgpack.packb(
-            self._fields(), default=_mp_default
+        fields = self._fields()
+        client_id = getattr(self, "client_id", None)
+        if client_id is not None:
+            prefix = client_id.bytes
+            fields = fields[1:]
+        else:
+            prefix = b"\x00" * 16
+        return (
+            bytes([int(self._type())])
+            + prefix
+            + msgpack.packb(fields, default=_mp_default)
         )
 
     @classmethod
@@ -85,9 +96,11 @@ class Message:
                 f"wrong message type\n\texpected: {cls._type()}\n\tgot: {bytes2[0]}"
             )
 
-        return cls._from_fields(
-            msgpack.unpackb(bytes2[1:], raw=False, use_list=True, strict_map_key=False)
+        client_id = UUID(bytes=bytes2[1:17])
+        fields = msgpack.unpackb(
+            bytes2[17:], raw=False, use_list=True, strict_map_key=False
         )
+        return cls._from_fields([str(client_id), *fields])
 
     @classmethod
     @abstractmethod

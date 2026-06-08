@@ -1,7 +1,7 @@
 from .accounts import Accounts
 from .avg_by_format import AvgByFormat
 from .bank_names import BankNames
-from .deserialize_message import deserialize_message
+from .deserialize_message import deserialize_message, peek_type
 from .eof import EOF
 from .errors import UnexpectedMessageError, UnknownMessageError
 from .fin import FIN

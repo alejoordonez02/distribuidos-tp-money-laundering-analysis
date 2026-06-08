@@ -24,6 +24,11 @@ from .transaction_count import TransactionCount
 from .transactions import Transactions
 
 
+def peek_type(raw: bytes) -> int:
+    """Read a serialized message's 1-byte type prefix without unpacking it."""
+    return raw[0]
+
+
 def deserialize_message(bytes2: bytes) -> Message:
     """
     Deserializes `bytes` into a `Message`.
@@ -37,7 +42,7 @@ def deserialize_message(bytes2: bytes) -> Message:
     # Errors
     * `UnknownMessageError` if the type field is unknown.
     """
-    match bytes2[0]:  # 1-byte message-type prefix
+    match peek_type(bytes2):
         case MessageType.HELLO:
             return Hello.deserialize(bytes2)
         case MessageType.HELLO_ACK:
