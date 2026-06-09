@@ -11,6 +11,7 @@ def gen_nodes(
     naffinity_downstream: int,
     rx_name: str,
     tx_name: str,
+    checkpoint_every: int | None = None,
 ) -> str:
     """
     Gen a ring of nodes.
@@ -58,5 +59,12 @@ def gen_nodes(
       - AFFINITY_UPSTREAM={1 if affinity_upstream else 0}
       - NAFFINITY_DOWNSTREAM={naffinity_downstream}
       - PYTHONHASHSEED=2026"""
+
+        if checkpoint_every is not None:
+            compose += f"""
+      - STATE_DIR=/state
+      - CHECKPOINT_EVERY={checkpoint_every}
+    volumes:
+      - ./state/{name}_{idx}:/state"""
 
     return compose

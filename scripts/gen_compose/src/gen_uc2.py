@@ -33,6 +33,7 @@ def gen_uc2() -> str:
         naffinity_downstream=0,
         rx_name=max_amounts_to_aggregate,
         tx_name=max_amounts_to_merge,
+        checkpoint_every=5,
     )
 
     bank_names_to_aggregate = "uc2_partial_bank_names"

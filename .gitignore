@@ -28,3 +28,6 @@ test/expected_responses
 **.log
 **.toc
 **/_minted/
+
+# fault-tolerance checkpoints (local)
+state/
