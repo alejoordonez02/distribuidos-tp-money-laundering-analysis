@@ -135,8 +135,21 @@ checkpoint. Nunca `/tmp`. `state/` está en `.gitignore`.
 ### Validación
 - Unit: 29/29 (dedup, store atómico, batching/dedup/restore del checkpointer, snapshot UC2).
 - E2E normal (perfect): 5/5 == baseline + `.ckpt` creado + restore al reiniciar.
-- E2E con falla (manual): crash en `after_checkpoint_before_ack`, recreación del nodo,
-  reentrega deduplicada, **5/5 == baseline**. Logs confirman restore + downstream EOF.
+
+#### Casos borde validados — crash determinístico en UN solo nodo (uc2_max_amount_aggregate_0)
+Todos provocados con `maybe_crash`, recreando el nodo y comparando contra baseline.
+Esta cobertura es sobre **un único nodo stateful**; la propagación al resto es Fase 3.
+
+| Punto de crash | Qué prueba | Resultado |
+|---|---|---|
+| `after_apply_before_checkpoint` | efecto en RAM perdido → reentrega se reprocesa | 5/5 == baseline |
+| `after_checkpoint_before_ack`   | checkpoint durable → reentrega se deduplica | 5/5 == baseline |
+| `during_checkpoint_write`       | atomicidad: queda sólo `.tmp`, ningún `.ckpt` parcial | 5/5 == baseline |
+| `after_dup_before_ack`          | duplicado se descarta de nuevo (idempotente) | 5/5 == baseline |
+| `after_restore_on_startup`      | recarga el checkpoint y continúa (idempotente) | 5/5 == baseline |
+
+Nota de infra: cada escenario debe correrse **aislado** (levantar/bajar el stack
+repetidamente en batch genera contención y cuelgues espurios; no son fallos del recovery).
 
 ### Cómo reproducir el crash test (manual)
 1. `STATE_DIR` ya está en el nodo. Limpiar `state/` (vía contenedor root) y `responses/`.
