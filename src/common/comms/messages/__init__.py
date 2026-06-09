@@ -15,8 +15,13 @@ from .merged_bank_data import MergedBankData
 from .merged_transactions import MergedTransactions
 from .message import (
     DEFAULT_PREFIX,
+    DEFAULT_PRODUCER,
+    DEFAULT_SEQ,
     MSG_RANGE,
     PREFIX_RANGE,
+    PRODUCER_RANGE,
+    SEQ_BYTES,
+    SEQ_RANGE,
     TYPE_RANGE,
     Message,
 )
