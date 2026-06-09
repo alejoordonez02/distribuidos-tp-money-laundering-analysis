@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Iterable
+from typing import Any, Iterable
 from uuid import UUID
 
 from common.comms.messages import Message
@@ -11,3 +11,9 @@ class AggregateFn(ABC):
 
     @abstractmethod
     def get_result(self, client_id: UUID) -> Iterable[tuple[Message, int]]: ...
+
+    def snapshot_state(self) -> dict[str, Any]:
+        raise NotImplementedError("this aggregate fn is not checkpointable")
+
+    def restore_state(self, snapshot: dict[str, Any]):
+        raise NotImplementedError("this aggregate fn is not checkpointable")

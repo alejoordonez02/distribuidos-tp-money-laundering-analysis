@@ -1,4 +1,4 @@
-from typing import Iterable
+from typing import Any, Iterable
 from uuid import UUID
 
 from common.comms.messages import MaxByBank
@@ -43,3 +43,17 @@ class UC2MaxAmountAggregateFn(AggregateFn):
         for bank_id, (account, max2) in maxes_by_bank.data.items():
             bank_max = MaxByBank(client_id, {bank_id: (account, max2)})
             yield bank_max, hash(bank_id)
+
+    def snapshot_state(self) -> dict[str, Any]:
+        return {
+            str(cid): list(mbb.data.items())
+            for cid, mbb in self.client_maxes_by_bank.items()
+        }
+
+    def restore_state(self, snapshot: dict[str, Any]):
+        self.client_maxes_by_bank = {
+            UUID(cid): MaxByBank(
+                UUID(cid), {bank: (acc, float(amt)) for bank, (acc, amt) in entries}
+            )
+            for cid, entries in snapshot.items()
+        }
