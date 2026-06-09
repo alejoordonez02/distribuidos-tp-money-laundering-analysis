@@ -4,6 +4,8 @@ from typing import Any, Optional
 
 import msgpack
 
+from common.fault_injection import maybe_crash
+
 
 class CheckpointStore:
     """Atomic on-disk checkpoint: writes to a temp file + fsync + os.replace, so a
@@ -22,6 +24,9 @@ class CheckpointStore:
                 f.write(msgpack.packb(blob, use_bin_type=True))
                 f.flush()
                 os.fsync(f.fileno())
+            # Crash here leaves the temp file as garbage; the real checkpoint is
+            # only swapped in by the atomic os.replace below, never partially.
+            maybe_crash("during_checkpoint_write")
             os.replace(tmp, self._path)
         except BaseException:
             try:
