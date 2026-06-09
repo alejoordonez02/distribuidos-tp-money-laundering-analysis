@@ -22,11 +22,15 @@ class ExchangeRabbitMQ(MOMExchange):
         exchange_name: str,
         routing_keys: list[str],
         queue_name: str,
+        exclusive: bool = True,
     ):
         self.host = host
         self.exchange_name = exchange_name
         self.routing_keys = routing_keys
         self.queue_name = queue_name
+        # Non-exclusive queues survive a consumer crash so RabbitMQ keeps
+        # accumulating (and redelivers un-acked) messages until the node returns.
+        self.exclusive = exclusive
 
         # TODO: heartbeat=600 may be starved by blocking callbacks in start_consuming — revisit
         self.conn = BlockingConnection(ConnectionParameters(host, heartbeat=0))
@@ -37,7 +41,9 @@ class ExchangeRabbitMQ(MOMExchange):
         self, on_message_callback: Callable[[bytes, Callable, Callable], None]
     ) -> None:
 
-        self.chan.queue_declare(queue=self.queue_name, exclusive=True)
+        self.chan.queue_declare(
+            queue=self.queue_name, exclusive=self.exclusive, durable=not self.exclusive
+        )
         for k in self.routing_keys:
             self.chan.queue_bind(
                 exchange=self.exchange_name, queue=self.queue_name, routing_key=k
@@ -108,7 +114,11 @@ class ExchangeRabbitMQ(MOMExchange):
 
     def clone(self) -> "ExchangeRabbitMQ":
         return ExchangeRabbitMQ(
-            self.host, self.exchange_name, self.routing_keys, self.queue_name
+            self.host,
+            self.exchange_name,
+            self.routing_keys,
+            self.queue_name,
+            self.exclusive,
         )
 
     def _ack(self, chan, method) -> None:

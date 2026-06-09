@@ -10,16 +10,22 @@ def make_rx_tx(
     mom_host: str,
     naffinity_downstream: int,
     affinity_upstream: bool,
+    durable_rx: bool = False,
 ):
-    rx = _make_rx(idx, mom_host, rx_name, affinity_upstream)
+    rx = _make_rx(idx, mom_host, rx_name, affinity_upstream, durable_rx)
     tx = _make_tx(idx, mom_host, tx_name, naffinity_downstream)
 
     return rx, tx
 
 
-def _make_rx(idx: int, mom_host: str, rx_name: str, affinity_upstream: bool):
+def _make_rx(
+    idx: int, mom_host: str, rx_name: str, affinity_upstream: bool, durable_rx: bool
+):
+    # durable_rx keeps the queue across consumer crashes (needed for crash recovery).
     return (
-        ExchangeRabbitMQ(mom_host, rx_name, [f"{idx}"], f"{rx_name}{idx}")
+        ExchangeRabbitMQ(
+            mom_host, rx_name, [f"{idx}"], f"{rx_name}{idx}", exclusive=not durable_rx
+        )
         if affinity_upstream
         else QueueRabbitMQ(mom_host, rx_name)
     )
