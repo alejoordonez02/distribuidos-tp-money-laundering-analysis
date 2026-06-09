@@ -12,3 +12,4 @@ from .queue_mom import MOMQueue
 from .queue_rabbitmq import QueueRabbitMQ
 from .ring_mom import MOMRing
 from .ring_rabbitmq import RingRabbitMQ
+from .stamping_mom import StampingMOM, derive_producer_id
