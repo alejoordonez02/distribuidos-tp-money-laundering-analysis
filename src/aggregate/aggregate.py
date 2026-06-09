@@ -1,10 +1,12 @@
 import logging
+from contextlib import nullcontext
 from queue import Queue
 from threading import Thread
-from typing import Callable, Sequence
+from typing import Callable, Optional, Sequence
 
 from aggregate_fns import AggregateFn
 
+from common.checkpoint import Checkpointer
 from common.comms.eof_handler.eof_handler import StatefulEOFHandler
 from common.comms.messages import EOF, MessageType, deserialize_message
 from common.comms.middleware import MOM
@@ -19,12 +21,14 @@ class Aggregate:
         external_txs: Sequence[MOM],
         eof_handler: StatefulEOFHandler,
         internal_eofs_rx: Queue[EOF],
+        checkpointer: Optional[Checkpointer] = None,
     ):
         self.external_rx = external_rx
         self.fn = fn
         self.external_txs = external_txs
         self.eof_handler = eof_handler
         self.internal_eofs_rx = internal_eofs_rx
+        self.checkpointer = checkpointer
 
         self._should_keep_running = False
         self.internal_eofs_handle: Thread
@@ -32,6 +36,8 @@ class Aggregate:
     def start(self):
         setup_graceful_shutdown(self.stop)
         self._should_keep_running = True
+        if self.checkpointer and self.checkpointer.restore():
+            logging.info("restored state from checkpoint")
         # TODO: estaría bueno no levantar este thread cuando estamos
         #       sólos, normalmente me molestaría más pero por como se
         #       manejan los threads en python la verdad prefiero que
@@ -64,7 +70,9 @@ class Aggregate:
                     raise e
                 return
 
-            affinity_groups = self.fn.get_result(eof.client_id)
+            lock = self.checkpointer.lock if self.checkpointer else nullcontext()
+            with lock:
+                affinity_groups = list(self.fn.get_result(eof.client_id))
 
             for aggregated, affinity in affinity_groups:
                 external_tx_idx = affinity % len(self.external_txs)
@@ -84,9 +92,20 @@ class Aggregate:
         logging.debug("received msg: %s", msg.__dict__)  # lazy: str() only if DEBUG
 
         if msg.type() == MessageType.EOF:
+            if self.checkpointer:
+                self.checkpointer.flush()
             self.eof_handler.handle(msg)  # type: ignore[reportArgumentType]
-        else:
+            ack()
+            return
+
+        if self.checkpointer is None:
+            self.fn.aggregate(msg)
+            self.eof_handler.add_processed_count(msg.client_id)
+            ack()
+            return
+
+        def apply():
             self.fn.aggregate(msg)
             self.eof_handler.add_processed_count(msg.client_id)
 
-        ack()
+        self.checkpointer.handle_data(msg, apply, ack)

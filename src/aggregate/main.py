@@ -1,6 +1,7 @@
 import logging
 import os
 from queue import Queue
+from typing import Optional
 
 from aggregate_fns import (
     AggregateFn,
@@ -15,6 +16,7 @@ from aggregate_fns import (
 from strategies import AggregateStrategy
 
 from aggregate import Aggregate
+from common.checkpoint import Checkpointer, CheckpointStore, Deduplicator
 from common.comms.eof_handler import make_stateful_eof_handler
 from common.comms.messages import EOF
 from common.comms.middleware import make_rx_tx
@@ -28,7 +30,17 @@ IDX = int(os.getenv("IDX", 0))
 AFFINITY_UPSTREAM = os.environ["AFFINITY_UPSTREAM"] == "1"
 NAFFINITY_DOWNSTREAM = int(os.getenv("NAFFINITY_DOWNSTREAM", 0))
 
+STATE_DIR = os.getenv("STATE_DIR")
+CHECKPOINT_EVERY = int(os.getenv("CHECKPOINT_EVERY", 5))
+
 LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "WARNING")
+
+
+def make_checkpointer(fn: AggregateFn, node_id: str) -> Optional[Checkpointer]:
+    if STATE_DIR is None:
+        return None
+    store = CheckpointStore(os.path.join(STATE_DIR, f"{node_id}.ckpt"))
+    return Checkpointer(fn, store, Deduplicator(), CHECKPOINT_EVERY)
 
 
 def make_aggregate(
@@ -42,16 +54,23 @@ def make_aggregate(
 ) -> Aggregate:
 
     external_rx, external_txs = make_rx_tx(
-        idx, rx_name, tx_name, mom_host, naffinities_downstream, affinity_upstream
+        idx,
+        rx_name,
+        tx_name,
+        mom_host,
+        naffinities_downstream,
+        affinity_upstream,
+        durable_rx=STATE_DIR is not None,
     )
 
     internal_eofs = Queue[EOF]()
-    # TODO: tengo que cambiar el external_txs[0]
-    #       porq va a traer problemas para fault
-    #       tolerance
     eof_handler = make_stateful_eof_handler(MOM_HOST, (external_txs[0],), internal_eofs)
 
-    aggregate = Aggregate(fn, external_rx, external_txs, eof_handler, internal_eofs)
+    checkpointer = make_checkpointer(fn, f"{STRATEGY}_{idx}")
+
+    aggregate = Aggregate(
+        fn, external_rx, external_txs, eof_handler, internal_eofs, checkpointer
+    )
 
     return aggregate
 
