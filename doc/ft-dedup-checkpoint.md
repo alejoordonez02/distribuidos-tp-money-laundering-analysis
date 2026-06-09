@@ -76,7 +76,82 @@ queda scaffoldeado sin puntos cableados; los puntos concretos arrancan en Fase 2
 
 ## Fase 2 — Dedup + checkpoint (PoC en un nodo stateful)
 
-_Pendiente._
+### Objetivo
+PoC completa de deduplicación + checkpoint en un nodo stateful simple, recuperable
+ante caída.
+
+### Nodo elegido
+`Aggregate` + `UC2MaxAmountAggregateFn` (máximo por banco/cliente). Estado acumulado
+trivial de validar; su upstream (group_by UC2 max) ya estampa `producer_id+seq`.
+`NPEERS=1` → usa `StatefulSingleNodeEOFHandler`, que no compara contadores de EOF, así
+que el PoC no necesita persistir contadores (eso es Fase 3 para los nodos en ring).
+
+### Diseño
+Componentes nuevos en `src/common/checkpoint/` (contra interfaces, reutilizables):
+- `Deduplicator`: `last_seq[producer_id]`. Descarta `seq <= last_seq`. No deduplica
+  `seq == 0` (mensajes sin estampar). Liviano: no guarda el set de ids vistos.
+- `CheckpointStore`: persistencia atómica (temp + fsync + `os.replace`) en `STATE_DIR`.
+- `Checkpointer`: coordina dedup + checkpoint batcheado. Retiene los ACK hasta que el
+  checkpoint que los cubre es durable, así una caída nunca pierde un efecto ya ACKeado.
+
+Interfaz: `AggregateFn` expone `snapshot_state()/restore_state()` (default
+`NotImplementedError`); sólo `UC2MaxAmount` los implementa. El controller decide cuándo
+persistir/ACKear; la fn sólo sabe serializar su estado.
+
+### Política de ACK/checkpoint
+Batcheado y configurable: `CHECKPOINT_EVERY` mensajes aplicados → un checkpoint + flush
+de los ACK retenidos. En EOF se hace flush del batch antes de procesarlo. Requiere
+`prefetch >= CHECKPOINT_EVERY` (el rx ya usa `prefetch=10`).
+
+Recuperación:
+- Caída tras aplicar y antes del checkpoint → el efecto está sólo en RAM y el msg no se
+  ACKeó → RabbitMQ lo reentrega → `last_seq` persistido no lo cubre → se reprocesa.
+- Caída tras checkpoint y antes del ACK → al revivir, `last_seq` ya lo cubre → la
+  reentrega se descarta. Sin doble conteo.
+
+### Colas durables (prerequisito)
+El rx con afinidad declaraba la cola `exclusive=True` → al caer el nodo, RabbitMQ borraba
+la cola y se perdían los mensajes. Para el modelo de fallas ("RabbitMQ acumula hasta que
+el nodo vuelve") el rx de un nodo con checkpoint se declara **no-exclusivo + durable**
+(`make_rx_tx(durable_rx=True)` cuando hay `STATE_DIR`).
+
+### Persistencia
+`STATE_DIR` (env) → volume `./state/{node}` montado vía `gen_compose` sólo en el nodo con
+checkpoint. Nunca `/tmp`. `state/` está en `.gitignore`.
+
+### Fault injection (puntos cableados)
+`maybe_crash(...)` en: `after_apply_before_checkpoint`, `after_checkpoint_before_ack`,
+`after_dup_before_ack`, `after_restore_on_startup`. Off por default. Se activa con
+`FAULT_INJECTION=1` + `FAULT_CRASH_POINT=<punto>` en el env del nodo.
+
+### Archivos
+- `src/common/checkpoint/{deduplicator,checkpoint_store,checkpointer,__init__}.py` (nuevos).
+- `src/aggregate/aggregate_fns/aggregate_fn.py`, `uc2_max_amount.py` — snapshot/restore.
+- `src/aggregate/aggregate.py`, `main.py` — wiring del checkpointer + durable_rx.
+- `src/common/comms/middleware/exchange_rabbitmq.py`, `make_rx_tx.py` — rx no-exclusivo.
+- `scripts/gen_compose/src/gen_nodes.py`, `gen_uc2.py` — volume + env del estado.
+- `test/test_{deduplicator,checkpoint_store,checkpointer,uc2_snapshot}.py` (nuevos).
+
+### Validación
+- Unit: 29/29 (dedup, store atómico, batching/dedup/restore del checkpointer, snapshot UC2).
+- E2E normal (perfect): 5/5 == baseline + `.ckpt` creado + restore al reiniciar.
+- E2E con falla (manual): crash en `after_checkpoint_before_ack`, recreación del nodo,
+  reentrega deduplicada, **5/5 == baseline**. Logs confirman restore + downstream EOF.
+
+### Cómo reproducir el crash test (manual)
+1. `STATE_DIR` ya está en el nodo. Limpiar `state/` (vía contenedor root) y `responses/`.
+2. Agregar al env del `uc2_max_amount_aggregate_0` en `docker-compose.yaml`:
+   `FAULT_INJECTION=1`, `FAULT_CRASH_POINT=after_checkpoint_before_ack`.
+3. `docker compose up -d` → el nodo cae tras el primer checkpoint.
+4. Poner `FAULT_INJECTION=0` y `docker compose up -d --no-deps uc2_max_amount_aggregate_0`.
+5. Esperar a los clientes y `make test`.
+
+### Pendiente / riesgos
+- Crash en la ruta de EOF (producción de resultados, async en otro thread) fuera de
+  alcance: el EOF se ACKea al encolarse. Documentado para Fase 3.
+- Persistencia de contadores del EOF ring (nodos multi-peer) → Fase 3.
+- Limpieza de `state/` viejo entre corridas es manual (root-owned); evitar contaminación
+  con `last_seq` viejo (producer_id es estable entre runs).
 
 ## Fase 3 — Propagar dedup/checkpoint a stateful principales
 
