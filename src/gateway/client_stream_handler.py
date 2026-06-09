@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from common.comms.connection import Connection
 from common.comms.messages import (
-    MSG_RANGE,
+    PREFIX_RANGE,
     TYPE_RANGE,
     Hello,
     HelloAck,
@@ -67,5 +67,5 @@ class ClientStreamHandler:
 
     def _stamp_id(self, raw: bytes) -> bytes:
         """Overwrite the 16-byte client_id prefix with the gateway-minted id,
-        without unpacking the msgpack payload."""
-        return raw[TYPE_RANGE] + self.id.bytes + raw[MSG_RANGE]
+        preserving everything after it (producer_id, seq, payload)."""
+        return raw[TYPE_RANGE] + self.id.bytes + raw[PREFIX_RANGE.stop :]
