@@ -11,23 +11,30 @@ def make_rx_tx(
     naffinity_downstream: int,
     affinity_upstream: bool,
     durable_rx: bool = False,
+    rx_prefetch: int = 1,
 ):
-    rx = _make_rx(idx, mom_host, rx_name, affinity_upstream, durable_rx)
+    rx = _make_rx(idx, mom_host, rx_name, affinity_upstream, durable_rx, rx_prefetch)
     tx = _make_tx(idx, mom_host, tx_name, naffinity_downstream)
 
     return rx, tx
 
 
 def _make_rx(
-    idx: int, mom_host: str, rx_name: str, affinity_upstream: bool, durable_rx: bool
+    idx: int,
+    mom_host: str,
+    rx_name: str,
+    affinity_upstream: bool,
+    durable_rx: bool,
+    rx_prefetch: int,
 ):
     # durable_rx keeps the queue across consumer crashes (needed for crash recovery).
+    # rx_prefetch must cover the checkpoint batch so held acks don't deadlock.
     return (
         ExchangeRabbitMQ(
             mom_host, rx_name, [f"{idx}"], f"{rx_name}{idx}", exclusive=not durable_rx
         )
         if affinity_upstream
-        else QueueRabbitMQ(mom_host, rx_name)
+        else QueueRabbitMQ(mom_host, rx_name, prefetch_count=rx_prefetch)
     )
 
 
