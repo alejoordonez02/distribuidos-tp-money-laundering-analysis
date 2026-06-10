@@ -28,6 +28,7 @@ def gen_uc4() -> str:
         naffinity_downstream=0,
         rx_name=queue0,
         tx_name=queue1,
+        checkpoint_every=5,
     )
     queue2 = "uc4_degree_graphs"
     compose += gen_nodes(
@@ -68,6 +69,7 @@ def gen_uc4() -> str:
         naffinity_downstream=5,
         rx_name=queue4,
         tx_name=queue5,
+        checkpoint_every=5,
     )
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
@@ -77,5 +79,6 @@ def gen_uc4() -> str:
         naffinity_downstream=0,
         rx_name=queue5,
         tx_name=UC4_JOIN,
+        checkpoint_every=5,
     )
     return compose
