@@ -15,7 +15,7 @@ from aggregate_fns import (
 from strategies import AggregateStrategy
 
 from aggregate import Aggregate
-from common.checkpoint import make_checkpointer
+from common.checkpoint import MultiShardSpill, make_checkpointer
 from common.comms.eof_handler import make_stateful_eof_handler
 from common.comms.messages import EOF
 from common.comms.middleware import make_rx_tx
@@ -79,6 +79,11 @@ def main():
     logging.basicConfig(level=LOGGING_LEVEL)
     logging.getLogger("pika").setLevel(logging.WARNING)
 
+    spill_dir = os.path.join(STATE_DIR or "/tmp", "spill")
+
+    def spill(tag: str) -> MultiShardSpill:
+        return MultiShardSpill(spill_dir, tag)
+
     match STRATEGY:
         case AggregateStrategy.UC2_MAX_AMOUNT:
             fn = UC2MaxAmountAggregateFn()
@@ -87,11 +92,11 @@ def main():
         case AggregateStrategy.UC3_AVERAGE:
             fn = UC3AvgAggregateFn()
         case AggregateStrategy.UC4_COUNT_PATHS:
-            fn = UC4CountPaths()
+            fn = UC4CountPaths(spill("uc4_count_paths"))
         case AggregateStrategy.UC4_AGGREGATE_GRAPHS:
-            fn = UC4AggregateGraphs()
+            fn = UC4AggregateGraphs(spill("uc4_aggregate_graphs"))
         case AggregateStrategy.UC4_PATHS:
-            fn = UC4AggregatePaths()
+            fn = UC4AggregatePaths(spill("uc4_aggregate_paths"))
         case AggregateStrategy.UC4_DEGREE:
             fn = UC4Degree()
         case _:
