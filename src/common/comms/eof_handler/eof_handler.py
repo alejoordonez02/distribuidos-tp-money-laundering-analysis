@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Any
 from uuid import UUID
 
 from common.comms.messages import EOF
@@ -9,6 +10,14 @@ class EOFHandler(ABC):
 
     processed_counts: dict[UUID, int]
     sent_data: dict[UUID, int]
+
+    def snapshot_state(self) -> dict[str, Any]:
+        # No-op by default: single-node handlers don't gate on counts. Ring
+        # handlers override this to persist their counts in the checkpoint.
+        return {}
+
+    def restore_state(self, snapshot: dict[str, Any]):
+        pass
 
     @abstractmethod
     def start(self):

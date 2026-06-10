@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from threading import Lock, Thread
-from typing import Callable
+from typing import Any, Callable
 from uuid import UUID
 
 from common.comms.middleware import MOMRing
@@ -17,6 +17,22 @@ class RingEOFHandler(ABC):
     def start(self):
         self.thread_handle = Thread(target=self._start_consuming_back)
         self.thread_handle.start()
+
+    def snapshot_state(self) -> dict[str, Any]:
+        # Persisted with the node's checkpoint so the ring counts survive a crash:
+        # acked messages keep their contribution, redelivered ones are deduped.
+        with self.mtx:
+            return {
+                "processed": {str(k): v for k, v in self.processed_counts.items()},
+                "sent": {str(k): v for k, v in self.sent_data.items()},
+            }
+
+    def restore_state(self, snapshot: dict[str, Any]):
+        with self.mtx:
+            self.processed_counts = {
+                UUID(k): v for k, v in snapshot.get("processed", {}).items()
+            }
+            self.sent_data = {UUID(k): v for k, v in snapshot.get("sent", {}).items()}
 
     def stop(self):
         self.mom_ring.stop_consuming()
