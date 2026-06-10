@@ -57,6 +57,7 @@ def gen_uc2() -> str:
         naffinity_downstream=0,
         rx_name=bank_names_to_aggregate,
         tx_name=bank_names_to_merge,
+        checkpoint_every=5,
     )
 
     compose += gen_merge(

@@ -32,6 +32,7 @@ def gen_uc3() -> str:
         naffinity_downstream=0,
         rx_name=queue0,
         tx_name=queue1,
+        checkpoint_every=5,
     )
     queue2 = "uc3_average_merged"
     compose += gen_merge(
