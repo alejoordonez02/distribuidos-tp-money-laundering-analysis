@@ -47,6 +47,14 @@ class _SeqCounter:
             self._seq += 1
             return self._seq
 
+    def value(self) -> int:
+        with self._lock:
+            return self._seq
+
+    def restore(self, value: int):
+        with self._lock:
+            self._seq = value
+
 
 class StampingMOM(MOM):
     """Decorates a tx MOM, stamping each data message with a `producer_id` and a
@@ -60,6 +68,18 @@ class StampingMOM(MOM):
         self._inner = inner
         self._producer_id = producer_id
         self._counter = counter if counter is not None else _SeqCounter()
+
+    @property
+    def producer_id(self) -> bytes:
+        return self._producer_id
+
+    def seq_value(self) -> int:
+        return self._counter.value()
+
+    def restore_seq(self, value: int):
+        # Resume the sequence after a restart so re-emitted messages keep the same
+        # seq and stay deduplicable downstream.
+        self._counter.restore(value)
 
     def send(self, message: bytes):
         if peek_type(message) in _UNSTAMPED_TYPES:
