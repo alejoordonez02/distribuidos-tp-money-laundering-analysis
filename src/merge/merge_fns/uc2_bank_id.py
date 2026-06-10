@@ -1,5 +1,5 @@
 import logging
-from typing import Iterator
+from typing import Any, Iterator
 from uuid import UUID
 
 from common.comms.messages import BankNames, MaxByBank, MergedBankData
@@ -46,3 +46,21 @@ class UC2BankIdMergeFn(MergeFn):
         merged = MergedBankData(client_id, entries)
         logging.debug(f"merged:\n{merged.__dict__}")
         yield merged
+
+    def snapshot_state(self) -> dict[str, Any]:
+        return {
+            "max": {str(c): mbb.data for c, mbb in self._max_amounts.items()},
+            "names": {str(c): bn.data for c, bn in self._bank_names.items()},
+        }
+
+    def restore_state(self, snapshot: dict[str, Any]):
+        self._max_amounts = {
+            UUID(c): MaxByBank(
+                UUID(c), {b: (a, float(am)) for b, (a, am) in data.items()}
+            )
+            for c, data in snapshot.get("max", {}).items()
+        }
+        self._bank_names = {
+            UUID(c): BankNames(UUID(c), dict(data))
+            for c, data in snapshot.get("names", {}).items()
+        }

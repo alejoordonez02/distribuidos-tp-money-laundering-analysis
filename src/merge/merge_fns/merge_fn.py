@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Iterable
+from typing import Any, Iterable
 from uuid import UUID
 
 from common.comms.messages import Message
@@ -15,6 +15,12 @@ class MergeFn:
     def right(self, msg: Message):
         """Handle a message from the right stream."""
         pass
+
+    def snapshot_state(self) -> dict[str, Any]:
+        raise NotImplementedError("this merge fn is not checkpointable")
+
+    def restore_state(self, snapshot: dict[str, Any]):
+        raise NotImplementedError("this merge fn is not checkpointable")
 
     @abstractmethod
     def get_result(self, client_id: UUID) -> Iterable[Message]:
