@@ -1,7 +1,6 @@
 import logging
 import os
 from queue import Queue
-from typing import Optional
 
 from aggregate_fns import (
     AggregateFn,
@@ -16,7 +15,7 @@ from aggregate_fns import (
 from strategies import AggregateStrategy
 
 from aggregate import Aggregate
-from common.checkpoint import Checkpointer, CheckpointStore, Deduplicator
+from common.checkpoint import make_checkpointer
 from common.comms.eof_handler import make_stateful_eof_handler
 from common.comms.messages import EOF
 from common.comms.middleware import make_rx_tx
@@ -34,13 +33,6 @@ STATE_DIR = os.getenv("STATE_DIR")
 CHECKPOINT_EVERY = int(os.getenv("CHECKPOINT_EVERY", 5))
 
 LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "WARNING")
-
-
-def make_checkpointer(fn: AggregateFn, node_id: str, seq_sources) -> Optional[Checkpointer]:
-    if STATE_DIR is None:
-        return None
-    store = CheckpointStore(os.path.join(STATE_DIR, f"{node_id}.ckpt"))
-    return Checkpointer(fn, store, Deduplicator(), CHECKPOINT_EVERY, seq_sources)
 
 
 def make_aggregate(
@@ -66,7 +58,9 @@ def make_aggregate(
     internal_eofs = Queue[EOF]()
     eof_handler = make_stateful_eof_handler(MOM_HOST, (external_txs[0],), internal_eofs)
 
-    checkpointer = make_checkpointer(fn, f"{STRATEGY}_{idx}", external_txs)
+    checkpointer = make_checkpointer(
+        STATE_DIR, f"{STRATEGY}_{idx}", external_txs, CHECKPOINT_EVERY, fn
+    )
 
     aggregate = Aggregate(
         fn, external_rx, external_txs, eof_handler, internal_eofs, checkpointer
