@@ -65,5 +65,6 @@ def gen_uc2() -> str:
         left_rx_name=max_amounts_to_merge,
         right_rx_name=bank_names_to_merge,
         tx_name=UC2_JOIN,
+        checkpoint_every=5,
     )
     return compose

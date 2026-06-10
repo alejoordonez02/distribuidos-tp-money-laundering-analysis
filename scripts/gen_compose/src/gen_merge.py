@@ -3,9 +3,10 @@ def gen_merge(
     left_rx_name: str,
     right_rx_name: str,
     tx_name: str,
+    checkpoint_every: int | None = None,
 ):
     name = strategy
-    return f"""\n
+    compose = f"""\n
   {name}:
     build:
       context: ./src/
@@ -21,3 +22,12 @@ def gen_merge(
       - RIGHT_RX={right_rx_name}
       - TX={tx_name}
       - STRATEGY={strategy}"""
+
+    if checkpoint_every is not None:
+        compose += f"""
+      - STATE_DIR=/state
+      - CHECKPOINT_EVERY={checkpoint_every}
+    volumes:
+      - ./state/{name}:/state"""
+
+    return compose
