@@ -1,5 +1,5 @@
 from threading import Lock
-from typing import Any, Callable, Protocol
+from typing import Any, Callable, Protocol, Sequence
 
 from common.fault_injection import maybe_crash
 
@@ -10,6 +10,13 @@ from .deduplicator import Deduplicator
 class Snapshotable(Protocol):
     def snapshot_state(self) -> dict[str, Any]: ...
     def restore_state(self, snapshot: dict[str, Any]): ...
+
+
+class SeqSource(Protocol):
+    producer_id: bytes
+
+    def seq_value(self) -> int: ...
+    def restore_seq(self, value: int): ...
 
 
 class Checkpointer:
@@ -27,11 +34,13 @@ class Checkpointer:
         store: CheckpointStore,
         deduplicator: Deduplicator,
         checkpoint_every: int,
+        seq_sources: Sequence[SeqSource] = (),
     ):
         self._fn = fn
         self._store = store
         self._dedup = deduplicator
         self._every = max(1, checkpoint_every)
+        self._seq_sources = seq_sources
         self._pending_acks: list[Callable] = []
         self._dirty = False
         self.lock = Lock()
@@ -42,6 +51,10 @@ class Checkpointer:
             return False
         self._fn.restore_state(blob["state"])
         self._dedup.restore(blob["dedup"])
+        out_seq = blob.get("out_seq", {})
+        for src in self._seq_sources:
+            if src.producer_id in out_seq:
+                src.restore_seq(out_seq[src.producer_id])
         maybe_crash("after_restore_on_startup")
         return True
 
@@ -68,7 +81,11 @@ class Checkpointer:
     def _checkpoint_and_flush(self):
         if self._dirty:
             self._store.save(
-                {"state": self._fn.snapshot_state(), "dedup": self._dedup.snapshot()}
+                {
+                    "state": self._fn.snapshot_state(),
+                    "dedup": self._dedup.snapshot(),
+                    "out_seq": {s.producer_id: s.seq_value() for s in self._seq_sources},
+                }
             )
             self._dirty = False
 
