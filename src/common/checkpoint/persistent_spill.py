@@ -1,0 +1,60 @@
+import os
+from typing import IO, Any, Iterator
+from uuid import UUID
+
+
+class PersistentSpill:
+    """Per-client append-only line buffer on a durable directory.
+
+    Survives a restart: the checkpoint records each file's committed byte length,
+    and `restore_state` truncates anything appended after the last checkpoint (those
+    lines get re-appended when the un-acked messages are redelivered), so the spill
+    stays consistent with the dedup table.
+    """
+
+    def __init__(self, directory: str, tag: str):
+        self._dir = directory
+        self._tag = tag
+        self._handles: dict[UUID, IO[str]] = {}
+        os.makedirs(directory, exist_ok=True)
+
+    def _path(self, client_id: UUID) -> str:
+        return os.path.join(self._dir, f"{self._tag}_{client_id}.spill")
+
+    def _handle(self, client_id: UUID) -> IO[str]:
+        handle = self._handles.get(client_id)
+        if handle is None:
+            handle = open(self._path(client_id), "a")
+            self._handles[client_id] = handle
+        return handle
+
+    def append(self, client_id: UUID, line: str):
+        self._handle(client_id).write(line)
+
+    def iter_lines_and_clear(self, client_id: UUID) -> Iterator[str]:
+        handle = self._handles.pop(client_id, None)
+        if handle is not None:
+            handle.close()
+        path = self._path(client_id)
+        if os.path.exists(path):
+            with open(path) as f:
+                yield from f
+            os.unlink(path)
+
+    def snapshot_state(self) -> dict[str, Any]:
+        committed = {}
+        for client_id, handle in self._handles.items():
+            handle.flush()
+            os.fsync(handle.fileno())
+            committed[str(client_id)] = os.path.getsize(self._path(client_id))
+        return committed
+
+    def restore_state(self, snapshot: dict[str, Any]):
+        self._handles = {}
+        for client_str, length in snapshot.items():
+            client_id = UUID(client_str)
+            path = self._path(client_id)
+            if os.path.exists(path):
+                with open(path, "r+") as f:
+                    f.truncate(length)
+            self._handles[client_id] = open(path, "a")
