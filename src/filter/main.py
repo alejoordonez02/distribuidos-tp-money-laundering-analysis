@@ -6,16 +6,29 @@ from filter2 import Filter
 from filter_fns import FilterFn, UC3AvgFilter, UC4PathFilter, UC5AmountFilter
 from strategies import FilterStrategy
 
+from common.checkpoint import make_checkpointer
 from common.comms.eof_handler import make_stateless_eof_handler
-from common.comms.middleware import QueueRabbitMQ, make_rx_tx
+from common.comms.middleware import (
+    QueueRabbitMQ,
+    StampingMOM,
+    derive_producer_id,
+    make_rx_tx,
+)
 
 MOM_HOST = os.environ["MOM_HOST"]
 RX = os.environ["RX"]
 STRATEGY = os.environ["STRATEGY"]
-# This reading half varies depending on the controller instance that's being
-# used, thus it does not need to be declared for each strategy.
+
+STATE_DIR = os.getenv("STATE_DIR")
+CHECKPOINT_EVERY = int(os.getenv("CHECKPOINT_EVERY", 5))
 
 LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "WARNING")
+
+
+def _stamped_tx(queue_name: str, idx: int) -> StampingMOM:
+    return StampingMOM(
+        QueueRabbitMQ(MOM_HOST, queue_name), derive_producer_id(queue_name, idx, 0)
+    )
 
 
 def make_default_filter() -> Filter:
@@ -28,37 +41,30 @@ def make_default_filter() -> Filter:
         UC5Filter,
     )
 
-    UC1_TRANSACTIONS_TX = os.environ["UC1_TRANSACTIONS_TX"]
-    UC2_TRANSACTIONS_TX = os.environ["UC2_TRANSACTIONS_TX"]
-    UC3_PERIOD_A_TRANSACTIONS_TX = os.environ["UC3_PERIOD_A_TRANSACTIONS_TX"]
-    UC3_PERIOD_B_TRANSACTIONS_TX = os.environ["UC3_PERIOD_B_TRANSACTIONS_TX"]
-    UC4_TRANSACTIONS_TX = os.environ["UC4_TRANSACTIONS_TX"]
-    UC4_DEGREE_TRANSACTIONS_TX = os.environ["UC4_DEGREE_TRANSACTIONS_TX"]
-    UC5_TRANSACTIONS_TX = os.environ["UC5_TRANSACTIONS_TX"]
+    idx = int(os.getenv("IDX", 0))
 
-    transactions_rx = QueueRabbitMQ(MOM_HOST, RX)
-
-    routes = [
-        (QueueRabbitMQ(MOM_HOST, UC1_TRANSACTIONS_TX), UC1Filter()),
-        (QueueRabbitMQ(MOM_HOST, UC2_TRANSACTIONS_TX), UC2Filter()),
-        (
-            QueueRabbitMQ(MOM_HOST, UC3_PERIOD_A_TRANSACTIONS_TX),
-            UC3FilterPeriodA(),
-        ),
-        (
-            QueueRabbitMQ(MOM_HOST, UC3_PERIOD_B_TRANSACTIONS_TX),
-            UC3FilterPeriodB(),
-        ),
-        (QueueRabbitMQ(MOM_HOST, UC4_TRANSACTIONS_TX), UC4Filter()),
-        (QueueRabbitMQ(MOM_HOST, UC4_DEGREE_TRANSACTIONS_TX), UC4Filter()),
-        (QueueRabbitMQ(MOM_HOST, UC5_TRANSACTIONS_TX), UC5Filter()),
+    route_specs = [
+        (os.environ["UC1_TRANSACTIONS_TX"], UC1Filter()),
+        (os.environ["UC2_TRANSACTIONS_TX"], UC2Filter()),
+        (os.environ["UC3_PERIOD_A_TRANSACTIONS_TX"], UC3FilterPeriodA()),
+        (os.environ["UC3_PERIOD_B_TRANSACTIONS_TX"], UC3FilterPeriodB()),
+        (os.environ["UC4_TRANSACTIONS_TX"], UC4Filter()),
+        (os.environ["UC4_DEGREE_TRANSACTIONS_TX"], UC4Filter()),
+        (os.environ["UC5_TRANSACTIONS_TX"], UC5Filter()),
     ]
+    routes = [(_stamped_tx(queue, idx), fn) for queue, fn in route_specs]
 
-    eof_handler = make_stateless_eof_handler(MOM_HOST, [tx for (tx, _) in routes])
+    prefetch = CHECKPOINT_EVERY if STATE_DIR else 1
+    transactions_rx = QueueRabbitMQ(MOM_HOST, RX, prefetch_count=prefetch)
 
-    filter2 = Filter(transactions_rx, routes, eof_handler)
+    txs = [tx for tx, _ in routes]
+    eof_handler = make_stateless_eof_handler(MOM_HOST, txs)
+    checkpointer = make_checkpointer(
+        STATE_DIR, f"{STRATEGY}_{idx}", txs, CHECKPOINT_EVERY,
+        extra_state={"eof": eof_handler},
+    )
 
-    return filter2
+    return Filter(transactions_rx, routes, eof_handler, checkpointer)
 
 
 def make_filter(
@@ -72,16 +78,28 @@ def make_filter(
 ) -> Filter:
 
     external_rx, external_txs = make_rx_tx(
-        idx, rx_name, tx_name, mom_host, naffinities_downstream, affinity_upstream
+        idx,
+        rx_name,
+        tx_name,
+        mom_host,
+        naffinities_downstream,
+        affinity_upstream,
+        durable_rx=STATE_DIR is not None,
+        rx_prefetch=CHECKPOINT_EVERY if STATE_DIR else 1,
     )
 
     eof_handler = make_stateless_eof_handler(MOM_HOST, (external_txs[0],))
-
-    filter2 = Filter(
-        external_rx, [(tx, fn_factory()) for tx in external_txs], eof_handler
+    checkpointer = make_checkpointer(
+        STATE_DIR, f"{STRATEGY}_{idx}", external_txs, CHECKPOINT_EVERY,
+        extra_state={"eof": eof_handler},
     )
 
-    return filter2
+    return Filter(
+        external_rx,
+        [(tx, fn_factory()) for tx in external_txs],
+        eof_handler,
+        checkpointer,
+    )
 
 
 def main():
@@ -90,8 +108,7 @@ def main():
 
     match STRATEGY:
         case FilterStrategy.DEFAULT:
-            filter2 = make_default_filter()
-            return filter2.start()
+            return make_default_filter().start()
 
         case FilterStrategy.UC3_AVG:
             fn = UC3AvgFilter
@@ -112,14 +129,6 @@ def main():
         fn, IDX, AFFINITY_UPSTREAM, NAFFINITY_DOWNSTREAM, MOM_HOST, RX, TX
     )
 
-    logging.info(
-        f"""
-        starting filter: fn={type(fn)}, \
-        idx={IDX}, affinity_upstream={AFFINITY_UPSTREAM}, \
-        nnodes_downstream={NAFFINITY_DOWNSTREAM}, \
-        mom_host={MOM_HOST}, rx={RX}, tx={TX}"\
-        """
-    )
     filter2.start()
 
 
