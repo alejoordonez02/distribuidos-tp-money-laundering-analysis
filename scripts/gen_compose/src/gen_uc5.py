@@ -30,6 +30,7 @@ def gen_uc5() -> str:
         naffinity_downstream=0,
         rx_name=queue0,
         tx_name=queue1,
+        checkpoint_every=5,
     )
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,

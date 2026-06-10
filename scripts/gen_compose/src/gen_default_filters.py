@@ -28,6 +28,10 @@ def gen_default_filters() -> str:
       - IDX={idx}
       - NPEERS={DEFAULT_FILTERS}
       - RING_NAME=default_filter_ring
-      - STRATEGY=default"""
+      - STRATEGY=default
+      - STATE_DIR=/state
+      - CHECKPOINT_EVERY=5
+    volumes:
+      - ./state/default_filter_{idx}:/state"""
 
     return compose

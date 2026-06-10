@@ -48,5 +48,6 @@ def gen_uc3() -> str:
         naffinity_downstream=0,
         rx_name=queue2,
         tx_name=UC3_JOIN,
+        checkpoint_every=5,
     )
     return compose
