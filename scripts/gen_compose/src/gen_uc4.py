@@ -56,6 +56,7 @@ def gen_uc4() -> str:
         left_rx_name=queue3,
         right_rx_name=queue1,
         tx_name=queue4,
+        checkpoint_every=5,
     )
     queue5 = "uc4_paths"
     compose += gen_nodes(

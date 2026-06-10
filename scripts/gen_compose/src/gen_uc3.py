@@ -40,6 +40,7 @@ def gen_uc3() -> str:
         left_rx_name=queue1,
         right_rx_name=UC3_PERIOD_B_TRANSACTIONS,
         tx_name=queue2,
+        checkpoint_every=5,
     )
     compose += gen_nodes(
         type2=ContainerType.FILTER,
