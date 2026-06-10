@@ -1,4 +1,4 @@
-from typing import Iterable
+from typing import Any, Iterable
 from uuid import UUID
 
 from common.comms.messages import Graph, HighDegree, Node
@@ -43,3 +43,25 @@ class UC4Degree(AggregateFn):
         hi_in = {Node.from_str(n) for n, neighbors in in_.items() if len(neighbors) >= MIN_DEGREE}
 
         yield HighDegree(client_id, hi_out, hi_in), 0
+
+    def snapshot_state(self) -> dict[str, Any]:
+        return {
+            "out": {
+                str(c): {n: list(s) for n, s in d.items()}
+                for c, d in self._out.items()
+            },
+            "in": {
+                str(c): {n: list(s) for n, s in d.items()}
+                for c, d in self._in.items()
+            },
+        }
+
+    def restore_state(self, snapshot: dict[str, Any]):
+        self._out = {
+            UUID(c): {n: set(s) for n, s in d.items()}
+            for c, d in snapshot.get("out", {}).items()
+        }
+        self._in = {
+            UUID(c): {n: set(s) for n, s in d.items()}
+            for c, d in snapshot.get("in", {}).items()
+        }

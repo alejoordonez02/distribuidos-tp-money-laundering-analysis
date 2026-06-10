@@ -49,6 +49,7 @@ def gen_uc4() -> str:
         naffinity_downstream=0,
         rx_name=queue2,
         tx_name=queue3,
+        checkpoint_every=5,
     )
     queue4 = "uc4_pruned"
     compose += gen_merge(
