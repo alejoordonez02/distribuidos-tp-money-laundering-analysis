@@ -1,5 +1,5 @@
 from threading import Lock
-from typing import Any, Callable, Protocol, Sequence
+from typing import Any, Callable, Mapping, Optional, Protocol, Sequence
 
 from common.fault_injection import maybe_crash
 
@@ -35,12 +35,16 @@ class Checkpointer:
         deduplicator: Deduplicator,
         checkpoint_every: int,
         seq_sources: Sequence[SeqSource] = (),
+        extra_state: Optional[Mapping[str, Snapshotable]] = None,
     ):
         self._fn = fn
         self._store = store
         self._dedup = deduplicator
         self._every = max(1, checkpoint_every)
         self._seq_sources = seq_sources
+        # Extra namespaced state providers (e.g. the EOF ring counters), persisted
+        # atomically with the business state and dedup table.
+        self._extra_state = dict(extra_state or {})
         self._pending_acks: list[Callable] = []
         self._dirty = False
         self.lock = Lock()
@@ -55,6 +59,10 @@ class Checkpointer:
         for src in self._seq_sources:
             if src.producer_id in out_seq:
                 src.restore_seq(out_seq[src.producer_id])
+        extra = blob.get("extra", {})
+        for key, provider in self._extra_state.items():
+            if key in extra:
+                provider.restore_state(extra[key])
         maybe_crash("after_restore_on_startup")
         return True
 
@@ -85,6 +93,9 @@ class Checkpointer:
                     "state": self._fn.snapshot_state(),
                     "dedup": self._dedup.snapshot(),
                     "out_seq": {s.producer_id: s.seq_value() for s in self._seq_sources},
+                    "extra": {
+                        k: p.snapshot_state() for k, p in self._extra_state.items()
+                    },
                 }
             )
             self._dirty = False
