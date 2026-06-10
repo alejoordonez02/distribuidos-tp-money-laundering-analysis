@@ -19,6 +19,7 @@ def gen_uc5() -> str:
         naffinity_downstream=0,
         rx_name=UC5_TRANSACTIONS,
         tx_name=queue0,
+        checkpoint_every=5,
     )
     queue1 = "uc5_filtered_converted_transactions"
     compose += gen_nodes(
