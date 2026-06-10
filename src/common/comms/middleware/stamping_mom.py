@@ -56,6 +56,26 @@ class _SeqCounter:
             self._seq = value
 
 
+# Public alias: a sequence counter that can be shared between several StampingMOMs
+# (e.g. a node whose output is emitted from more than one thread/connection).
+SeqCounter = _SeqCounter
+
+
+class CounterSeqSource:
+    """A SeqSource view over a shared counter, so it can be checkpointed without
+    holding a connection (used when the real stampers are created per-thread)."""
+
+    def __init__(self, producer_id: bytes, counter: _SeqCounter):
+        self.producer_id = producer_id
+        self._counter = counter
+
+    def seq_value(self) -> int:
+        return self._counter.value()
+
+    def restore_seq(self, value: int):
+        self._counter.restore(value)
+
+
 class StampingMOM(MOM):
     """Decorates a tx MOM, stamping each data message with a `producer_id` and a
     per-route incrementing `seq` by rewriting the header bytes."""
