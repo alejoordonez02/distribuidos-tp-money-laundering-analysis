@@ -11,6 +11,7 @@ from group_by_fns import (
 )
 from strategies import GroupByStrategy
 
+from common.checkpoint import make_checkpointer
 from common.comms.eof_handler import make_stateless_eof_handler
 from common.comms.middleware import make_rx_tx
 from group_by import GroupBy
@@ -23,6 +24,9 @@ STRATEGY = os.environ["STRATEGY"]
 IDX = int(os.getenv("IDX", 0))
 AFFINITY_UPSTREAM = os.environ["AFFINITY_UPSTREAM"] == "1"
 NAFFINITY_DOWNSTREAM = int(os.environ["NAFFINITY_DOWNSTREAM"])
+
+STATE_DIR = os.getenv("STATE_DIR")
+CHECKPOINT_EVERY = int(os.getenv("CHECKPOINT_EVERY", 5))
 
 LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "WARNING")
 
@@ -38,15 +42,27 @@ def make_groupby(
 ) -> GroupBy:
 
     external_rx, external_txs = make_rx_tx(
-        idx, rx_name, tx_name, mom_host, naffinities_downstream, affinity_upstream
+        idx,
+        rx_name,
+        tx_name,
+        mom_host,
+        naffinities_downstream,
+        affinity_upstream,
+        durable_rx=STATE_DIR is not None,
+        rx_prefetch=CHECKPOINT_EVERY if STATE_DIR else 1,
     )
 
-    # TODO: tengo que cambiar el external_txs[0]
-    #       porq va a traer problemas para fault
-    #       tolerance
     eof_handler = make_stateless_eof_handler(MOM_HOST, (external_txs[0],))
 
-    groupby = GroupBy(fn, external_rx, external_txs, eof_handler)
+    checkpointer = make_checkpointer(
+        STATE_DIR,
+        f"{STRATEGY}_{idx}",
+        external_txs,
+        CHECKPOINT_EVERY,
+        extra_state={"eof": eof_handler},
+    )
+
+    groupby = GroupBy(fn, external_rx, external_txs, eof_handler, checkpointer)
 
     return groupby
 

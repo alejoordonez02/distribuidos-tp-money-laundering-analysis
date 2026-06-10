@@ -1,10 +1,11 @@
 import logging
-from typing import Callable, Sequence
+from typing import Callable, Optional, Sequence
 
 from group_by_fns import GroupByFn
 
+from common.checkpoint import Checkpointer, dispatch
 from common.comms.eof_handler import StatelessEOFHandler
-from common.comms.messages import MessageType, deserialize_message
+from common.comms.messages import Message, deserialize_message
 from common.comms.middleware import MOM
 from common.graceful_shutdown import setup_graceful_shutdown
 
@@ -16,14 +17,18 @@ class GroupBy:
         external_rx: MOM,
         external_txs: Sequence[MOM],
         eof_handler: StatelessEOFHandler,
+        checkpointer: Optional[Checkpointer] = None,
     ):
         self.external_rx = external_rx
         self.external_txs = external_txs
         self.fn = fn
         self.eof_handler = eof_handler
+        self.checkpointer = checkpointer
 
     def start(self):
         setup_graceful_shutdown(self.stop)
+        if self.checkpointer and self.checkpointer.restore():
+            logging.info("restored state from checkpoint")
         self.eof_handler.start()
         self.external_rx.start_consuming(self._handle_message)
         self.stop()
@@ -37,21 +42,15 @@ class GroupBy:
 
     def _handle_message(self, bytes2: bytes, ack: Callable, _: Callable):
         msg = deserialize_message(bytes2)
-        logging.debug("received msg: %s", msg.__dict__)  # lazy: str() only if DEBUG
+        dispatch(self.checkpointer, msg, ack, self._on_eof, self._on_data)
 
-        if msg.type() == MessageType.EOF:
-            self.eof_handler.handle(msg)  # type: ignore[reportUndefinedVariable]
-        else:
-            affinity_groups = self.fn.group_by(msg)
+    def _on_eof(self, msg: Message):
+        self.eof_handler.handle(msg)  # type: ignore[reportArgumentType]
 
-            for group, affinity in affinity_groups:
-                external_tx_idx = affinity % len(self.external_txs)
-                self.external_txs[external_tx_idx].send(group.serialize())
+    def _on_data(self, msg: Message):
+        for group, affinity in self.fn.group_by(msg):
+            external_tx_idx = affinity % len(self.external_txs)
+            self.external_txs[external_tx_idx].send(group.serialize())
+            self.eof_handler.add_sent_data_count(msg.client_id)
 
-                # FIXME: ver q esto funcione en todos
-                #       los eof handlers
-                self.eof_handler.add_sent_data_count(msg.client_id)
-
-            self.eof_handler.add_processed_count(msg.client_id)
-
-        ack()
+        self.eof_handler.add_processed_count(msg.client_id)

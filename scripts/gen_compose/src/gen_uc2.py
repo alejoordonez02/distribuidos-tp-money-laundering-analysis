@@ -23,6 +23,7 @@ def gen_uc2() -> str:
         naffinity_downstream=MAX_AMOUNT_AGGREGATES,
         rx_name=UC2_FILTERED_TRANSACTIONS,
         tx_name=max_amounts_to_aggregate,
+        checkpoint_every=5,
     )
     max_amounts_to_merge = "uc2_max_amounts_by_bank"
     compose += gen_nodes(
