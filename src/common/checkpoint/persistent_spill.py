@@ -41,6 +41,20 @@ class PersistentSpill:
                 yield from f
             os.unlink(path)
 
+    def iter_chunks_and_clear(
+        self, client_id: UUID, batch_lines: int
+    ) -> Iterator[str]:
+        """Yield the spilled lines joined in batches of `batch_lines`, then delete
+        the file (satisfies the join's Spill protocol)."""
+        batch: list[str] = []
+        for line in self.iter_lines_and_clear(client_id):
+            batch.append(line)
+            if len(batch) >= batch_lines:
+                yield "".join(batch)
+                batch = []
+        if batch:
+            yield "".join(batch)
+
     def snapshot_state(self) -> dict[str, Any]:
         committed = {}
         for client_id, handle in self._handles.items():
