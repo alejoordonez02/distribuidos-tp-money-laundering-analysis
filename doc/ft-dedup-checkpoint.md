@@ -168,4 +168,45 @@ repetidamente en batch genera contención y cuelgues espurios; no son fallos del
 
 ## Fase 3 — Propagar dedup/checkpoint a stateful principales
 
-_Pendiente._
+### Ítem 0 (PRIMERO) — tapar el agujero de emisión en EOF
+En el nodo UC2 (y en todo controller stateful), el EOF se ackea apenas se encola
+(`aggregate.py:98`) mientras la emisión de resultados ocurre asíncrona en otro thread
+(`_handle_internal_eofs`, `:75-88`), sin checkpoint ni idempotencia. Un crash en
+`[ack del EOF .. emisión completa + downstream EOF]` puede:
+- **perder** la emisión (EOF ackeado, resultados nunca emitidos → stall del merge/join), o
+- **duplicarla** (EOF reentregado tras emitir → doble pop/emisión).
+Fix: o no ackear el EOF hasta terminar la emisión + downstream, o marcar "cliente ya
+emitido" en el checkpoint y descartar un EOF reentregado de un cliente cerrado.
+
+### Trampa crítica — el contador de `seq` de salida debe checkpointearse
+`producer_id` es determinístico/estable entre reinicios, pero el `seq` lo lleva un
+contador en memoria en `StampingMOM`. Si un nodo upstream cae y reinicia, su contador
+vuelve a 0 → re-emite con `seq` bajos → el downstream que deduplica tiene `last_seq` alto
+→ **descarta los mensajes nuevos como duplicados = PÉRDIDA DE DATOS**. En Fase 2 no se vio
+porque el downstream de UC2 (merge) no deduplica. Al propagar dedup a los nodos de abajo,
+esto se activa. Por eso el contador de salida tiene que ser parte del checkpoint
+(restaurarse al reiniciar) para que la re-emisión use el mismo `seq` y el dedup downstream
+funcione.
+
+### Diseño aplicado (reutilizable)
+Stateless = mismo mecanismo con estado de negocio vacío (`NullState`). Stateful = + snapshot
+del fn. Componentes en `common/checkpoint/`: `Deduplicator`, `Checkpointer` (dedup + estado +
+contadores de salida + `extra_state` namespaced), `dispatch(checkpointer, msg, ack, on_eof,
+on_data)`, `make_checkpointer` factory, `NullState`, `PersistentSpill` (spill a `STATE_DIR`,
+snapshot = longitud en bytes, restore trunca lo no-commiteado). EOF ring: colas durables
+(`RingRabbitMQ` back queue no-exclusiva) + contadores persistidos (`RingEOFHandler.snapshot_state`).
+Output multi-thread (merge): `SeqCounter` + `CounterSeqSource` compartidos.
+
+Cada controller: `dispatch(checkpointer, msg, ack, _on_eof, _on_data)`. Cada main:
+`make_rx_tx(durable_rx, rx_prefetch=CHECKPOINT_EVERY)` + `make_checkpointer(...)`. gen_compose:
+`checkpoint_every=5` agrega `STATE_DIR` + volume. Prefetch del rx debe cubrir el batch
+(`QueueRabbitMQ` y `make_rx_tx` toman `prefetch_count`).
+
+### Estado
+**Hecho y validado (perfect 5/5 cada paso):** converter; los 6 group_by; los 4 filtros
+(default fan-out incluido); aggregates UC2 max (+5 casos de crash), UC2 bank_names, UC3 avg;
+merges UC2/UC3/UC4 (UC3/UC4 con `PersistentSpill`); EOF ring durable + contadores.
+
+**Pendiente:** join (N `JoinRouteHandler`, `LineSpill`→`PersistentSpill`); aggregates UC4
+(count_paths / aggregate_graph / aggregate_paths, con spill); ítem 0 (agujero emisión EOF);
+gateway stampea su salida; crash-test de cada tipo de nodo en cada línea relevante.
