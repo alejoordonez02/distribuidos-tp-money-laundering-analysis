@@ -21,4 +21,8 @@ def gen_join():
       - UC3_RX={UC3_JOIN}
       - UC4_RX={UC4_JOIN}
       - UC5_RX={UC5_JOIN}
-      - RESPONSES_TX={RESPONSES}"""
+      - RESPONSES_TX={RESPONSES}
+      - STATE_DIR=/state
+      - CHECKPOINT_EVERY=5
+    volumes:
+      - ./state/join:/state"""
