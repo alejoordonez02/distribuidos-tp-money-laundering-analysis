@@ -99,6 +99,19 @@ def test_derive_producer_id_is_16_bytes():
     assert len(derive_producer_id("tx", 3, 2)) == 16
 
 
+def test_seq_value_and_restore_seq():
+    inner = _CapturingMOM()
+    tx = StampingMOM(inner, derive_producer_id("tx", 0, 0))
+
+    tx.send(_data_msg())
+    tx.send(_data_msg())
+    assert tx.seq_value() == 2
+
+    tx.restore_seq(100)
+    tx.send(_data_msg())
+    assert deserialize_message(inner.sent[-1]).seq == 101
+
+
 def test_clones_share_the_sequence():
     inner = _CapturingMOM()
     tx = StampingMOM(inner, derive_producer_id("tx", 0, 0))

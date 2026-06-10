@@ -89,3 +89,31 @@ def test_restore_rebuilds_state_and_dedup(tmp_path):
 def test_restore_returns_false_when_no_checkpoint(tmp_path):
     _, _, cp = _make(tmp_path, every=1)
     assert cp.restore() is False
+
+
+class FakeSeqSource:
+    def __init__(self, producer_id: bytes, value: int = 0):
+        self.producer_id = producer_id
+        self._value = value
+
+    def seq_value(self) -> int:
+        return self._value
+
+    def restore_seq(self, value: int):
+        self._value = value
+
+
+def test_output_seq_counter_is_checkpointed_and_restored(tmp_path):
+    fn = FakeFn()
+    store = CheckpointStore(str(tmp_path / "node.ckpt"))
+    src = FakeSeqSource(P1, value=42)
+    cp = Checkpointer(fn, store, Deduplicator(), 1, seq_sources=[src])
+
+    cp.handle_data(FakeMsg(P1, 1), lambda: fn.applied.append(1), lambda: None)
+
+    fn2 = FakeFn()
+    restored_src = FakeSeqSource(P1, value=0)
+    cp2 = Checkpointer(fn2, store, Deduplicator(), 1, seq_sources=[restored_src])
+    cp2.restore()
+
+    assert restored_src.seq_value() == 42
