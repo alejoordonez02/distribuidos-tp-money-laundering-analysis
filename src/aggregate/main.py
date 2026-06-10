@@ -53,13 +53,19 @@ def make_aggregate(
         naffinities_downstream,
         affinity_upstream,
         durable_rx=STATE_DIR is not None,
+        rx_prefetch=CHECKPOINT_EVERY if STATE_DIR else 1,
     )
 
     internal_eofs = Queue[EOF]()
     eof_handler = make_stateful_eof_handler(MOM_HOST, (external_txs[0],), internal_eofs)
 
     checkpointer = make_checkpointer(
-        STATE_DIR, f"{STRATEGY}_{idx}", external_txs, CHECKPOINT_EVERY, fn
+        STATE_DIR,
+        f"{STRATEGY}_{idx}",
+        external_txs,
+        CHECKPOINT_EVERY,
+        fn,
+        extra_state={"eof": eof_handler},
     )
 
     aggregate = Aggregate(
