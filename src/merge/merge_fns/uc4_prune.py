@@ -1,11 +1,9 @@
 import json
 import math
-import os
-import tempfile
-from pathlib import Path
-from typing import Iterator
+from typing import Any, Iterator
 from uuid import UUID
 
+from common.checkpoint import PersistentSpill
 from common.comms.messages import Graph, HighDegree, Node
 
 from .merge_fn import MergeFn
@@ -28,58 +26,61 @@ def _deserialize(line: str) -> tuple[Node, set[Node], set[Node]]:
 
 
 class UC4PruneMergeFn(MergeFn):
-    def __init__(self):
+    def __init__(self, spill: PersistentSpill):
         self._hi_out: dict[UUID, set[Node]] = {}
         self._hi_in: dict[UUID, set[Node]] = {}
-        self._files: dict[UUID, Path] = {}
-
-    def _file_for(self, client_id: UUID) -> Path:
-        if client_id not in self._files:
-            fd, path = tempfile.mkstemp(prefix=f"uc4_prune_{client_id}_", suffix=".jsonl")
-            os.close(fd)
-            self._files[client_id] = Path(path)
-        return self._files[client_id]
+        self._spill = spill
 
     def left(self, msg: HighDegree):  # type: ignore[reportIncompatibleMethodOverride]
         self._hi_out.setdefault(msg.client_id, set()).update(msg.hi_out)
         self._hi_in.setdefault(msg.client_id, set()).update(msg.hi_in)
 
     def right(self, msg: Graph):  # type: ignore[reportIncompatibleMethodOverride]
-        path = self._file_for(msg.client_id)
-        with open(path, "a") as f:
-            for node, (preds, succs) in msg.nodes.items():
-                f.write(_serialize(node, preds, succs) + "\n")
+        for node, (preds, succs) in msg.nodes.items():
+            self._spill.append(msg.client_id, _serialize(node, preds, succs) + "\n")
 
     def get_result(self, client_id: UUID) -> Iterator[Graph]:  # type: ignore[reportIncompatibleMethodOverride]
         hi_out = self._hi_out.pop(client_id, set())
         hi_in = self._hi_in.pop(client_id, set())
-        path = self._files.pop(client_id, None)
-
-        if not (path and path.exists()):
-            return
 
         batch: dict[Node, tuple[set[Node], set[Node]]] = {}
         batch_size = 0
-        with open(path) as f:
-            for line in f:
-                node, preds, succs = _deserialize(line)
-                preds = preds & hi_out
-                succs = succs & hi_in
-                if not preds or not succs:
-                    continue
-                if len(preds) * len(succs) > SPLIT_THRESHOLD:
-                    yield from self._salted_tiles(client_id, node, preds, succs)
-                    continue
-                batch[node] = (preds, succs)
-                batch_size += len(preds) + len(succs)
-                if batch_size >= _CHUNK_SIZE:
-                    yield Graph(client_id, batch)
-                    batch = {}
-                    batch_size = 0
+        for line in self._spill.iter_lines_and_clear(client_id):
+            node, preds, succs = _deserialize(line.rstrip("\n"))
+            preds = preds & hi_out
+            succs = succs & hi_in
+            if not preds or not succs:
+                continue
+            if len(preds) * len(succs) > SPLIT_THRESHOLD:
+                yield from self._salted_tiles(client_id, node, preds, succs)
+                continue
+            batch[node] = (preds, succs)
+            batch_size += len(preds) + len(succs)
+            if batch_size >= _CHUNK_SIZE:
+                yield Graph(client_id, batch)
+                batch = {}
+                batch_size = 0
 
         if batch:
             yield Graph(client_id, batch)
-        path.unlink()
+
+    def snapshot_state(self) -> dict[str, Any]:
+        return {
+            "hi_out": {str(c): [str(n) for n in s] for c, s in self._hi_out.items()},
+            "hi_in": {str(c): [str(n) for n in s] for c, s in self._hi_in.items()},
+            "spill": self._spill.snapshot_state(),
+        }
+
+    def restore_state(self, snapshot: dict[str, Any]):
+        self._hi_out = {
+            UUID(c): {Node.from_str(n) for n in lst}
+            for c, lst in snapshot.get("hi_out", {}).items()
+        }
+        self._hi_in = {
+            UUID(c): {Node.from_str(n) for n in lst}
+            for c, lst in snapshot.get("hi_in", {}).items()
+        }
+        self._spill.restore_state(snapshot.get("spill", {}))
 
     def _salted_tiles(
         self, client_id: UUID, node: Node, preds: set[Node], succs: set[Node]

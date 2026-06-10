@@ -4,7 +4,7 @@ import os
 from merge_fns import UC2BankIdMergeFn, UC3BankIdMergeFn, UC4PruneMergeFn
 from strategies import MergeStrategy
 
-from common.checkpoint import make_checkpointer
+from common.checkpoint import PersistentSpill, make_checkpointer
 from common.comms.middleware import (
     CounterSeqSource,
     QueueRabbitMQ,
@@ -31,13 +31,15 @@ def main():
     logging.basicConfig(level=LOGGING_LEVEL)
     logging.getLogger("pika").setLevel(logging.WARNING)
 
+    spill_dir = os.path.join(STATE_DIR or "/tmp", "spill")
+
     match STRATEGY:
         case MergeStrategy.UC2_MERGE:
             fn = UC2BankIdMergeFn()
         case MergeStrategy.UC3_MERGE:
-            fn = UC3BankIdMergeFn()
+            fn = UC3BankIdMergeFn(PersistentSpill(spill_dir, "uc3_merge"))
         case MergeStrategy.UC4_PRUNE:
-            fn = UC4PruneMergeFn()
+            fn = UC4PruneMergeFn(PersistentSpill(spill_dir, "uc4_prune"))
         case _:
             raise ValueError(f"unknown merge strategy: {STRATEGY}")
 
