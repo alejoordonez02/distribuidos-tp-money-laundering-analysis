@@ -98,7 +98,7 @@ def main():
         case AggregateStrategy.UC4_PATHS:
             fn = UC4AggregatePaths(spill("uc4_aggregate_paths"))
         case AggregateStrategy.UC4_DEGREE:
-            fn = UC4Degree()
+            fn = UC4Degree(spill("uc4_degree"))
         case _:
             raise ValueError(f"unknown aggregate strategy: {STRATEGY}")
 
