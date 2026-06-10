@@ -1,3 +1,5 @@
+from .gen_nodes import CHECKPOINT_EVERY
+
 DEFAULT_FILTERS = 2
 
 
@@ -30,7 +32,7 @@ def gen_default_filters() -> str:
       - RING_NAME=default_filter_ring
       - STRATEGY=default
       - STATE_DIR=/state
-      - CHECKPOINT_EVERY=5
+      - CHECKPOINT_EVERY={CHECKPOINT_EVERY}
     volumes:
       - ./state/default_filter_{idx}:/state"""
 

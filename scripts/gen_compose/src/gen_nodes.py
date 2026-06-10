@@ -2,6 +2,11 @@ from enum import StrEnum
 
 from .container_type import ContainerType
 
+# Checkpoint/ack batch size (= how many messages a node holds + reprocesses on a
+# crash). Higher amortizes the per-checkpoint fsync/spill cost; the rx prefetch is
+# raised to match. `checkpoint_every` on the gen_* fns is the on/off switch.
+CHECKPOINT_EVERY = 50
+
 
 def gen_nodes(
     type2: ContainerType,
@@ -63,7 +68,7 @@ def gen_nodes(
         if checkpoint_every is not None:
             compose += f"""
       - STATE_DIR=/state
-      - CHECKPOINT_EVERY={checkpoint_every}
+      - CHECKPOINT_EVERY={CHECKPOINT_EVERY}
     volumes:
       - ./state/{name}_{idx}:/state"""
 

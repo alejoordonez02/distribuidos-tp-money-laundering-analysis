@@ -24,9 +24,11 @@ def gen_merge(
       - STRATEGY={strategy}"""
 
     if checkpoint_every is not None:
+        from .gen_nodes import CHECKPOINT_EVERY
+
         compose += f"""
       - STATE_DIR=/state
-      - CHECKPOINT_EVERY={checkpoint_every}
+      - CHECKPOINT_EVERY={CHECKPOINT_EVERY}
     volumes:
       - ./state/{name}:/state"""
 
