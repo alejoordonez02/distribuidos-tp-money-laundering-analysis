@@ -58,8 +58,7 @@ class PersistentSpill:
     def snapshot_state(self) -> dict[str, Any]:
         committed = {}
         for client_id, handle in self._handles.items():
-            handle.flush()
-            os.fsync(handle.fileno())
+            handle.flush()  # no fsync: process-crash model, OS page cache survives
             committed[str(client_id)] = os.path.getsize(self._path(client_id))
         return committed
 

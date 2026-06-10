@@ -8,8 +8,10 @@ from common.fault_injection import maybe_crash
 
 
 class CheckpointStore:
-    """Atomic on-disk checkpoint: writes to a temp file + fsync + os.replace, so a
-    crash mid-write never leaves a partial checkpoint."""
+    """Atomic on-disk checkpoint: writes to a temp file + os.replace, so a crash
+    mid-write never leaves a partial checkpoint. No fsync: the fault model is a
+    process crash (RabbitMQ stable), and the atomic rename + OS page cache survive
+    that. fsync (for power loss) is out of scope."""
 
     def __init__(self, path: str):
         self._path = path
@@ -22,8 +24,6 @@ class CheckpointStore:
         try:
             with os.fdopen(fd, "wb") as f:
                 f.write(msgpack.packb(blob, use_bin_type=True))
-                f.flush()
-                os.fsync(f.fileno())
             # Crash here leaves the temp file as garbage; the real checkpoint is
             # only swapped in by the atomic os.replace below, never partially.
             maybe_crash("during_checkpoint_write")
