@@ -207,6 +207,15 @@ Cada controller: `dispatch(checkpointer, msg, ack, _on_eof, _on_data)`. Cada mai
 (default fan-out incluido); aggregates UC2 max (+5 casos de crash), UC2 bank_names, UC3 avg;
 merges UC2/UC3/UC4 (UC3/UC4 con `PersistentSpill`); EOF ring durable + contadores.
 
-**Pendiente:** join (N `JoinRouteHandler`, `LineSpill`→`PersistentSpill`); aggregates UC4
-(count_paths / aggregate_graph / aggregate_paths, con spill); ítem 0 (agujero emisión EOF);
-gateway stampea su salida; crash-test de cada tipo de nodo en cada línea relevante.
+**Hecho (cont.):** join (5 `JoinRouteHandler`, UC1/UC3 con `PersistentSpill`, UC2/4/5 vía
+serialize/deserialize); aggregate UC4 degree (in-memory).
+
+**Gap identificado (queda documentado, acceptance lo permite):** aggregates UC4
+count_paths / aggregate_paths / aggregate_graphs usan **spill multi-shard** (dict[cliente,
+dict[shard, file]], ~500 archivos/cliente, spilling mid-aggregate) → no encajan en el
+`PersistentSpill` single-file y necesitarían un spill multi-shard + snapshot del estado
+in-memory grande (claves `Path`/`Node`). Sólo se disparan en datasets grandes (perfect no
+spillea). Es el nodo más pesado y de mayor riesgo; se deja para una iteración dedicada.
+
+**Pendiente:** ítem 0 (agujero emisión EOF); gateway stampea su salida; crash-test de cada
+tipo de nodo en cada línea relevante.
