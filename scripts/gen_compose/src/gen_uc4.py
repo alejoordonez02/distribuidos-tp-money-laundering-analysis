@@ -17,6 +17,7 @@ def gen_uc4() -> str:
         naffinity_downstream=3,
         rx_name=UC4_TRANSACTIONS,
         tx_name=queue0,
+        checkpoint_every=5,
     )
     queue1 = "uc4_graphs_to_prune"
     compose += gen_nodes(
@@ -37,6 +38,7 @@ def gen_uc4() -> str:
         naffinity_downstream=2,
         rx_name=UC4_DEGREE_TRANSACTIONS,
         tx_name=queue2,
+        checkpoint_every=5,
     )
     queue3 = "uc4_high_degree"
     compose += gen_nodes(

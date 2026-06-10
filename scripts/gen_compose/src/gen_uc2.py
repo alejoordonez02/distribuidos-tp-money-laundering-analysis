@@ -46,6 +46,7 @@ def gen_uc2() -> str:
         naffinity_downstream=BANK_NAMES_AGGREGATES,
         rx_name=CLIENT_ACCOUNTS,
         tx_name=bank_names_to_aggregate,
+        checkpoint_every=5,
     )
     bank_names_to_merge = "uc2_bank_id_name_mappings"
     compose += gen_nodes(

@@ -39,5 +39,6 @@ def gen_uc5() -> str:
         naffinity_downstream=0,
         rx_name=queue1,
         tx_name=UC5_JOIN,
+        checkpoint_every=5,
     )
     return compose

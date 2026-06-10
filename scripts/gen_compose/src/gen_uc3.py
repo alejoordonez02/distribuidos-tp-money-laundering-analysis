@@ -21,6 +21,7 @@ def gen_uc3() -> str:
         naffinity_downstream=0,
         rx_name=UC3_PERIOD_A_TRANSACTIONS,
         tx_name=queue0,
+        checkpoint_every=5,
     )
     queue1 = "uc3_avg"
     compose += gen_nodes(
