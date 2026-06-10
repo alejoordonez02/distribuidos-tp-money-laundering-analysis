@@ -31,7 +31,12 @@ def _make_rx(
     # rx_prefetch must cover the checkpoint batch so held acks don't deadlock.
     return (
         ExchangeRabbitMQ(
-            mom_host, rx_name, [f"{idx}"], f"{rx_name}{idx}", exclusive=not durable_rx
+            mom_host,
+            rx_name,
+            [f"{idx}"],
+            f"{rx_name}{idx}",
+            exclusive=not durable_rx,
+            prefetch_count=rx_prefetch,
         )
         if affinity_upstream
         else QueueRabbitMQ(mom_host, rx_name, prefetch_count=rx_prefetch)

@@ -90,7 +90,14 @@ class QueueRabbitMQ(MOMQueue):
         return QueueRabbitMQ(self.host, self.queue_name, self.prefetch_count)
 
     def _ack(self, chan, method) -> None:
-        chan.basic_ack(delivery_tag=method.delivery_tag)
+        # Schedule on the connection's own thread: acks may be flushed (batched
+        # checkpointing) from a different thread than the one owning this channel
+        # (e.g. the merge's two side threads), and pika is not thread-safe.
+        self.conn.add_callback_threadsafe(
+            lambda: chan.basic_ack(delivery_tag=method.delivery_tag)
+        )
 
     def _nack(self, chan, method) -> None:
-        chan.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+        self.conn.add_callback_threadsafe(
+            lambda: chan.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+        )
