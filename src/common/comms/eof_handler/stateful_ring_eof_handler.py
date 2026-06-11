@@ -55,7 +55,8 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
             self.confirmed_sent_data[client_id] = True
 
     def handle(self, eof: EOF):
-        eof.processed_count = 0
+        with self.mtx:
+            eof.processed_count = self.processed_counts.get(eof.client_id, 0)
         eof.next_expected_count = 0
         eof.origin = self.id
 
@@ -117,25 +118,24 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
         ack()
 
     def _handle_ring_eof(self, eof: EOF, mom_ring_tx: MOMRing):
-        with self.mtx:
-            eof.processed_count += self.processed_counts.get(eof.client_id, 0)
-            self.processed_counts[eof.client_id] = 0
+        # counts are never zeroed (monotonic, checkpointed -> crash-safe); the leader
+        # reseeds the lap accumulator so they are not double-added across laps
+        if eof.origin == self.id:
+            if eof.processed_count >= eof.expected_count:
+                ring_done = RingDone(eof.client_id, self.id)
+                logging.info(f"sending internal ring done: {ring_done.__dict__}")
+                mom_ring_tx.send(ring_done.serialize())
+                return
+            with self.mtx:
+                eof.processed_count = self.processed_counts.get(eof.client_id, 0)
+            time.sleep(RING_LOOP_TIMEOFF)
+        else:
+            with self.mtx:
+                eof.processed_count += self.processed_counts.get(eof.client_id, 0)
 
-        # keep looping only while short: a competing-consumer crash can re-process
-        # (over-count) a message, so processed may exceed expected. Closing on >=
-        # is safe (dups dropped downstream); only under-counting would lose data.
-        if eof.processed_count < eof.expected_count:
-            if eof.origin == self.id:
-                time.sleep(RING_LOOP_TIMEOFF)  # avoid making the eof loop too much
-
-            logging.info(f"forwarding internal eof: {eof.__dict__}")
-            mom_ring_tx.send(eof.serialize())
-            maybe_crash("after_ring_eof_forward_before_ack")
-            return
-
-        ring_done = RingDone(eof.client_id, self.id)
-        logging.info(f"sending internal ring done: {ring_done.__dict__}")
-        mom_ring_tx.send(ring_done.serialize())
+        logging.info(f"forwarding internal eof: {eof.__dict__}")
+        mom_ring_tx.send(eof.serialize())
+        maybe_crash("after_ring_eof_forward_before_ack")
 
     def _handle_ring_done(self, ring_done: RingDone, mom_ring_tx: MOMRing):
         self.internal_eofs_tx.put(
