@@ -5,9 +5,9 @@ from uuid import UUID
 
 from common.comms.middleware import MOMRing
 
+from .eof_handler import restore_counts, snapshot_counts
 
-# This class serves only as a base implementation for ring
-# eof handlers common methods with inheritance.
+
 class RingEOFHandler(ABC):
     mom_ring: MOMRing
     mtx: Lock
@@ -19,20 +19,12 @@ class RingEOFHandler(ABC):
         self.thread_handle.start()
 
     def snapshot_state(self) -> dict[str, Any]:
-        # Persisted with the node's checkpoint so the ring counts survive a crash:
-        # acked messages keep their contribution, redelivered ones are deduped.
         with self.mtx:
-            return {
-                "processed": {str(k): v for k, v in self.processed_counts.items()},
-                "sent": {str(k): v for k, v in self.sent_data.items()},
-            }
+            return snapshot_counts(self.processed_counts, self.sent_data)
 
     def restore_state(self, snapshot: dict[str, Any]):
         with self.mtx:
-            self.processed_counts = {
-                UUID(k): v for k, v in snapshot.get("processed", {}).items()
-            }
-            self.sent_data = {UUID(k): v for k, v in snapshot.get("sent", {}).items()}
+            self.processed_counts, self.sent_data = restore_counts(snapshot)
 
     def stop(self):
         self.mom_ring.stop_consuming()
@@ -44,6 +36,14 @@ class RingEOFHandler(ABC):
                 self.processed_counts[client_id] = 0
 
             self.processed_counts[client_id] += 1
+
+    def add_sent_data_count(self, client_id: UUID):
+        # locked: the controller thread increments while the ring thread reads it
+        with self.mtx:
+            if client_id not in self.sent_data:
+                self.sent_data[client_id] = 0
+
+            self.sent_data[client_id] += 1
 
     def _start_consuming_back(self):
         exclusive = self.mom_ring.clone()

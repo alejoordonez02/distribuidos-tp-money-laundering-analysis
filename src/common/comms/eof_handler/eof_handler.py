@@ -5,6 +5,19 @@ from uuid import UUID
 from common.comms.messages import EOF
 
 
+def snapshot_counts(processed: dict[UUID, int], sent: dict[UUID, int]) -> dict[str, Any]:
+    return {
+        "processed": {str(k): v for k, v in processed.items()},
+        "sent": {str(k): v for k, v in sent.items()},
+    }
+
+
+def restore_counts(snapshot: dict[str, Any]) -> tuple[dict[UUID, int], dict[UUID, int]]:
+    processed = {UUID(k): v for k, v in snapshot.get("processed", {}).items()}
+    sent = {UUID(k): v for k, v in snapshot.get("sent", {}).items()}
+    return processed, sent
+
+
 class EOFHandler(ABC):
     """A component for handling end of file messages."""
 
@@ -12,12 +25,10 @@ class EOFHandler(ABC):
     sent_data: dict[UUID, int]
 
     def snapshot_state(self) -> dict[str, Any]:
-        # No-op by default: single-node handlers don't gate on counts. Ring
-        # handlers override this to persist their counts in the checkpoint.
-        return {}
+        return snapshot_counts(self.processed_counts, self.sent_data)
 
     def restore_state(self, snapshot: dict[str, Any]):
-        pass
+        self.processed_counts, self.sent_data = restore_counts(snapshot)
 
     @abstractmethod
     def start(self):

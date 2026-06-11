@@ -42,7 +42,7 @@ def make_stateless_eof_handler(
     peer_ids = [idx for idx in range(NPEERS) if idx != IDX]
     mom_ring = RingRabbitMQ(mom_host, RING_NAME, IDX, peer_ids)
 
-    return StatelessRingEOFHandler(mom_ring, txs)
+    return StatelessRingEOFHandler(IDX, mom_ring, txs)
 
 
 def make_stateful_eof_handler(

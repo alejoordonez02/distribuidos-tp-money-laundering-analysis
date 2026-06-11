@@ -23,13 +23,12 @@ class StatelessSingleNodeEOFHandler(StatelessEOFHandler):
         pass
 
     def handle(self, eof: EOF):
-        eof.expected_count = self.sent_data[eof.client_id]
+        eof.expected_count = self.sent_data.get(eof.client_id, 0)
         logging.info(f"downstreaming eof: {eof.__dict__}")
         for tx in self.external_txs:
             tx.send(eof.serialize())
 
 
-# TODO: esto es tmp hasta definir bien la interfaz
 class StatefulSingleNodeEOFHandler(StatefulEOFHandler):
     def __init__(self, external_txs: Sequence[MOM], internal_eofs_tx: Queue[EOF]):
         self.external_txs = external_txs
@@ -51,7 +50,7 @@ class StatefulSingleNodeEOFHandler(StatefulEOFHandler):
         pass
 
     def downstream(self, eof: EOF):
-        eof.expected_count = self.sent_data[eof.client_id]
+        eof.expected_count = self.sent_data.get(eof.client_id, 0)
         logging.info(f"downstreaming eof: {eof.__dict__}")
         for tx in self.external_txs:
             tx.send(eof.serialize())
