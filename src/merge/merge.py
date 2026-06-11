@@ -1,13 +1,14 @@
 import logging
 from threading import Lock, Thread
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Sequence
 from uuid import UUID
 
 from merge_fns import MergeFn
 
 from common.checkpoint import Checkpointer
 from common.comms.messages import EOF, MessageType, deserialize_message
-from common.comms.middleware import MOMQueue
+from common.comms.middleware import MOM
+from common.fault_injection import maybe_crash
 from common.graceful_shutdown import setup_graceful_shutdown
 
 
@@ -49,10 +50,10 @@ class MergeCounts:
 class Merge:
     def __init__(
         self,
-        left_rx: MOMQueue,
-        right_rx: MOMQueue,
+        left_rx: MOM,
+        right_rx: MOM,
         fn: MergeFn,
-        tx_factory: Callable[[], MOMQueue],
+        tx_factory: Callable[[], Sequence[MOM]],
         counts: MergeCounts,
         checkpointer: Optional[Checkpointer] = None,
     ):
@@ -86,12 +87,13 @@ class Merge:
         self._left_rx.close()
         self._right_rx.close()
 
-    def _handle_side(self, side_rx: MOMQueue, handler: Callable):
-        tx = self._tx_factory()
-        side_rx.start_consuming(lambda b, ack, nack: handler(b, ack, nack, tx))
-        tx.close()
+    def _handle_side(self, side_rx: MOM, handler: Callable):
+        txs = self._tx_factory()
+        side_rx.start_consuming(lambda b, ack, nack: handler(b, ack, nack, txs))
+        for tx in txs:
+            tx.close()
 
-    def _try_emit_result(self, tx: MOMQueue, client_id: UUID):
+    def _try_emit_result(self, txs: Sequence[MOM], client_id: UUID):
         s = self._counts.get(client_id)
         done = (
             s.left_processed == s.left_expected
@@ -100,34 +102,40 @@ class Merge:
         if not done:
             return
 
+        # Round-robin results across the downstream shards (deterministic, so a
+        # re-emit after a crash lands each result on the same shard). The single
+        # EOF goes to shard 0; the downstream stateful ring coordinates the rest.
         sent = 0
         for result in self._fn.get_result(client_id):
-            tx.send(result.serialize())
+            txs[sent % len(txs)].send(result.serialize())
             sent += 1
 
         eof = EOF(client_id, expected_count=sent)
         logging.info(f"downstreaming eof: {eof.__dict__}")
-        tx.send(eof.serialize())
+        txs[0].send(eof.serialize())
 
-    def _handle_left_message(self, bytes2, ack, _, tx):
-        self._handle(bytes2, ack, tx, self._fn.left, is_left=True)
+    def _handle_left_message(self, bytes2, ack, _, txs):
+        self._handle(bytes2, ack, txs, self._fn.left, is_left=True)
 
-    def _handle_right_message(self, bytes2, ack, _, tx):
-        self._handle(bytes2, ack, tx, self._fn.right, is_left=False)
+    def _handle_right_message(self, bytes2, ack, _, txs):
+        self._handle(bytes2, ack, txs, self._fn.right, is_left=False)
 
-    def _handle(self, bytes2, ack, tx, apply_fn, is_left: bool):
+    def _handle(self, bytes2, ack, txs, apply_fn, is_left: bool):
         msg = deserialize_message(bytes2)
 
         if msg.type() == MessageType.EOF:
+            maybe_crash("before_eof_flush")
             if self._checkpointer:
                 self._checkpointer.flush()
+            maybe_crash("after_eof_flush_before_handle")
             with self._lock:
                 s = self._counts.get(msg.client_id)
                 if is_left:
                     s.left_expected = msg.expected_count  # type: ignore[attr-defined]
                 else:
                     s.right_expected = msg.expected_count  # type: ignore[attr-defined]
-                self._try_emit_result(tx, msg.client_id)
+                self._try_emit_result(txs, msg.client_id)
+            maybe_crash("after_downstream_eof_before_ack")
             ack()
             return
 

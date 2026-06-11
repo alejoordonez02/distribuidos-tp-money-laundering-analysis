@@ -7,6 +7,7 @@ from strategies import MergeStrategy
 from common.checkpoint import PersistentSpill, make_checkpointer
 from common.comms.middleware import (
     CounterSeqSource,
+    ExchangeRabbitMQ,
     QueueRabbitMQ,
     SeqCounter,
     StampingMOM,
@@ -21,6 +22,7 @@ TX = os.environ["TX"]
 STRATEGY = os.environ["STRATEGY"]
 
 IDX = int(os.getenv("IDX", 0))
+NAFFINITY_DOWNSTREAM = int(os.getenv("NAFFINITY_DOWNSTREAM", 0))
 STATE_DIR = os.getenv("STATE_DIR")
 CHECKPOINT_EVERY = int(os.getenv("CHECKPOINT_EVERY", 5))
 
@@ -43,13 +45,24 @@ def main():
         case _:
             raise ValueError(f"unknown merge strategy: {STRATEGY}")
 
-    # The result is emitted from whichever side completes the merge, so both side
-    # txs share one stamping counter to keep the output sequence deterministic.
+    # both side txs share one stamping counter for a deterministic output sequence
     out_counter = SeqCounter()
     producer_id = derive_producer_id(TX, IDX, 0)
 
     def tx_factory():
-        return StampingMOM(QueueRabbitMQ(MOM_HOST, TX), producer_id, out_counter)
+        # naffinity_downstream 0 = single work queue; >0 = one affinity-routed tx per shard
+        if NAFFINITY_DOWNSTREAM == 0:
+            return [StampingMOM(QueueRabbitMQ(MOM_HOST, TX), producer_id, out_counter)]
+        return [
+            StampingMOM(
+                ExchangeRabbitMQ(
+                    MOM_HOST, TX, routing_keys=[f"{i}"], queue_name=f"{TX}{i}"
+                ),
+                producer_id,
+                out_counter,
+            )
+            for i in range(NAFFINITY_DOWNSTREAM)
+        ]
 
     prefetch = CHECKPOINT_EVERY if STATE_DIR else 1
     left_rx = QueueRabbitMQ(MOM_HOST, LEFT_RX, prefetch_count=prefetch)
