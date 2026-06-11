@@ -82,12 +82,12 @@ class Checkpointer:
             if len(self._pending_acks) >= self._every:
                 self._checkpoint_and_flush()
 
-    def flush(self):
+    def flush(self, force: bool = False):
         with self.lock:
-            self._checkpoint_and_flush()
+            self._checkpoint_and_flush(force)
 
-    def _checkpoint_and_flush(self):
-        if self._dirty:
+    def _checkpoint_and_flush(self, force: bool = False):
+        if self._dirty or force:
             self._store.save(
                 {
                     "state": self._fn.snapshot_state(),
