@@ -9,6 +9,7 @@ from common.comms.messages import EOF, RingDone, RingSentData, deserialize_messa
 from common.comms.messages.errors import UnexpectedMessageError
 from common.comms.messages.message_types import MessageType
 from common.comms.middleware import MOM, MOMRing
+from common.fault_injection import maybe_crash
 
 from .eof_handler import StatefulEOFHandler
 from .ring_eof_handler import RingEOFHandler
@@ -120,12 +121,16 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
             eof.processed_count += self.processed_counts.get(eof.client_id, 0)
             self.processed_counts[eof.client_id] = 0
 
-        if eof.processed_count != eof.expected_count:
+        # keep looping only while short: a competing-consumer crash can re-process
+        # (over-count) a message, so processed may exceed expected. Closing on >=
+        # is safe (dups dropped downstream); only under-counting would lose data.
+        if eof.processed_count < eof.expected_count:
             if eof.origin == self.id:
                 time.sleep(RING_LOOP_TIMEOFF)  # avoid making the eof loop too much
 
             logging.info(f"forwarding internal eof: {eof.__dict__}")
             mom_ring_tx.send(eof.serialize())
+            maybe_crash("after_ring_eof_forward_before_ack")
             return
 
         ring_done = RingDone(eof.client_id, self.id)
@@ -199,3 +204,4 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
         logging.info("downstreaming eof: {eof.__dict__}")
         for tx in external_txs:
             tx.send(eof.serialize())
+        maybe_crash("after_downstream_eof_before_ack")
