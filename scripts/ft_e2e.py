@@ -6,6 +6,7 @@ are read from the generated docker-compose.yaml. Dataset comes from scripts/cfg.
 
 Env knobs:
   FT_ONLY_NODES=a,b   restrict to these controller types (or exact names)
+  FT_SKIP_NODES=a,b   skip these controller types (or exact names)
   FT_ONLY_POINTS=p,q  restrict to these crash points
   FT_ALL_REPLICAS=1   crash every replica, not just idx 0
   FT_TIMEOUT=120      per-run seconds before declaring a stall
@@ -199,11 +200,14 @@ def main():
         print(f"      {type_}: {count} replica(s)")
 
     only_nodes = set(filter(None, os.getenv("FT_ONLY_NODES", "").split(",")))
+    skip_nodes = set(filter(None, os.getenv("FT_SKIP_NODES", "").split(",")))
     only_points = set(filter(None, os.getenv("FT_ONLY_POINTS", "").split(",")))
     points = [p for p in ALL_POINTS if not only_points or p in only_points]
 
     targets = []
     for type_, names, count in controllers:
+        if type_ in skip_nodes or set(names) & skip_nodes:
+            continue
         if only_nodes and type_ not in only_nodes and not (set(names) & only_nodes):
             continue
         chosen = names if ALL_REPLICAS else names[:1]
