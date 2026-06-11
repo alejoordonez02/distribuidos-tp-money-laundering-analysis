@@ -14,7 +14,10 @@ from .ring_mom import MOMRing
 from .ring_rabbitmq import RingRabbitMQ
 from .stamping_mom import (
     CounterSeqSource,
+    DerivedStampingMOM,
+    InputContext,
     SeqCounter,
     StampingMOM,
+    UniqueStampingMOM,
     derive_producer_id,
 )
