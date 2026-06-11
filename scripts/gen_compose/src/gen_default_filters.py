@@ -1,6 +1,6 @@
 from .gen_nodes import CHECKPOINT_EVERY
 
-DEFAULT_FILTERS = 2
+DEFAULT_FILTERS = 3
 
 
 def gen_default_filters() -> str:
@@ -13,6 +13,7 @@ def gen_default_filters() -> str:
       context: ./src/
       dockerfile: filter/Dockerfile
     container_name: default_filter_{idx}
+    restart: on-failure
     depends_on:
       rabbitmq:
         condition: service_healthy

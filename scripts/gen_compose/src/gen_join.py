@@ -11,6 +11,7 @@ def gen_join():
       context: ./src/
       dockerfile: join/Dockerfile
     container_name: join
+    restart: on-failure
     depends_on:
       rabbitmq:
         condition: service_healthy

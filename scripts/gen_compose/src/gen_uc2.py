@@ -5,11 +5,11 @@ from .container_type import ContainerType
 from .gen_merge import gen_merge
 from .gen_nodes import gen_nodes
 
-MAX_AMOUNT_GROUPBYS = 2
-MAX_AMOUNT_AGGREGATES = 1
+MAX_AMOUNT_GROUPBYS = 3
+MAX_AMOUNT_AGGREGATES = 3
 
-BANK_NAMES_GROUPBYS = 2
-BANK_NAMES_AGGREGATES = 1
+BANK_NAMES_GROUPBYS = 3
+BANK_NAMES_AGGREGATES = 3
 
 
 def gen_uc2() -> str:

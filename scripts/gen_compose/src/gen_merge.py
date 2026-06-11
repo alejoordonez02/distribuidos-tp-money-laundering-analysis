@@ -4,6 +4,7 @@ def gen_merge(
     right_rx_name: str,
     tx_name: str,
     checkpoint_every: int | None = None,
+    naffinity_downstream: int = 0,
 ):
     name = strategy
     compose = f"""\n
@@ -12,6 +13,7 @@ def gen_merge(
       context: ./src/
       dockerfile: merge/Dockerfile
     container_name: {name}
+    restart: on-failure
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -21,7 +23,8 @@ def gen_merge(
       - LEFT_RX={left_rx_name}
       - RIGHT_RX={right_rx_name}
       - TX={tx_name}
-      - STRATEGY={strategy}"""
+      - STRATEGY={strategy}
+      - NAFFINITY_DOWNSTREAM={naffinity_downstream}"""
 
     if checkpoint_every is not None:
         from .gen_nodes import CHECKPOINT_EVERY

@@ -13,7 +13,7 @@ from .src import (
     gen_uc5,
 )
 
-NDEFAULT_FILTERS = 2
+NDEFAULT_FILTERS = 3
 
 
 def main():

@@ -34,9 +34,9 @@ def gen_uc4() -> str:
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,
         strategy=GroupByStrategy.UC4_DEGREE_COMPUTE_GRAPH,
-        npeers=2,
+        npeers=3,
         affinity_upstream=False,
-        naffinity_downstream=2,
+        naffinity_downstream=3,
         rx_name=UC4_DEGREE_TRANSACTIONS,
         tx_name=queue2,
         checkpoint_every=5,
@@ -45,7 +45,7 @@ def gen_uc4() -> str:
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
         strategy=AggregateStrategy.UC4_DEGREE,
-        npeers=2,
+        npeers=3,
         affinity_upstream=True,
         naffinity_downstream=0,
         rx_name=queue2,
@@ -59,13 +59,14 @@ def gen_uc4() -> str:
         right_rx_name=queue1,
         tx_name=queue4,
         checkpoint_every=5,
+        naffinity_downstream=5,
     )
     queue5 = "uc4_paths"
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
         strategy=AggregateStrategy.UC4_COUNT_PATHS,
         npeers=5,
-        affinity_upstream=False,
+        affinity_upstream=True,
         naffinity_downstream=5,
         rx_name=queue4,
         tx_name=queue5,

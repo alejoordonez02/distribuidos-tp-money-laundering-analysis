@@ -49,6 +49,7 @@ def gen_nodes(
       context: ./src/
       dockerfile: {type2}/Dockerfile
     container_name: {name}_{idx}
+    restart: on-failure
     depends_on:
       rabbitmq:
         condition: service_healthy

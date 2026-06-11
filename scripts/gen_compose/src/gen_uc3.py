@@ -16,7 +16,7 @@ def gen_uc3() -> str:
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,
         strategy=GroupByStrategy.UC3_SUM,
-        npeers=2,
+        npeers=3,
         affinity_upstream=False,
         naffinity_downstream=0,
         rx_name=UC3_PERIOD_A_TRANSACTIONS,
