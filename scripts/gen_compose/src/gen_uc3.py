@@ -45,7 +45,7 @@ def gen_uc3() -> str:
     compose += gen_nodes(
         type2=ContainerType.FILTER,
         strategy=FilterStrategy.UC3_AVG,
-        npeers=1,
+        npeers=3,
         affinity_upstream=False,
         naffinity_downstream=0,
         rx_name=queue2,
