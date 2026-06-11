@@ -6,6 +6,7 @@ from uuid import UUID
 
 from common.comms.messages import EOF
 from common.comms.middleware import MOM, MOMRing
+from common.fault_injection import maybe_crash
 
 from .eof_handler import StatelessEOFHandler
 from .ring_eof_handler import RingEOFHandler
@@ -14,7 +15,8 @@ EOF_LOOP_SECS = 1
 
 
 class StatelessRingEOFHandler(RingEOFHandler, StatelessEOFHandler):
-    def __init__(self, mom_ring: MOMRing, external_txs: Iterable[MOM]):
+    def __init__(self, id2: int, mom_ring: MOMRing, external_txs: Iterable[MOM]):
+        self.id = id2
         self.mom_ring = mom_ring
         self.external_txs = [tx.clone() for tx in external_txs]
         self.processed_counts: dict[UUID, int] = {}
@@ -23,8 +25,10 @@ class StatelessRingEOFHandler(RingEOFHandler, StatelessEOFHandler):
         self.mtx = Lock()
 
     def handle(self, eof: EOF):
-        eof.processed_count = 0
-        eof.next_expected_count = 0
+        with self.mtx:
+            eof.processed_count = self.processed_counts.get(eof.client_id, 0)
+            eof.next_expected_count = self.sent_data.get(eof.client_id, 0)
+        eof.origin = self.id
         logging.info(f"starting eof ring round, {eof.__dict__}")
         self.mom_ring.send(eof.serialize())
 
@@ -33,25 +37,27 @@ class StatelessRingEOFHandler(RingEOFHandler, StatelessEOFHandler):
     ):
         eof: EOF = EOF.deserialize(bytes2)  # type: ignore[reportAssignmentType]
 
-        with self.mtx:
-            eof.processed_count += self.processed_counts.get(eof.client_id, 0)
-            eof.next_expected_count += self.sent_data.get(eof.client_id, 0)
-
-            self.processed_counts[eof.client_id] = 0
-            self.sent_data[eof.client_id] = 0
-
-        if eof.processed_count == eof.expected_count:
-            eof.expected_count = eof.next_expected_count
-
-            logging.info(f"downstreaming eof: {eof.__dict__}")
-            for tx in self.external_txs:
-                tx.send(eof.serialize())
+        # counts are never zeroed (monotonic, checkpointed -> crash-safe); the leader
+        # reseeds the lap accumulator so they are not double-added across laps
+        if eof.origin == self.id:
+            if eof.processed_count >= eof.expected_count:
+                eof.expected_count = eof.next_expected_count
+                logging.info(f"downstreaming eof: {eof.__dict__}")
+                for tx in self.external_txs:
+                    tx.send(eof.serialize())
+                maybe_crash("after_downstream_eof_before_ack")
+            else:
+                with self.mtx:
+                    eof.processed_count = self.processed_counts.get(eof.client_id, 0)
+                    eof.next_expected_count = self.sent_data.get(eof.client_id, 0)
+                time.sleep(EOF_LOOP_SECS / self.mom_ring.nnodes())
+                logging.info(f"restarting eof ring round: {eof.__dict__}")
+                mom_ring_tx.send(eof.serialize())
         else:
-            time.sleep(
-                EOF_LOOP_SECS / self.mom_ring.nnodes()
-            )  # avoid making the eof go around too much
-
-            logging.info(f"sending internal eof: {eof.__dict__}")
+            with self.mtx:
+                eof.processed_count += self.processed_counts.get(eof.client_id, 0)
+                eof.next_expected_count += self.sent_data.get(eof.client_id, 0)
+            logging.info(f"forwarding internal eof: {eof.__dict__}")
             mom_ring_tx.send(eof.serialize())
 
         ack()
