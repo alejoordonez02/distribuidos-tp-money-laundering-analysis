@@ -45,7 +45,8 @@ def make_aggregate(
     tx_name: str,
 ) -> Aggregate:
 
-    external_rx, external_txs = make_rx_tx(
+    # aggregates emit at EOF; competing ones are made crash-safe by sharding input
+    external_rx, external_txs, _ = make_rx_tx(
         idx,
         rx_name,
         tx_name,

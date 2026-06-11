@@ -17,11 +17,13 @@ class Filter:
         routes: Sequence[tuple[MOM, FilterFn]],
         eof_handler: StatelessEOFHandler,
         checkpointer: Optional[Checkpointer] = None,
+        input_ctx=None,
     ):
         self.messages_rx = messages_rx
         self.routes = routes
         self.eof_handler = eof_handler
         self.checkpointer = checkpointer
+        self.input_ctx = input_ctx
 
     def start(self):
         setup_graceful_shutdown(self.stop)
@@ -40,7 +42,9 @@ class Filter:
 
     def _handle_message(self, bytes2: bytes, ack: Callable, _: Callable):
         msg = deserialize_message(bytes2)
-        dispatch(self.checkpointer, msg, ack, self._on_eof, self._on_data)
+        dispatch(
+            self.checkpointer, msg, ack, self._on_eof, self._on_data, self.input_ctx
+        )
 
     def _on_eof(self, msg: Message):
         self.eof_handler.handle(msg)  # type: ignore[reportArgumentType]

@@ -41,7 +41,7 @@ def make_groupby(
     tx_name: str,
 ) -> GroupBy:
 
-    external_rx, external_txs = make_rx_tx(
+    external_rx, external_txs, input_ctx = make_rx_tx(
         idx,
         rx_name,
         tx_name,
@@ -50,6 +50,7 @@ def make_groupby(
         affinity_upstream,
         durable_rx=STATE_DIR is not None,
         rx_prefetch=CHECKPOINT_EVERY if STATE_DIR else 1,
+        derived_stamping=not affinity_upstream,
     )
 
     eof_handler = make_stateless_eof_handler(MOM_HOST, (external_txs[0],))
@@ -57,12 +58,15 @@ def make_groupby(
     checkpointer = make_checkpointer(
         STATE_DIR,
         f"{STRATEGY}_{idx}",
-        external_txs,
+        # Derived stamping has no persistent counter (ids regenerate from input).
+        () if input_ctx else external_txs,
         CHECKPOINT_EVERY,
         extra_state={"eof": eof_handler},
     )
 
-    groupby = GroupBy(fn, external_rx, external_txs, eof_handler, checkpointer)
+    groupby = GroupBy(
+        fn, external_rx, external_txs, eof_handler, checkpointer, input_ctx
+    )
 
     return groupby
 

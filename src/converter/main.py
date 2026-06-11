@@ -4,7 +4,7 @@ import os
 from converter_fns import UC5USDConverterFn
 
 from common.checkpoint import make_checkpointer
-from common.comms.middleware import QueueRabbitMQ, StampingMOM, derive_producer_id
+from common.comms.middleware import DerivedStampingMOM, InputContext, QueueRabbitMQ
 from common.conversion import FrankfurterConversionAPI
 from converter import Converter
 
@@ -24,9 +24,12 @@ def main():
     logging.basicConfig(level=LOGGING_LEVEL)
     logging.getLogger("pika").setLevel(logging.WARNING)
 
-    tx = StampingMOM(QueueRabbitMQ(MOM_HOST, TX), derive_producer_id(TX, IDX, 0))
+    # The converter competes with its peers for the work queue, so it stamps
+    # outputs derived from the input (stable across peers on a crash).
+    input_ctx = InputContext()
+    tx = DerivedStampingMOM(QueueRabbitMQ(MOM_HOST, TX), input_ctx)
     checkpointer = make_checkpointer(
-        STATE_DIR, f"{STRATEGY}_{IDX}", [tx], CHECKPOINT_EVERY
+        STATE_DIR, f"{STRATEGY}_{IDX}", (), CHECKPOINT_EVERY
     )
 
     # The rx prefetch must cover the checkpoint batch so held acks don't deadlock.
@@ -38,6 +41,7 @@ def main():
         UC5USDConverterFn(FrankfurterConversionAPI()),
         tx,
         checkpointer,
+        input_ctx,
     ).start()
 
 

@@ -9,9 +9,9 @@ from strategies import FilterStrategy
 from common.checkpoint import make_checkpointer
 from common.comms.eof_handler import make_stateless_eof_handler
 from common.comms.middleware import (
+    DerivedStampingMOM,
+    InputContext,
     QueueRabbitMQ,
-    StampingMOM,
-    derive_producer_id,
     make_rx_tx,
 )
 
@@ -23,12 +23,6 @@ STATE_DIR = os.getenv("STATE_DIR")
 CHECKPOINT_EVERY = int(os.getenv("CHECKPOINT_EVERY", 5))
 
 LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "WARNING")
-
-
-def _stamped_tx(queue_name: str, idx: int) -> StampingMOM:
-    return StampingMOM(
-        QueueRabbitMQ(MOM_HOST, queue_name), derive_producer_id(queue_name, idx, 0)
-    )
 
 
 def make_default_filter() -> Filter:
@@ -43,6 +37,9 @@ def make_default_filter() -> Filter:
 
     idx = int(os.getenv("IDX", 0))
 
+    # competing input: derived stamping for crash-stable output ids
+    input_ctx = InputContext()
+
     route_specs = [
         (os.environ["UC1_TRANSACTIONS_TX"], UC1Filter()),
         (os.environ["UC2_TRANSACTIONS_TX"], UC2Filter()),
@@ -52,7 +49,10 @@ def make_default_filter() -> Filter:
         (os.environ["UC4_DEGREE_TRANSACTIONS_TX"], UC4Filter()),
         (os.environ["UC5_TRANSACTIONS_TX"], UC5Filter()),
     ]
-    routes = [(_stamped_tx(queue, idx), fn) for queue, fn in route_specs]
+    routes = [
+        (DerivedStampingMOM(QueueRabbitMQ(MOM_HOST, queue), input_ctx), fn)
+        for queue, fn in route_specs
+    ]
 
     prefetch = CHECKPOINT_EVERY if STATE_DIR else 1
     transactions_rx = QueueRabbitMQ(MOM_HOST, RX, prefetch_count=prefetch)
@@ -60,11 +60,11 @@ def make_default_filter() -> Filter:
     txs = [tx for tx, _ in routes]
     eof_handler = make_stateless_eof_handler(MOM_HOST, txs)
     checkpointer = make_checkpointer(
-        STATE_DIR, f"{STRATEGY}_{idx}", txs, CHECKPOINT_EVERY,
+        STATE_DIR, f"{STRATEGY}_{idx}", (), CHECKPOINT_EVERY,
         extra_state={"eof": eof_handler},
     )
 
-    return Filter(transactions_rx, routes, eof_handler, checkpointer)
+    return Filter(transactions_rx, routes, eof_handler, checkpointer, input_ctx)
 
 
 def make_filter(
@@ -77,7 +77,7 @@ def make_filter(
     tx_name: str,
 ) -> Filter:
 
-    external_rx, external_txs = make_rx_tx(
+    external_rx, external_txs, input_ctx = make_rx_tx(
         idx,
         rx_name,
         tx_name,
@@ -86,11 +86,13 @@ def make_filter(
         affinity_upstream,
         durable_rx=STATE_DIR is not None,
         rx_prefetch=CHECKPOINT_EVERY if STATE_DIR else 1,
+        derived_stamping=not affinity_upstream,
     )
 
     eof_handler = make_stateless_eof_handler(MOM_HOST, (external_txs[0],))
     checkpointer = make_checkpointer(
-        STATE_DIR, f"{STRATEGY}_{idx}", external_txs, CHECKPOINT_EVERY,
+        STATE_DIR, f"{STRATEGY}_{idx}",
+        () if input_ctx else external_txs, CHECKPOINT_EVERY,
         extra_state={"eof": eof_handler},
     )
 
@@ -99,6 +101,7 @@ def make_filter(
         [(tx, fn_factory()) for tx in external_txs],
         eof_handler,
         checkpointer,
+        input_ctx,
     )
 
 

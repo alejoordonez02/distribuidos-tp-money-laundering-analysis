@@ -16,11 +16,13 @@ class Converter:
         fn: ConverterFn,
         tx: MOMQueue,
         checkpointer: Optional[Checkpointer] = None,
+        input_ctx=None,
     ):
         self.rx = rx
         self.fn = fn
         self.tx = tx
         self.checkpointer = checkpointer
+        self.input_ctx = input_ctx
 
     def start(self):
         setup_graceful_shutdown(self.stop)
@@ -36,7 +38,9 @@ class Converter:
 
     def _handle_message(self, bytes2: bytes, ack: Callable, nack: Callable):
         msg = deserialize_message(bytes2)
-        dispatch(self.checkpointer, msg, ack, self._forward_eof, self._convert)
+        dispatch(
+            self.checkpointer, msg, ack, self._forward_eof, self._convert, self.input_ctx
+        )
 
     def _forward_eof(self, msg: Message):
         self.tx.send(msg.serialize())
