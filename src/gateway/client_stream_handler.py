@@ -13,7 +13,12 @@ from common.comms.messages import (
     MessageType,
     peek_type,
 )
-from common.comms.middleware import MOMQueue
+from common.comms.middleware import (
+    MOMQueue,
+    StampingMOM,
+    UniqueStampingMOM,
+    derive_producer_id,
+)
 
 
 class ClientStreamHandler:
@@ -45,8 +50,16 @@ class ClientStreamHandler:
         self._register(self)
         self.conn.send(HelloAck(self.id).serialize())
 
-        self._forward_until_eof(self.trans_tx_factory(), MessageType.TRANSACTIONS)
-        self._forward_until_eof(self.accs_tx_factory(), MessageType.ACCOUNTS)
+        # unique producer per message so the competing default_filter's watermark
+        # dedup stays exact under out-of-order/crash redelivery
+        trans_tx = UniqueStampingMOM(
+            self.trans_tx_factory(), derive_producer_id(str(self.id), 0, 0)
+        )
+        accs_tx = StampingMOM(
+            self.accs_tx_factory(), derive_producer_id(str(self.id), 0, 1)
+        )
+        self._forward_until_eof(trans_tx, MessageType.TRANSACTIONS)
+        self._forward_until_eof(accs_tx, MessageType.ACCOUNTS)
         logging.info("finished forwarding all client's data")
 
     def _forward_until_eof(self, tx: MOMQueue, data_type: MessageType):
