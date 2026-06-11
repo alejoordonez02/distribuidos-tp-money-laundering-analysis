@@ -15,6 +15,7 @@ class _JoinCounts:
     def __init__(self):
         self._received: dict[UUID, int] = {}
         self._expected: dict[UUID, int] = {}
+        self._finalized: set[UUID] = set()
 
     def inc_received(self, client_id: UUID):
         self._received[client_id] = self._received.get(client_id, 0) + 1
@@ -26,7 +27,11 @@ class _JoinCounts:
         expected = self._expected.get(client_id)
         return expected is not None and self._received.get(client_id, 0) >= expected
 
-    def clear(self, client_id: UUID):
+    def is_finalized(self, client_id: UUID) -> bool:
+        return client_id in self._finalized
+
+    def mark_finalized(self, client_id: UUID):
+        self._finalized.add(client_id)
         self._expected.pop(client_id, None)
         self._received.pop(client_id, None)
 
@@ -34,11 +39,13 @@ class _JoinCounts:
         return {
             "received": {str(c): v for c, v in self._received.items()},
             "expected": {str(c): v for c, v in self._expected.items()},
+            "finalized": [str(c) for c in self._finalized],
         }
 
     def restore_state(self, snapshot: dict[str, Any]):
         self._received = {UUID(c): v for c, v in snapshot.get("received", {}).items()}
         self._expected = {UUID(c): v for c, v in snapshot.get("expected", {}).items()}
+        self._finalized = {UUID(c) for c in snapshot.get("finalized", [])}
 
 
 class JoinRouteHandler:
@@ -109,9 +116,14 @@ class JoinRouteHandler:
         self._maybe_finalize(msg.client_id)
 
     def _maybe_finalize(self, client_id: UUID):
+        if self._counts.is_finalized(client_id):
+            return
         if not self._counts.is_complete(client_id):
             return
         for response in self.join_fn.get_responses(client_id):
             response.uc_id = self._uc_id
             self.responses_tx.send(response.serialize())
-        self._counts.clear(client_id)
+        self._counts.mark_finalized(client_id)
+        # persist the finalized marker before the EOF is acked so a redelivered EOF does not re-emit
+        if self._checkpointer is not None:
+            self._checkpointer.flush()
