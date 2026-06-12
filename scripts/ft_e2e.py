@@ -1,15 +1,27 @@
 """End-to-end fault-tolerance test (`make test_ft`).
 
-Crashes each controller at each crash point, lets the restart policy recover it,
-and checks the system still produces correct results. Topology and replica counts
-are read from the generated docker-compose.yaml. Dataset comes from scripts/cfg.py.
+Brings the cluster up ONCE and drives one fresh client through it per crash point:
+arm the target node with the fault, send a client, let the restart policy recover,
+wait for the system to fully drain, and check the result matches the oracle. Each
+client mints a new client_id (and a producer_id derived from it), so consecutive
+clients never collide in any downstream dedup table — the system is reused safely
+instead of being torn down and rebuilt 30 times (repeated cold starts of the whole
+topology on a busy host were the source of false stalls).
+
+Only the target node is recreated between combos (to swap its FAULT_CRASH_POINT env,
+which is fixed at container creation); the other ~70 containers stay warm, so the
+host load stays flat and the stall detector sees real deadlocks, not starvation.
+
+Topology and replica counts are read from the generated docker-compose.yaml. Dataset
+comes from scripts/cfg.py.
 
 Env knobs:
   FT_ONLY_NODES=a,b   restrict to these controller types (or exact names)
   FT_SKIP_NODES=a,b   skip these controller types (or exact names)
   FT_ONLY_POINTS=p,q  restrict to these crash points
   FT_ALL_REPLICAS=1   crash every replica, not just idx 0
-  FT_TIMEOUT=120      per-run seconds before declaring a stall
+  FT_TIMEOUT=300      per-client seconds before declaring a stall (hard cap)
+  FT_STALL_GRACE=90   queue-frozen seconds (target node UP) that mean a deadlock
   FT_KILL_DELAY=8     seconds before the external kill (recovery-path points)
   FT_SKIP_GEN=1       skip gen_input_output (reuse expected responses)
 """
@@ -42,29 +54,32 @@ KILL_POINTS = [
 ]
 ALL_POINTS = SELF_POINTS + KILL_POINTS
 
-# TIMEOUT is now a generous HARD cap; the real stall detector is progress-based
-# (a run that keeps draining queues is slow, not deadlocked — don't kill it).
-TIMEOUT = int(os.getenv("FT_TIMEOUT", "600"))
-# declare a stall only when the in-flight message total stays FROZEN this long with
-# no client finishing (a logical deadlock), vs merely slow under load (still moving).
+# Per-client hard cap. The real stall detector is progress-based (a run still
+# draining queues is slow, not deadlocked), and is paused while the target node is
+# down (a frozen queue is then expected, not a deadlock).
+TIMEOUT = int(os.getenv("FT_TIMEOUT", "300"))
 STALL_GRACE = int(os.getenv("FT_STALL_GRACE", "90"))
-PROGRESS_INTERVAL = int(os.getenv("FT_PROGRESS_INTERVAL", "10"))
-# environmental guards: wait for the load to drop and sweep leftover containers
-# before each combo (a saturated host / zombie pileup causes false stalls), and
-# retry a stalled combo once on a clean host to tell a real deadlock from starvation.
-LOAD_WAIT = os.getenv("FT_LOAD_WAIT", "1") == "1"
+PROGRESS_INTERVAL = int(os.getenv("FT_PROGRESS_INTERVAL", "5"))
+# After a client finishes, wait for every queue to drain before the next client, so
+# no leftover EOF/ring message bleeds across clients.
+DRAIN_TIMEOUT = int(os.getenv("FT_DRAIN_TIMEOUT", "120"))
+# retry a stalled combo once (cheap now: re-arm + one client, no full rebuild).
 STALL_RETRY = os.getenv("FT_STALL_RETRY", "1") == "1"
 KILL_DELAY = int(os.getenv("FT_KILL_DELAY", "8"))
 # `docker kill` is treated by the daemon as a manual stop, so `restart: on-failure`
-# does NOT bring the container back (unlike a real process crash / OOM kill, which
-# does). To simulate the orchestrator restarting a hard-crashed node we `docker
-# start` it ourselves after the kill; the recovery-path crash point then fires
-# during restore and `restart: on-failure` takes over from there.
+# does NOT bring the container back (unlike a real process crash / OOM kill). To
+# simulate the orchestrator restarting a hard-crashed node we `docker start` it after
+# the kill; the recovery-path crash point then fires during restore.
 KILL_RESTART_GRACE = int(os.getenv("FT_KILL_RESTART_GRACE", "2"))
 ALL_REPLICAS = os.getenv("FT_ALL_REPLICAS") == "1"
 SKIP_GEN = os.getenv("FT_SKIP_GEN") == "1"
 ORACLE_MEM_MAX = os.getenv("FT_ORACLE_MEM", "5G")
-STARTUP_GRACE = 5
+# One-time warmup for the whole topology to connect + bind before the first client.
+STARTUP_GRACE = int(os.getenv("FT_STARTUP_GRACE", "20"))
+# Let a freshly recreated target node reconnect + re-declare its queues before the
+# client starts publishing (messages queue durably meanwhile, so nothing is lost).
+NODE_READY_GRACE = int(os.getenv("FT_NODE_READY_GRACE", "3"))
+CLIENT = os.getenv("FT_CLIENT", "client_0")
 
 
 def run(cmd, check=False, capture=False, timeout=None):
@@ -104,6 +119,11 @@ def _idx(name):
     return int(tail) if tail.isdigit() else -1
 
 
+def non_client_services():
+    services = out(f"docker compose -f {COMPOSE} config --services").splitlines()
+    return [s.strip() for s in services if s.strip() and not s.strip().startswith("client")]
+
+
 def write_fault(node, point):
     os.makedirs(os.path.join(ROOT, "tmp/ft_run"), exist_ok=True)
     with open(os.path.join(ROOT, FAULT), "w") as f:
@@ -116,9 +136,49 @@ def write_fault(node, point):
         )
 
 
-def clean_state():
-    # state/ is root-owned (written in-container); wipe via a throwaway container
-    run(f'docker run --rm -v "{ROOT}/state:/state" alpine sh -c "rm -rf /state/*"', capture=True)
+def clean_all_state():
+    """Wipe every node's persisted state (root-owned, written in-container) so the
+    cluster starts from zero — otherwise stale checkpoints from a previous run are
+    restored on bring-up and pollute the first client."""
+    run(f'docker run --rm -v "{os.path.join(ROOT, "state")}:/state" alpine '
+        "find /state -mindepth 1 -delete", capture=True)
+
+
+def compose_up_cluster():
+    """Bring up rabbitmq + gateway + every controller once, without any client and
+    without any fault override (the cluster starts clean)."""
+    svcs = " ".join(non_client_services())
+    run(f"docker compose -f {COMPOSE} up -d --remove-orphans {svcs}", capture=True)
+
+
+def recreate_node(node):
+    """Recreate just the target node with the fault override applied (its
+    FAULT_CRASH_POINT is fixed at container creation, so a swap needs a recreate)."""
+    run(f"docker compose -f {COMPOSE} -f {FAULT} up -d --force-recreate --no-deps {node}",
+        capture=True)
+
+
+def recreate_client():
+    """Run one fresh client through the live cluster (new client_id + producer_id)."""
+    run(f"docker compose -f {COMPOSE} up -d --force-recreate --no-deps {CLIENT}",
+        capture=True)
+
+
+def clear_fault_sentinel(node):
+    """Re-arm the one-shot fault by removing ONLY the sentinel, KEEPING the checkpoint.
+
+    The checkpoint holds the node's output `seq` counter. Wiping it would reset the
+    seq to 0 while downstream dedup tables (which are NOT wiped — only the target node
+    is recreated each combo) still hold the previous client's high-water mark, so the
+    recreated node's re-numbered output would be silently deduped downstream and starve
+    the pipeline. Keeping the checkpoint keeps the seq monotonic across clients, exactly
+    as in normal operation where a node is never wiped."""
+    path = os.path.join(ROOT, "state", node)
+    run(f'docker run --rm -v "{path}:/state" alpine rm -f /state/.fault_fired',
+        capture=True)
+
+
+def clear_responses():
     resp = os.path.join(ROOT, "responses")
     if os.path.isdir(resp):
         for f in os.listdir(resp):
@@ -126,19 +186,12 @@ def clean_state():
                 os.remove(os.path.join(resp, f))
 
 
-def compose(action):
-    run(f"docker compose -f {COMPOSE} -f {FAULT} {action}", capture=True)
+def node_running(node):
+    return out(f'docker inspect -f "{{{{.State.Running}}}}" {node}') == "true"
 
 
 def clients_running():
     return bool(out('docker ps --filter "name=client_" --filter "status=running" -q'))
-
-
-def load_1min():
-    try:
-        return os.getloadavg()[0]
-    except OSError:
-        return 0.0
 
 
 def queue_total():
@@ -151,39 +204,6 @@ def queue_total():
     )
     nums = [int(tok) for tok in r.stdout.split() if tok.isdigit()]
     return sum(nums) if nums else None
-
-
-def ensure_clean_env():
-    """Pre-combo guard: sweep any leftover containers (zombie pileups saturate the
-    host and cause false stalls) and wait for the load to fall back under the core
-    count so the pipeline isn't starved before it even starts."""
-    run("docker ps -aq | xargs -r docker rm -f", capture=True)
-    if not LOAD_WAIT:
-        return
-    cores = os.cpu_count() or 8
-    waited = 0
-    while load_1min() >= cores and waited < 180:
-        time.sleep(10)
-        waited += 10
-
-
-def wait_for_completion(start):
-    """Progress-based: a run that keeps draining queues is slow (load), not
-    deadlocked — keep waiting up to the hard cap. Declare a stall only when the
-    message total stays frozen for STALL_GRACE with no client finishing."""
-    last_total, frozen_since = None, time.time()
-    while clients_running():
-        time.sleep(PROGRESS_INTERVAL)
-        if time.time() - start > TIMEOUT:
-            return False
-        total = queue_total()
-        if total is None:
-            continue  # unreadable broker: neither progress nor stall evidence
-        if total != last_total:
-            last_total, frozen_since = total, time.time()  # still moving
-        elif time.time() - frozen_since > STALL_GRACE:
-            return False  # frozen with work left to do -> logical deadlock
-    return True
 
 
 def client_exit_codes():
@@ -208,22 +228,57 @@ def sentinel_fired(node):
     return os.path.exists(os.path.join(ROOT, "state", node, ".fault_fired"))
 
 
+def wait_for_client(node, start):
+    """Progress-based stall detection on the live cluster. A run still draining
+    queues is slow (load), not deadlocked. While the target node is down (crashed /
+    restarting) a frozen queue is EXPECTED, so the freeze timer is paused — only a
+    queue frozen with the target node UP and work left is a real logical deadlock."""
+    last_total, frozen_since = None, time.time()
+    while clients_running():
+        time.sleep(PROGRESS_INTERVAL)
+        if time.time() - start > TIMEOUT:
+            return False
+        if not node_running(node):
+            frozen_since = time.time()  # node restarting: freezing is not a deadlock
+            continue
+        total = queue_total()
+        if total is None:
+            continue  # unreadable broker: neither progress nor stall evidence
+        if total != last_total:
+            last_total, frozen_since = total, time.time()  # still moving
+        elif time.time() - frozen_since > STALL_GRACE:
+            return False  # frozen with the node up and work left -> logical deadlock
+    return True
+
+
+def wait_drain():
+    """After a client finishes, wait for every queue to empty so no leftover message
+    bleeds into the next client. Returns False if it never fully drains in time."""
+    deadline = time.time() + DRAIN_TIMEOUT
+    while time.time() < deadline:
+        if queue_total() == 0:
+            return True
+        time.sleep(2)
+    return False
+
+
 def run_combo(node, point):
     is_kill = point in KILL_POINTS
+    clear_responses()
+    clear_fault_sentinel(node)
     write_fault(node, point)
-    clean_state()
-    ensure_clean_env()
+    recreate_node(node)
+    time.sleep(NODE_READY_GRACE)
+
     start = time.time()
-    compose("up --remove-orphans -d")
-    time.sleep(STARTUP_GRACE)
+    recreate_client()
     if is_kill:
         time.sleep(KILL_DELAY)
         run(f"docker kill --signal=KILL {node}", capture=True)
-        # docker kill suppresses the on-failure restart policy; bring the node back
-        # ourselves so the recovery path actually runs (see KILL_RESTART_GRACE).
         time.sleep(KILL_RESTART_GRACE)
         run(f"docker start {node}", capture=True)
-    completed = wait_for_completion(start)
+
+    completed = wait_for_client(node, start)
     secs = int(time.time() - start)
     fired = sentinel_fired(node)
 
@@ -236,7 +291,8 @@ def run_combo(node, point):
         else:
             ok, tail = verify()
             result, detail = ("PASS" if ok else "FAIL"), tail
-    compose("down --remove-orphans")
+
+    wait_drain()  # settle the cluster before the next client
     return {
         "node": node, "point": point, "fired": fired,
         "result": result, "detail": detail, "secs": secs,
@@ -286,23 +342,30 @@ def main():
             targets.append(n)
 
     combos = [(n, p) for n in targets for p in points]
-    print(f"[ft] running {len(combos)} combos "
-          f"({len(targets)} nodes x {len(points)} points), timeout {TIMEOUT}s\n", flush=True)
+    print(f"[ft] one-cluster mode: {len(combos)} combos "
+          f"({len(targets)} nodes x {len(points)} points), per-client cap {TIMEOUT}s\n",
+          flush=True)
+
+    print("[ft] bringing up the cluster once ...", flush=True)
+    clean_all_state()
+    compose_up_cluster()
+    time.sleep(STARTUP_GRACE)
 
     results = []
-    for i, (node, point) in enumerate(combos, 1):
-        print(f"[{i}/{len(combos)}] {node} @ {point} ...", flush=True)
-        res = run_combo(node, point)
-        # a STALL on a busy host is usually starvation, not a deadlock: retry once on
-        # a freshly-cleaned, load-drained host. A real deadlock stalls again; an
-        # environmental one passes — so the retry tells them apart automatically.
-        if res["result"] == "STALL" and STALL_RETRY:
-            print(f"      -> STALL ({res['secs']}s); retrying once on a clean host ...", flush=True)
+    try:
+        for i, (node, point) in enumerate(combos, 1):
+            print(f"[{i}/{len(combos)}] {node} @ {point} ...", flush=True)
             res = run_combo(node, point)
-        results.append(res)
-        flag = "" if res["result"] == "PASS" else "  <<<"
-        note = "" if res["fired"] else " (crash did not fire — point not reached)"
-        print(f"      -> {res['result']} ({res['secs']}s){note}{flag}", flush=True)
+            if res["result"] == "STALL" and STALL_RETRY:
+                print(f"      -> STALL ({res['secs']}s); retrying once ...", flush=True)
+                res = run_combo(node, point)
+            results.append(res)
+            flag = "" if res["result"] == "PASS" else "  <<<"
+            note = "" if res["fired"] else " (crash did not fire — point not reached)"
+            print(f"      -> {res['result']} ({res['secs']}s){note}{flag}", flush=True)
+    finally:
+        print("\n[ft] tearing down the cluster ...", flush=True)
+        run(f"docker compose -f {COMPOSE} -f {FAULT} down --remove-orphans", capture=True)
 
     failures = [r for r in results if r["result"] != "PASS" and r["fired"]]
     notfired = [r for r in results if not r["fired"]]
