@@ -4,15 +4,19 @@ from typing import Callable
 
 from filter2 import Filter
 from filter_fns import FilterFn, UC3AvgFilter, UC4PathFilter, UC5AmountFilter
+from ring_filter import RingFilter, SentCounts
 from strategies import FilterStrategy
 
 from common.checkpoint import make_checkpointer
 from common.comms.eof_handler import make_stateless_eof_handler
+from common.comms.eof_handler.ring_completion import RingCompletion
 from common.comms.middleware import (
     DerivedStampingMOM,
     ExchangeRabbitMQ,
     InputContext,
+    MultiQueueConsumer,
     QueueRabbitMQ,
+    RingRabbitMQ,
     make_rx_tx,
 )
 
@@ -100,7 +104,17 @@ def make_filter(
     mom_host: str,
     rx_name: str,
     tx_name: str,
-) -> Filter:
+) -> "Filter | RingFilter":
+
+    npeers = int(os.getenv("NPEERS", "1"))
+    if npeers > 1 and affinity_upstream:
+        # affinity ring: per-peer completion on a single consume thread (data + ring),
+        # so a crash restores a consistent shard + barrier phase. Only for affinity
+        # inputs; a competing filter (affinity_upstream=False) still uses the
+        # working-queue path below until its upstream is converted to route by affinity.
+        return _make_ring_filter(
+            fn_factory, idx, naffinities_downstream, mom_host, rx_name, tx_name, npeers
+        )
 
     external_rx, external_txs, input_ctx = make_rx_tx(
         idx,
@@ -127,6 +141,61 @@ def make_filter(
         eof_handler,
         checkpointer,
         input_ctx,
+    )
+
+
+def _make_ring_filter(
+    fn_factory: Callable[[], FilterFn],
+    idx: int,
+    naffinities_downstream: int,
+    mom_host: str,
+    rx_name: str,
+    tx_name: str,
+    npeers: int,
+) -> RingFilter:
+    # the MultiQueueConsumer owns the data-shard consumption, so the make_rx_tx rx is
+    # only used to build the downstream txs; close its idle connection.
+    external_rx, external_txs, _ = make_rx_tx(
+        idx,
+        rx_name,
+        tx_name,
+        mom_host,
+        naffinities_downstream,
+        affinity_upstream=True,
+        durable_rx=STATE_DIR is not None,
+        rx_prefetch=CHECKPOINT_EVERY if STATE_DIR else 1,
+    )
+    external_rx.close()
+
+    ring_name = os.environ["RING_NAME"]
+    peer_ids = [i for i in range(npeers) if i != idx]
+    rc = RingCompletion(idx, peer_ids)
+    sent = SentCounts()
+    consumer = MultiQueueConsumer(mom_host)
+    ring = RingRabbitMQ(mom_host, ring_name, idx, peer_ids)
+
+    checkpointer = make_checkpointer(
+        STATE_DIR,
+        f"{STRATEGY}_{idx}",
+        external_txs,
+        CHECKPOINT_EVERY,
+        extra_state={"eof": rc, "sent": sent},
+    )
+
+    return RingFilter(
+        fn_factory(),
+        idx,
+        rc,
+        sent,
+        consumer,
+        ring,
+        external_txs,
+        data_queue=f"{rx_name}{idx}",
+        data_exchange=rx_name,
+        ring_queue=f"{ring_name}_queue{idx}",
+        ring_exchange=ring_name,
+        data_prefetch=max(CHECKPOINT_EVERY, 10),
+        checkpointer=checkpointer,
     )
 
 

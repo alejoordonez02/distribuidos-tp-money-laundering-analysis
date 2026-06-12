@@ -26,6 +26,12 @@ UC3_AGGREGATES = 3
 # single consolidated EOF exactly as from a single merge.
 UC3_MERGES = 3
 
+# The UC3_AVG filter is stateless; scaled as an affinity ring (RingFilter) so each
+# peer owns its input shard and recovers crash-safely (vs the competing working-queue
+# path). The merge routes its merged output by affinity to the N filters, and the
+# filter ring consolidates into one downstream EOF to the join.
+UC3_FILTERS = 3
+
 
 def gen_uc3() -> str:
     compose = "\n# === uc3 ==="
@@ -60,12 +66,13 @@ def gen_uc3() -> str:
         tx_name=queue2,
         checkpoint_every=5,
         npeers=UC3_MERGES,
+        naffinity_downstream=UC3_FILTERS,
     )
     compose += gen_nodes(
         type2=ContainerType.FILTER,
         strategy=FilterStrategy.UC3_AVG,
-        npeers=3,
-        affinity_upstream=False,
+        npeers=UC3_FILTERS,
+        affinity_upstream=True,
         naffinity_downstream=0,
         rx_name=queue2,
         tx_name=UC3_JOIN,
