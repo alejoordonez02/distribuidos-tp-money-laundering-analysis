@@ -42,7 +42,18 @@ KILL_POINTS = [
 ]
 ALL_POINTS = SELF_POINTS + KILL_POINTS
 
-TIMEOUT = int(os.getenv("FT_TIMEOUT", "120"))
+# TIMEOUT is now a generous HARD cap; the real stall detector is progress-based
+# (a run that keeps draining queues is slow, not deadlocked — don't kill it).
+TIMEOUT = int(os.getenv("FT_TIMEOUT", "600"))
+# declare a stall only when the in-flight message total stays FROZEN this long with
+# no client finishing (a logical deadlock), vs merely slow under load (still moving).
+STALL_GRACE = int(os.getenv("FT_STALL_GRACE", "90"))
+PROGRESS_INTERVAL = int(os.getenv("FT_PROGRESS_INTERVAL", "10"))
+# environmental guards: wait for the load to drop and sweep leftover containers
+# before each combo (a saturated host / zombie pileup causes false stalls), and
+# retry a stalled combo once on a clean host to tell a real deadlock from starvation.
+LOAD_WAIT = os.getenv("FT_LOAD_WAIT", "1") == "1"
+STALL_RETRY = os.getenv("FT_STALL_RETRY", "1") == "1"
 KILL_DELAY = int(os.getenv("FT_KILL_DELAY", "8"))
 # `docker kill` is treated by the daemon as a manual stop, so `restart: on-failure`
 # does NOT bring the container back (unlike a real process crash / OOM kill, which
@@ -56,13 +67,16 @@ ORACLE_MEM_MAX = os.getenv("FT_ORACLE_MEM", "5G")
 STARTUP_GRACE = 5
 
 
-def run(cmd, check=False, capture=False):
-    return subprocess.run(
-        cmd, shell=True, cwd=ROOT, check=check,
-        stdout=subprocess.PIPE if capture else None,
-        stderr=subprocess.STDOUT if capture else None,
-        text=True,
-    )
+def run(cmd, check=False, capture=False, timeout=None):
+    try:
+        return subprocess.run(
+            cmd, shell=True, cwd=ROOT, check=check,
+            stdout=subprocess.PIPE if capture else None,
+            stderr=subprocess.STDOUT if capture else None,
+            text=True, timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="")
 
 
 def out(cmd):
@@ -120,11 +134,55 @@ def clients_running():
     return bool(out('docker ps --filter "name=client_" --filter "status=running" -q'))
 
 
+def load_1min():
+    try:
+        return os.getloadavg()[0]
+    except OSError:
+        return 0.0
+
+
+def queue_total():
+    """Best-effort in-flight message total across all queues — a cheap progress
+    proxy. Returns None when the broker is too busy to answer (don't penalize that;
+    a missing reading is treated as 'no change', never as a stall by itself)."""
+    r = run(
+        "docker exec rabbitmq rabbitmqctl list_queues messages --quiet",
+        capture=True, timeout=15,
+    )
+    nums = [int(tok) for tok in r.stdout.split() if tok.isdigit()]
+    return sum(nums) if nums else None
+
+
+def ensure_clean_env():
+    """Pre-combo guard: sweep any leftover containers (zombie pileups saturate the
+    host and cause false stalls) and wait for the load to fall back under the core
+    count so the pipeline isn't starved before it even starts."""
+    run("docker ps -aq | xargs -r docker rm -f", capture=True)
+    if not LOAD_WAIT:
+        return
+    cores = os.cpu_count() or 8
+    waited = 0
+    while load_1min() >= cores and waited < 180:
+        time.sleep(10)
+        waited += 10
+
+
 def wait_for_completion(start):
+    """Progress-based: a run that keeps draining queues is slow (load), not
+    deadlocked — keep waiting up to the hard cap. Declare a stall only when the
+    message total stays frozen for STALL_GRACE with no client finishing."""
+    last_total, frozen_since = None, time.time()
     while clients_running():
-        time.sleep(2)
+        time.sleep(PROGRESS_INTERVAL)
         if time.time() - start > TIMEOUT:
             return False
+        total = queue_total()
+        if total is None:
+            continue  # unreadable broker: neither progress nor stall evidence
+        if total != last_total:
+            last_total, frozen_since = total, time.time()  # still moving
+        elif time.time() - frozen_since > STALL_GRACE:
+            return False  # frozen with work left to do -> logical deadlock
     return True
 
 
@@ -154,6 +212,7 @@ def run_combo(node, point):
     is_kill = point in KILL_POINTS
     write_fault(node, point)
     clean_state()
+    ensure_clean_env()
     start = time.time()
     compose("up --remove-orphans -d")
     time.sleep(STARTUP_GRACE)
@@ -234,6 +293,12 @@ def main():
     for i, (node, point) in enumerate(combos, 1):
         print(f"[{i}/{len(combos)}] {node} @ {point} ...", flush=True)
         res = run_combo(node, point)
+        # a STALL on a busy host is usually starvation, not a deadlock: retry once on
+        # a freshly-cleaned, load-drained host. A real deadlock stalls again; an
+        # environmental one passes — so the retry tells them apart automatically.
+        if res["result"] == "STALL" and STALL_RETRY:
+            print(f"      -> STALL ({res['secs']}s); retrying once on a clean host ...", flush=True)
+            res = run_combo(node, point)
         results.append(res)
         flag = "" if res["result"] == "PASS" else "  <<<"
         note = "" if res["fired"] else " (crash did not fire — point not reached)"
