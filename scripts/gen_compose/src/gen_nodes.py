@@ -12,7 +12,6 @@ def gen_nodes(
     type2: ContainerType,
     strategy: StrEnum,
     npeers: int,
-    affinity_upstream: bool,
     naffinity_downstream: int,
     rx_name: str,
     tx_name: str,
@@ -27,8 +26,6 @@ def gen_nodes(
     * `name` - the name of the container.
     * `strategy` - the strategy for the controller to use.
     * `npeers` - the amount of nodes in the ring, including this one.
-    * `affinity_upstream` - wheter the controller is supposed to
-      expect upstream messages with affinity routing.
     * `naffinity_downstream` - the amount of downstream affinities
       ready to handle this controller's downstream messages. If none,
       this can be set to zero (which does not mean that there are not
@@ -63,7 +60,6 @@ def gen_nodes(
       - IDX={idx}
       - NPEERS={npeers}
       - RING_NAME={name}_ring
-      - AFFINITY_UPSTREAM={1 if affinity_upstream else 0}
       - NAFFINITY_DOWNSTREAM={naffinity_downstream}
       - BROADCAST_DOWNSTREAM={1 if broadcast_downstream else 0}
       - PYTHONHASHSEED=2026"""

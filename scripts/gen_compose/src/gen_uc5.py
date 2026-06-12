@@ -20,7 +20,6 @@ def gen_uc5() -> str:
         type2=ContainerType.CONVERTER,
         strategy=GroupByStrategy.UC5_CONVERTER,  # este no la usa
         npeers=UC5_CONVERTERS,
-        affinity_upstream=True,
         naffinity_downstream=UC5_AMOUNT_FILTERS,
         rx_name=UC5_TRANSACTIONS,
         tx_name=queue0,
@@ -31,7 +30,6 @@ def gen_uc5() -> str:
         type2=ContainerType.FILTER,
         strategy=FilterStrategy.UC5_AMOUNT,
         npeers=UC5_AMOUNT_FILTERS,
-        affinity_upstream=True,
         naffinity_downstream=UC5_COUNT_GROUPBYS,
         rx_name=queue0,
         tx_name=queue1,
@@ -41,7 +39,6 @@ def gen_uc5() -> str:
         type2=ContainerType.GROUP_BY,
         strategy=GroupByStrategy.UC5_COUNT,
         npeers=UC5_COUNT_GROUPBYS,
-        affinity_upstream=True,
         naffinity_downstream=0,
         rx_name=queue1,
         tx_name=UC5_JOIN,

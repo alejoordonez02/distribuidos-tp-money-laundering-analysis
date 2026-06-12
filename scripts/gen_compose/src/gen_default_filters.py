@@ -26,6 +26,7 @@ def gen_default_filters() -> str:
       - MOM_PORT=5672
       - RX=client_transactions
       - UC1_TRANSACTIONS_TX=uc1_join
+      - UC1_TRANSACTIONS_SHARDS=0
       - UC2_TRANSACTIONS_TX=uc2_filtered_transactions
       - UC2_TRANSACTIONS_SHARDS={MAX_AMOUNT_GROUPBYS}
       - UC3_PERIOD_A_TRANSACTIONS_TX=uc3_transactons_period_A
