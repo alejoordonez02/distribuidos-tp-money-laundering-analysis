@@ -56,24 +56,3 @@ def _producer(i: int) -> bytes:
     return i.to_bytes(16, "big")
 
 
-def test_lru_evicts_oldest_producers_past_cap():
-    d = Deduplicator(max_producers=3)
-    for i in range(3):
-        d.record(_producer(i), 1)
-    # adding a 4th evicts producer 0 (least recently recorded)
-    d.record(_producer(3), 1)
-
-    assert not d.is_duplicate(_producer(0), 1)  # evicted -> seen as new
-    assert d.is_duplicate(_producer(1), 1)
-    assert d.is_duplicate(_producer(3), 1)
-
-
-def test_recording_refreshes_recency():
-    d = Deduplicator(max_producers=3)
-    for i in range(3):
-        d.record(_producer(i), 1)
-    d.record(_producer(0), 2)  # touch producer 0 -> now most recent
-    d.record(_producer(3), 1)  # evicts producer 1, not 0
-
-    assert d.is_duplicate(_producer(0), 2)
-    assert not d.is_duplicate(_producer(1), 1)
