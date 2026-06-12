@@ -13,6 +13,13 @@ from .gen_nodes import gen_nodes
 UC4_COMPUTE_GRAPHS = 3
 UC4_DEGREE_COMPUTE_GRAPHS = 3
 
+# The prune is a broadcast-join: the high-degree node set (left) is BROADCAST so
+# every peer holds it in full, while the graph to prune (right) is SHARDED across the
+# peers (each spills and prunes its shard against the broadcast high-degree set).
+# get_result iterates the (sharded) spilled graph, so the peers' outputs partition the
+# nodes with no overlap; the downstream count_paths aggregate dedups any re-emit.
+UC4_PRUNES = 3
+
 
 def gen_uc4() -> str:
     compose = "\n# === uc4 ==="
@@ -28,12 +35,13 @@ def gen_uc4() -> str:
         checkpoint_every=5,
     )
     queue1 = "uc4_graphs_to_prune"
+    # right side of the prune: shard the graph across the prune peers.
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
         strategy=AggregateStrategy.UC4_AGGREGATE_GRAPHS,
         npeers=3,
         affinity_upstream=True,
-        naffinity_downstream=0,
+        naffinity_downstream=UC4_PRUNES,
         rx_name=queue0,
         tx_name=queue1,
         checkpoint_every=5,
@@ -50,12 +58,14 @@ def gen_uc4() -> str:
         checkpoint_every=5,
     )
     queue3 = "uc4_high_degree"
+    # left side of the prune: broadcast the full high-degree set to every prune peer.
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
         strategy=AggregateStrategy.UC4_DEGREE,
         npeers=3,
         affinity_upstream=True,
-        naffinity_downstream=0,
+        naffinity_downstream=UC4_PRUNES,
+        broadcast_downstream=True,
         rx_name=queue2,
         tx_name=queue3,
         checkpoint_every=5,
@@ -68,6 +78,7 @@ def gen_uc4() -> str:
         tx_name=queue4,
         checkpoint_every=5,
         naffinity_downstream=5,
+        npeers=UC4_PRUNES,
     )
     queue5 = "uc4_paths"
     compose += gen_nodes(
