@@ -18,6 +18,11 @@ RESPONSES_TX = os.environ["RESPONSES_TX"]
 STATE_DIR = os.getenv("STATE_DIR")
 CHECKPOINT_EVERY = int(os.getenv("CHECKPOINT_EVERY", 5))
 
+# Which UCs this join replica owns (the rest are handled by sibling replicas). The
+# per-UC handlers are independent, so a replica simply consumes only its UCs' queues;
+# each UC queue thus has exactly one consumer (no competing). Defaults to all five.
+JOIN_UCS = {int(x) for x in os.getenv("JOIN_UCS", "1,2,3,4,5").split(",") if x}
+
 LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "WARNING")
 
 
@@ -31,13 +36,14 @@ def main():
     def rx(name: str):
         return lambda: QueueRabbitMQ(MOM_HOST, name, prefetch_count=prefetch)
 
-    partial_res_handlers = [
+    all_handlers = [
         (rx(UC1_RX), UC1Join(PersistentSpill(spill_dir, "uc1_join")), 1),
         (rx(UC2_RX), UC2Join(), 2),
         (rx(UC3_RX), UC3Join(PersistentSpill(spill_dir, "uc3_join")), 3),
         (rx(UC4_RX), UC4Join(), 4),
         (rx(UC5_RX), UC5Join(), 5),
     ]
+    partial_res_handlers = [h for h in all_handlers if h[2] in JOIN_UCS]
 
     def responses_tx_factory():
         return QueueRabbitMQ(MOM_HOST, RESPONSES_TX)
