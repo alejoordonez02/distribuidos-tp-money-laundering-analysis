@@ -16,7 +16,6 @@ from common.comms.middleware import (
     StampingMOM,
     derive_producer_id,
 )
-from merge import Merge, MergeCounts
 from ring_merge import MergeEofCounts, RingMerge
 
 MOM_HOST = os.environ["MOM_HOST"]
@@ -68,26 +67,7 @@ def main():
             for i in range(NAFFINITY_DOWNSTREAM)
         ]
 
-    if NPEERS > 1:
-        # scaled broadcast-join: left is broadcast (full state per peer), right is
-        # sharded; a ring barrier consolidates the per-peer outputs into one EOF.
-        _start_ring_merge(fn, make_txs(), out_counter, producer_id)
-        return
-
-    counts = MergeCounts()
-    checkpointer = make_checkpointer(
-        STATE_DIR,
-        f"{STRATEGY}_{IDX}",
-        [CounterSeqSource(producer_id, out_counter)],
-        CHECKPOINT_EVERY,
-        fn,
-        extra_state={"counts": counts},
-    )
-
-    prefetch = CHECKPOINT_EVERY if STATE_DIR else 1
-    left_rx = QueueRabbitMQ(MOM_HOST, LEFT_RX, prefetch_count=prefetch)
-    right_rx = QueueRabbitMQ(MOM_HOST, RIGHT_RX, prefetch_count=prefetch)
-    Merge(left_rx, right_rx, fn, make_txs, counts, checkpointer).start()
+    _start_ring_merge(fn, make_txs(), out_counter, producer_id)
 
 
 def _start_ring_merge(fn, external_txs, out_counter, producer_id):
@@ -104,7 +84,7 @@ def _start_ring_merge(fn, external_txs, out_counter, producer_id):
         [CounterSeqSource(producer_id, out_counter)],
         CHECKPOINT_EVERY,
         fn,
-        extra_state={"eof": rc, "merge_eof": counts},
+        extra_state={"completion": rc, "merge_eof": counts},
     )
 
     RingMerge(

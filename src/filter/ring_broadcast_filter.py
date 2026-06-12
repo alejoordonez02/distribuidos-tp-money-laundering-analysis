@@ -6,23 +6,17 @@ from common.checkpoint import Checkpointer
 from common.comms.eof_handler.ring_completion import RingCompletion
 from common.comms.eof_handler.ring_node import StatelessRingNode, shard_of
 from common.comms.eof_handler.sent_counts import SentCounts
-from common.comms.middleware import MOM, InputContext, MOMRing, MultiQueueConsumer
+from common.comms.middleware import MOM, MOMRing, MultiQueueConsumer
 
 
 class RingBroadcastFilter(StatelessRingNode):
     """The default filter as an affinity ring: one input shard per peer, broadcast to
-    every UC route (and sharded to the period-A/B routes), completing per-peer.
-
-    Output stamping stays DerivedStampingMOM (id derived from the input) because some
-    downstream stages are still competing; affinity input is deterministic, so a
-    re-emit after a crash lands on the same shard and derives the same id.
-    """
+    every UC route (and sharded to the period-A/B routes), completing per-peer."""
 
     def __init__(
         self,
         broadcast_routes: Sequence[tuple[MOM, FilterFn]],
         sharded_routes: Sequence[tuple[Sequence[MOM], FilterFn]],
-        input_ctx: InputContext,
         node_id: int,
         rc: RingCompletion,
         sent: SentCounts,
@@ -41,7 +35,7 @@ class RingBroadcastFilter(StatelessRingNode):
         super().__init__(
             sent, node_id, rc, consumer, ring, external_txs,
             ring_queue, ring_exchange, data_prefetch, checkpointer,
-            input_ctx=input_ctx, data_queue=data_queue, data_exchange=data_exchange,
+            data_queue=data_queue, data_exchange=data_exchange,
         )
         self.broadcast_routes = broadcast_routes
         self.sharded_routes = sharded_routes

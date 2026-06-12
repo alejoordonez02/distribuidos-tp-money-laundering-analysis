@@ -38,27 +38,23 @@ def _declare_shards(host: str, exchange: str, n: int):
 
 
 def _make_factory(exchange: str, n: int):
-    """A tx factory: N exchange shard publishers (routing key = shard idx) when scaled
-    to an affinity ring, or a single working queue when n == 1."""
-    if n > 1:
-        _declare_shards(MOM_HOST, exchange, n)
-
-        def factory():
-            return [
-                ExchangeRabbitMQ(
-                    MOM_HOST,
-                    exchange,
-                    routing_keys=[str(i)],
-                    queue_name=f"{exchange}{i}",
-                    exclusive=False,
-                )
-                for i in range(n)
-            ]
-
-        return factory
+    """A tx factory: one exchange shard publisher per downstream ring peer (routing
+    key = shard idx). A single-peer ring (n == 1) is still exchange-routed — its one
+    consumer reads `{exchange}0` exactly as when scaled — so the gateway never needs
+    a plain-queue special case (which would miss the ring's exchange-bound shard)."""
+    _declare_shards(MOM_HOST, exchange, n)
 
     def factory():
-        return [QueueRabbitMQ(MOM_HOST, exchange)]
+        return [
+            ExchangeRabbitMQ(
+                MOM_HOST,
+                exchange,
+                routing_keys=[str(i)],
+                queue_name=f"{exchange}{i}",
+                exclusive=False,
+            )
+            for i in range(n)
+        ]
 
     return factory
 

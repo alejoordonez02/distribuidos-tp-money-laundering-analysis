@@ -109,8 +109,7 @@ class RingCompletion:
     def on_token(self, token: BarrierToken) -> list[Any]:
         c = self._client(token.client_id)
         # only count a peer that has already emitted; a token passing a peer still
-        # PROCESSING must not record its stale (zero) slot, or the sum would be wrong.
-        # the token relaps until every peer has emitted. idempotent on redelivery.
+        # PROCESSING must not record its stale (zero) slot. idempotent on redelivery.
         if c.phase != Phase.PROCESSING:
             token.sent_by[self.node_id] = c.sent
         return self._advance(token)

@@ -12,7 +12,7 @@ from common.comms.eof_handler.ring_completion import (
 )
 from common.comms.eof_handler.sent_counts import SentCounts
 from common.comms.messages import EOF, Message, RingBarrier, deserialize_message
-from common.comms.middleware import MOM, InputContext, MOMRing, MultiQueueConsumer
+from common.comms.middleware import MOM, MOMRing, MultiQueueConsumer
 from common.graceful_shutdown import setup_graceful_shutdown
 
 RING_THROTTLE_SECS = 1
@@ -49,7 +49,6 @@ class RingNode:
         ring_exchange: str,
         data_prefetch: int,
         checkpointer: Optional[Checkpointer] = None,
-        input_ctx: Optional[InputContext] = None,
         data_queue: Optional[str] = None,
         data_exchange: Optional[str] = None,
     ):
@@ -59,7 +58,6 @@ class RingNode:
         self.ring = ring
         self.external_txs = external_txs
         self.checkpointer = checkpointer
-        self.input_ctx = input_ctx
         self._data_queue = data_queue
         self._data_exchange = data_exchange
         self._ring_queue = ring_queue
@@ -101,7 +99,7 @@ class RingNode:
 
     def _on_data_msg(self, body: bytes, ack: Callable, _nack: Callable):
         msg = deserialize_message(body)
-        dispatch(self.checkpointer, msg, ack, self._on_eof, self._on_data, self.input_ctx)
+        dispatch(self.checkpointer, msg, ack, self._on_eof, self._on_data)
 
     def _on_data(self, msg: Message):
         raise NotImplementedError
