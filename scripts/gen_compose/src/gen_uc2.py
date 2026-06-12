@@ -11,6 +11,13 @@ MAX_AMOUNT_AGGREGATES = 3
 BANK_NAMES_GROUPBYS = 3
 BANK_NAMES_AGGREGATES = 3
 
+# The merge is a broadcast-join: the max-by-bank state (left) is BROADCAST so every
+# merge peer holds it in full, while the bank-id->name mappings (right) are SHARDED
+# across the peers. get_result iterates the (broadcast) max_amounts but only emits a
+# bank if it is in this peer's (sharded) bank_names, so the peers' outputs partition
+# the banks with no overlap; the join accumulates the per-peer partials.
+UC2_MERGES = 3
+
 
 def gen_uc2() -> str:
     compose = "\n# === uc2 ==="
@@ -29,12 +36,14 @@ def gen_uc2() -> str:
         checkpoint_every=5,
     )
     max_amounts_to_merge = "uc2_max_amounts_by_bank"
+    # left side of the merge: broadcast the full max-by-bank state to every merge peer.
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
         strategy=AggregateStrategy.UC2_MAX_AMOUNT,
         npeers=MAX_AMOUNT_AGGREGATES,
         affinity_upstream=True,
-        naffinity_downstream=0,
+        naffinity_downstream=UC2_MERGES,
+        broadcast_downstream=True,
         rx_name=max_amounts_to_aggregate,
         tx_name=max_amounts_to_merge,
         checkpoint_every=5,
@@ -55,12 +64,13 @@ def gen_uc2() -> str:
         checkpoint_every=5,
     )
     bank_names_to_merge = "uc2_bank_id_name_mappings"
+    # right side of the merge: shard the bank-id->name mappings across the merge peers.
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
         strategy=AggregateStrategy.UC2_BANK_NAMES,
         npeers=BANK_NAMES_AGGREGATES,
         affinity_upstream=True,
-        naffinity_downstream=0,
+        naffinity_downstream=UC2_MERGES,
         rx_name=bank_names_to_aggregate,
         tx_name=bank_names_to_merge,
         checkpoint_every=5,
@@ -72,5 +82,6 @@ def gen_uc2() -> str:
         right_rx_name=bank_names_to_merge,
         tx_name=UC2_JOIN,
         checkpoint_every=5,
+        npeers=UC2_MERGES,
     )
     return compose
