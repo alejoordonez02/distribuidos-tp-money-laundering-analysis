@@ -1,4 +1,5 @@
 from .gen_nodes import CHECKPOINT_EVERY
+from .gen_uc2 import MAX_AMOUNT_GROUPBYS
 from .gen_uc3 import UC3_GROUP_BYS, UC3_MERGES
 
 DEFAULT_FILTERS = 3
@@ -24,6 +25,7 @@ def gen_default_filters() -> str:
       - RX=client_transactions
       - UC1_TRANSACTIONS_TX=uc1_join
       - UC2_TRANSACTIONS_TX=uc2_filtered_transactions
+      - UC2_TRANSACTIONS_SHARDS={MAX_AMOUNT_GROUPBYS}
       - UC3_PERIOD_A_TRANSACTIONS_TX=uc3_transactons_period_A
       - UC3_PERIOD_B_TRANSACTIONS_TX=uc3_transactons_period_B
       - UC3_PERIOD_A_SHARDS={UC3_GROUP_BYS}

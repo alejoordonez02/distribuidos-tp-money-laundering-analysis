@@ -15,11 +15,14 @@ BANK_NAMES_AGGREGATES = 3
 def gen_uc2() -> str:
     compose = "\n# === uc2 ==="
     max_amounts_to_aggregate = "uc2_partial_max_amount"
+    # stateless group_by (per-message fan-out by bank); affinity ring so each peer owns
+    # its filtered-transactions shard (default filters shard by identity) and a crash
+    # re-emit lands on the same peer -> dedup catches it, no aggregate count inflation.
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,
         strategy=GroupByStrategy.UC2_MAX_AMOUNT,
         npeers=MAX_AMOUNT_GROUPBYS,
-        affinity_upstream=False,
+        affinity_upstream=True,
         naffinity_downstream=MAX_AMOUNT_AGGREGATES,
         rx_name=UC2_FILTERED_TRANSACTIONS,
         tx_name=max_amounts_to_aggregate,

@@ -51,36 +51,29 @@ def make_default_filter() -> "Filter | RingBroadcastFilter":
     # derives the same id and dedups downstream.
     input_ctx = InputContext()
 
-    # broadcast routes: every transaction reaches each UC's queue
-    route_specs = [
-        (os.environ["UC1_TRANSACTIONS_TX"], UC1Filter()),
-        (os.environ["UC2_TRANSACTIONS_TX"], UC2Filter()),
-        (os.environ["UC4_TRANSACTIONS_TX"], UC4Filter()),
-        (os.environ["UC4_DEGREE_TRANSACTIONS_TX"], UC4Filter()),
-        (os.environ["UC5_TRANSACTIONS_TX"], UC5Filter()),
-    ]
-    routes = [
-        (DerivedStampingMOM(QueueRabbitMQ(MOM_HOST, queue), input_ctx), fn)
-        for queue, fn in route_specs
-    ]
-
-    # UC3 period A (feeds the group_bys) and period B (feeds the merges) shard across
-    # N when those consumers are scaled to an affinity ring (opt-in via *_SHARDS), so
-    # each consumer owns its own per-peer queue; otherwise a single broadcast queue.
-    # Sharding by message identity makes a re-emit after a crash land on the SAME
-    # downstream shard, so its (per-shard) dedup catches the duplicate — the affinity
-    # consumer never double-counts it (unlike a competing working queue).
-    sharded_routes = []
-    for env_tx, filter_fn, shards_env in [
+    # Every transaction is routed to each UC's pipeline. A route is BROADCAST to a
+    # shared working queue (a competing downstream) by default, or SHARDED across N
+    # affinity peers (opt-in via its *_SHARDS env) once that downstream is converted
+    # to an affinity ring. Sharding by message identity makes a re-emit after a crash
+    # land on the SAME downstream peer, so its per-shard dedup catches the duplicate —
+    # the affinity consumer never double-counts it (a competing working queue would).
+    route_table = [
+        (os.environ["UC1_TRANSACTIONS_TX"], UC1Filter(), "UC1_TRANSACTIONS_SHARDS"),
+        (os.environ["UC2_TRANSACTIONS_TX"], UC2Filter(), "UC2_TRANSACTIONS_SHARDS"),
         (os.environ["UC3_PERIOD_A_TRANSACTIONS_TX"], UC3FilterPeriodA(), "UC3_PERIOD_A_SHARDS"),
+        (os.environ["UC4_TRANSACTIONS_TX"], UC4Filter(), "UC4_TRANSACTIONS_SHARDS"),
+        (os.environ["UC4_DEGREE_TRANSACTIONS_TX"], UC4Filter(), "UC4_DEGREE_TRANSACTIONS_SHARDS"),
+        (os.environ["UC5_TRANSACTIONS_TX"], UC5Filter(), "UC5_TRANSACTIONS_SHARDS"),
         (os.environ["UC3_PERIOD_B_TRANSACTIONS_TX"], UC3FilterPeriodB(), "UC3_PERIOD_B_SHARDS"),
-    ]:
+    ]
+    routes, sharded_routes = [], []
+    for tx, filter_fn, shards_env in route_table:
         n = int(os.getenv(shards_env, "1"))
         if n > 1:
             shards = [
                 DerivedStampingMOM(
                     ExchangeRabbitMQ(
-                        MOM_HOST, env_tx, routing_keys=[f"{i}"], queue_name=f"{env_tx}{i}"
+                        MOM_HOST, tx, routing_keys=[f"{i}"], queue_name=f"{tx}{i}"
                     ),
                     input_ctx,
                 )
@@ -89,7 +82,7 @@ def make_default_filter() -> "Filter | RingBroadcastFilter":
             sharded_routes.append((shards, filter_fn))
         else:
             routes.append(
-                (DerivedStampingMOM(QueueRabbitMQ(MOM_HOST, env_tx), input_ctx), filter_fn)
+                (DerivedStampingMOM(QueueRabbitMQ(MOM_HOST, tx), input_ctx), filter_fn)
             )
 
     if npeers > 1:
