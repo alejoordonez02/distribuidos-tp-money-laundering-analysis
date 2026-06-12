@@ -44,6 +44,12 @@ ALL_POINTS = SELF_POINTS + KILL_POINTS
 
 TIMEOUT = int(os.getenv("FT_TIMEOUT", "120"))
 KILL_DELAY = int(os.getenv("FT_KILL_DELAY", "8"))
+# `docker kill` is treated by the daemon as a manual stop, so `restart: on-failure`
+# does NOT bring the container back (unlike a real process crash / OOM kill, which
+# does). To simulate the orchestrator restarting a hard-crashed node we `docker
+# start` it ourselves after the kill; the recovery-path crash point then fires
+# during restore and `restart: on-failure` takes over from there.
+KILL_RESTART_GRACE = int(os.getenv("FT_KILL_RESTART_GRACE", "2"))
 ALL_REPLICAS = os.getenv("FT_ALL_REPLICAS") == "1"
 SKIP_GEN = os.getenv("FT_SKIP_GEN") == "1"
 ORACLE_MEM_MAX = os.getenv("FT_ORACLE_MEM", "5G")
@@ -154,6 +160,10 @@ def run_combo(node, point):
     if is_kill:
         time.sleep(KILL_DELAY)
         run(f"docker kill --signal=KILL {node}", capture=True)
+        # docker kill suppresses the on-failure restart policy; bring the node back
+        # ourselves so the recovery path actually runs (see KILL_RESTART_GRACE).
+        time.sleep(KILL_RESTART_GRACE)
+        run(f"docker start {node}", capture=True)
     completed = wait_for_completion(start)
     secs = int(time.time() - start)
     fired = sentinel_fired(node)
