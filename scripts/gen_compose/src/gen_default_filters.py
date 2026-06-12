@@ -2,6 +2,7 @@ from .gen_nodes import CHECKPOINT_EVERY
 from .gen_uc2 import MAX_AMOUNT_GROUPBYS
 from .gen_uc3 import UC3_GROUP_BYS, UC3_MERGES
 from .gen_uc4 import UC4_COMPUTE_GRAPHS, UC4_DEGREE_COMPUTE_GRAPHS
+from .gen_uc5 import UC5_CONVERTERS
 
 DEFAULT_FILTERS = 3
 
@@ -36,6 +37,7 @@ def gen_default_filters() -> str:
       - UC4_DEGREE_TRANSACTIONS_TX=uc4_degree_transactions
       - UC4_DEGREE_TRANSACTIONS_SHARDS={UC4_DEGREE_COMPUTE_GRAPHS}
       - UC5_TRANSACTIONS_TX=uc5_filtered_transactions
+      - UC5_TRANSACTIONS_SHARDS={UC5_CONVERTERS}
       - IDX={idx}
       - NPEERS={DEFAULT_FILTERS}
       - RING_NAME=default_filter_ring
