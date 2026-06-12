@@ -1,4 +1,5 @@
 from .gen_nodes import CHECKPOINT_EVERY
+from .gen_uc3 import UC3_MERGES
 
 DEFAULT_FILTERS = 3
 
@@ -25,6 +26,7 @@ def gen_default_filters() -> str:
       - UC2_TRANSACTIONS_TX=uc2_filtered_transactions
       - UC3_PERIOD_A_TRANSACTIONS_TX=uc3_transactons_period_A
       - UC3_PERIOD_B_TRANSACTIONS_TX=uc3_transactons_period_B
+      - UC3_PERIOD_B_SHARDS={UC3_MERGES}
       - UC4_TRANSACTIONS_TX=uc4_filtered_transactions
       - UC4_DEGREE_TRANSACTIONS_TX=uc4_degree_transactions
       - UC5_TRANSACTIONS_TX=uc5_filtered_transactions

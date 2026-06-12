@@ -11,7 +11,7 @@ from common.comms.messages.message_types import MessageType
 from common.comms.middleware import MOM, MOMRing
 from common.fault_injection import maybe_crash
 
-from .eof_handler import StatefulEOFHandler
+from .eof_handler import StatefulEOFHandler, total_sent
 from .ring_eof_handler import RingEOFHandler
 
 RING_LOOP_TIMEOFF = 2
@@ -47,7 +47,7 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
         self.processed_counts: dict[UUID, int] = {}
         self.mtx = Lock()
 
-        self.sent_data: dict[UUID, int] = {}
+        self.sent_data: dict[UUID, dict[int, int]] = {}
         self.confirmed_sent_data: dict[UUID, bool] = {}
 
     def confirm_sent_data(self, client_id: UUID):
@@ -74,10 +74,11 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
             ring_data = RingSentData(
                 client_id=eof.client_id,
                 origin=self.id,
-                sent_data_amount=self.sent_data.pop(eof.client_id, 0),
+                sent_data_amount=total_sent(self.sent_data, eof.client_id),
                 sent_data=self.confirmed_sent_data.get(eof.client_id, True),
                 done=False,
             )
+            self.sent_data.pop(eof.client_id, None)
 
         logging.info(f"sending internal ring sent data: {ring_data.__dict__}")
         self.mom_ring.send(ring_data.serialize())
@@ -172,7 +173,8 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
         # 1. no importa quién sea, si alguien no terminó entonces sent data
         # es false y appendeo mi sent_data_amount al msj
         with self.mtx:
-            ring_data.sent_data_amount += self.sent_data.pop(ring_data.client_id, 0)
+            ring_data.sent_data_amount += total_sent(self.sent_data, ring_data.client_id)
+            self.sent_data.pop(ring_data.client_id, None)
             ring_data.sent_data &= self.confirmed_sent_data.get(
                 ring_data.client_id, False
             )

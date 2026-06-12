@@ -10,6 +10,23 @@ from .gen_merge import gen_merge
 from .gen_nodes import gen_nodes
 
 
+# UC3_AVERAGE is a reducer partitioned by payment_format: the group_by routes its
+# partial sums by hash(format) (affinity downstream) so each aggregate owns a
+# disjoint set of formats and computes a correct average. Same proven topology UC2
+# uses (group_by -> affinity -> aggregate). Capped at the format cardinality
+# (~7 payment formats); 3 maximizes that without idle peers.
+UC3_AGGREGATES = 3
+
+# The merge is the real bottleneck: it spills ALL of period B to disk and streams it
+# back to join against the averages. It is scaled as a broadcast-join: the small
+# averages (left) are BROADCAST so every merge peer holds them in full, while period
+# B (right) is SHARDED across the peers (by the default filters, opt-in via
+# UC3_PERIOD_B_SHARDS) so each peer spills/streams only its 1/N. A ring barrier
+# consolidates the per-peer outputs into one downstream EOF, so the filter sees a
+# single consolidated EOF exactly as from a single merge.
+UC3_MERGES = 3
+
+
 def gen_uc3() -> str:
     compose = "\n# === uc3 ==="
     queue0 = "uc3_sum_by_format"
@@ -18,7 +35,7 @@ def gen_uc3() -> str:
         strategy=GroupByStrategy.UC3_SUM,
         npeers=3,
         affinity_upstream=False,
-        naffinity_downstream=0,
+        naffinity_downstream=UC3_AGGREGATES,
         rx_name=UC3_PERIOD_A_TRANSACTIONS,
         tx_name=queue0,
         checkpoint_every=5,
@@ -27,9 +44,10 @@ def gen_uc3() -> str:
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
         strategy=AggregateStrategy.UC3_AVERAGE,
-        npeers=1,
-        affinity_upstream=False,
-        naffinity_downstream=0,
+        npeers=UC3_AGGREGATES,
+        affinity_upstream=True,
+        naffinity_downstream=UC3_MERGES,
+        broadcast_downstream=True,
         rx_name=queue0,
         tx_name=queue1,
         checkpoint_every=5,
@@ -41,6 +59,7 @@ def gen_uc3() -> str:
         right_rx_name=UC3_PERIOD_B_TRANSACTIONS,
         tx_name=queue2,
         checkpoint_every=5,
+        npeers=UC3_MERGES,
     )
     compose += gen_nodes(
         type2=ContainerType.FILTER,

@@ -31,3 +31,6 @@ test/expected_responses
 
 # fault-tolerance checkpoints (local)
 state/
+
+# cached oracle outputs per dataset (avoid re-running gen_input_output)
+test/expected_cache/

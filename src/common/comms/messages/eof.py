@@ -13,12 +13,16 @@ class EOF(Message):
         expected_count: int = -1,
         next_expected_count: int = -1,
         origin: int = -1,
+        next_expected_per_shard: dict[int, int] | None = None,
     ):
         self.client_id = client_id
         self.processed_count = processed_count
         self.expected_count = expected_count
         self.next_expected_count = next_expected_count
         self.origin = origin
+        # output count per downstream shard; circulated while the emitter's ring sums
+        # each shard, so it can send each downstream peer its own expected_count.
+        self.next_expected_per_shard = next_expected_per_shard or {}
 
     @classmethod
     def _type(cls):
@@ -31,6 +35,7 @@ class EOF(Message):
             self.expected_count,
             self.next_expected_count,
             self.origin,
+            self.next_expected_per_shard,
         ]
 
     @classmethod

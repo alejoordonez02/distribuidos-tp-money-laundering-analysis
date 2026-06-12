@@ -15,10 +15,12 @@ from aggregate_fns import (
 from strategies import AggregateStrategy
 
 from aggregate import Aggregate
+from ring_aggregate import RingAggregate
 from common.checkpoint import MultiShardSpill, make_checkpointer
 from common.comms.eof_handler import make_stateful_eof_handler
+from common.comms.eof_handler.ring_completion import RingCompletion
 from common.comms.messages import EOF
-from common.comms.middleware import make_rx_tx
+from common.comms.middleware import MultiQueueConsumer, RingRabbitMQ, make_rx_tx
 
 MOM_HOST = os.environ["MOM_HOST"]
 RX = os.environ["RX"]
@@ -28,6 +30,9 @@ STRATEGY = os.environ["STRATEGY"]
 IDX = int(os.getenv("IDX", 0))
 AFFINITY_UPSTREAM = os.environ["AFFINITY_UPSTREAM"] == "1"
 NAFFINITY_DOWNSTREAM = int(os.getenv("NAFFINITY_DOWNSTREAM", 0))
+# broadcast a small global result to every downstream replica (UC3 averages fanned
+# out to the broadcast-join merges) instead of sharding by affinity.
+BROADCAST_DOWNSTREAM = os.getenv("BROADCAST_DOWNSTREAM", "0") == "1"
 
 STATE_DIR = os.getenv("STATE_DIR")
 CHECKPOINT_EVERY = int(os.getenv("CHECKPOINT_EVERY", 5))
@@ -43,9 +48,16 @@ def make_aggregate(
     mom_host: str,
     rx_name: str,
     tx_name: str,
-) -> Aggregate:
+) -> "Aggregate | RingAggregate":
 
-    # aggregates emit at EOF; competing ones are made crash-safe by sharding input
+    npeers = int(os.getenv("NPEERS", "1"))
+    if npeers > 1:
+        # affinity ring: per-peer completion on a single consume thread (data + ring)
+        return _make_ring_aggregate(
+            fn, idx, naffinities_downstream, mom_host, rx_name, tx_name, npeers
+        )
+
+    # single node: emits at EOF, no ring barrier
     external_rx, external_txs, _ = make_rx_tx(
         idx,
         rx_name,
@@ -58,7 +70,7 @@ def make_aggregate(
     )
 
     internal_eofs = Queue[EOF]()
-    eof_handler = make_stateful_eof_handler(MOM_HOST, (external_txs[0],), internal_eofs)
+    eof_handler = make_stateful_eof_handler(MOM_HOST, external_txs, internal_eofs)
 
     checkpointer = make_checkpointer(
         STATE_DIR,
@@ -69,11 +81,70 @@ def make_aggregate(
         extra_state={"eof": eof_handler},
     )
 
-    aggregate = Aggregate(
-        fn, external_rx, external_txs, eof_handler, internal_eofs, checkpointer
+    return Aggregate(
+        fn,
+        external_rx,
+        external_txs,
+        eof_handler,
+        internal_eofs,
+        checkpointer,
+        broadcast_downstream=BROADCAST_DOWNSTREAM,
     )
 
-    return aggregate
+
+def _make_ring_aggregate(
+    fn: AggregateFn,
+    idx: int,
+    naffinities_downstream: int,
+    mom_host: str,
+    rx_name: str,
+    tx_name: str,
+    npeers: int,
+) -> RingAggregate:
+    # the MultiQueueConsumer owns the data-shard consumption, so the make_rx_tx rx is
+    # only used to build the downstream txs; close its idle connection.
+    external_rx, external_txs, _ = make_rx_tx(
+        idx,
+        rx_name,
+        tx_name,
+        mom_host,
+        naffinities_downstream,
+        affinity_upstream=True,
+        durable_rx=STATE_DIR is not None,
+        rx_prefetch=CHECKPOINT_EVERY if STATE_DIR else 1,
+    )
+    external_rx.close()
+
+    ring_name = os.environ["RING_NAME"]
+    peer_ids = [i for i in range(npeers) if i != idx]
+    rc = RingCompletion(idx, peer_ids)
+    consumer = MultiQueueConsumer(mom_host)
+    ring = RingRabbitMQ(mom_host, ring_name, idx, peer_ids)
+
+    checkpointer = make_checkpointer(
+        STATE_DIR,
+        f"{STRATEGY}_{idx}",
+        external_txs,
+        CHECKPOINT_EVERY,
+        fn,
+        extra_state={"eof": rc},
+    )
+
+    return RingAggregate(
+        fn,
+        idx,
+        rc,
+        consumer,
+        ring,
+        external_txs,
+        data_queue=f"{rx_name}{idx}",
+        data_exchange=rx_name,
+        ring_queue=f"{ring_name}_queue{idx}",
+        ring_exchange=ring_name,
+        data_prefetch=max(CHECKPOINT_EVERY, 10),
+        checkpointer=checkpointer,
+        broadcast_downstream=BROADCAST_DOWNSTREAM,
+    )
 
 
 def main():

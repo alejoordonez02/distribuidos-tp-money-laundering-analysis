@@ -12,7 +12,7 @@ class RingEOFHandler(ABC):
     mom_ring: MOMRing
     mtx: Lock
     processed_counts: dict[UUID, int]
-    sent_data: dict[UUID, int]
+    sent_data: dict[UUID, dict[int, int]]
 
     def start(self):
         self.thread_handle = Thread(target=self._start_consuming_back)
@@ -37,13 +37,11 @@ class RingEOFHandler(ABC):
 
             self.processed_counts[client_id] += 1
 
-    def add_sent_data_count(self, client_id: UUID):
+    def add_sent_data_count(self, client_id: UUID, shard: int = 0):
         # locked: the controller thread increments while the ring thread reads it
         with self.mtx:
-            if client_id not in self.sent_data:
-                self.sent_data[client_id] = 0
-
-            self.sent_data[client_id] += 1
+            shards = self.sent_data.setdefault(client_id, {})
+            shards[shard] = shards.get(shard, 0) + 1
 
     def _start_consuming_back(self):
         exclusive = self.mom_ring.clone()

@@ -17,6 +17,7 @@ from .node_msg import NodeMsg
 from .path_count import PathCounts
 from .path_msg import PathMsg
 from .response import Response
+from .ring_barrier import RingBarrier
 from .ring_done import RingDone
 from .ring_sent_data import RingSentData
 from .sum_by_payment_format import SumByPaymentFormat
@@ -85,5 +86,7 @@ def deserialize_message(bytes2: bytes) -> Message:
             return PathMsg.deserialize(bytes2)
         case MessageType.RING_SENT_DATA:
             return RingSentData.deserialize(bytes2)
+        case MessageType.RING_BARRIER:
+            return RingBarrier.deserialize(bytes2)
         case _:
             raise UnknownMessageError(f"unknown message type {bytes2[0]}")

@@ -10,6 +10,7 @@ from common.checkpoint import make_checkpointer
 from common.comms.eof_handler import make_stateless_eof_handler
 from common.comms.middleware import (
     DerivedStampingMOM,
+    ExchangeRabbitMQ,
     InputContext,
     QueueRabbitMQ,
     make_rx_tx,
@@ -40,11 +41,11 @@ def make_default_filter() -> Filter:
     # competing input: derived stamping for crash-stable output ids
     input_ctx = InputContext()
 
+    # broadcast routes: every transaction reaches each UC's queue
     route_specs = [
         (os.environ["UC1_TRANSACTIONS_TX"], UC1Filter()),
         (os.environ["UC2_TRANSACTIONS_TX"], UC2Filter()),
         (os.environ["UC3_PERIOD_A_TRANSACTIONS_TX"], UC3FilterPeriodA()),
-        (os.environ["UC3_PERIOD_B_TRANSACTIONS_TX"], UC3FilterPeriodB()),
         (os.environ["UC4_TRANSACTIONS_TX"], UC4Filter()),
         (os.environ["UC4_DEGREE_TRANSACTIONS_TX"], UC4Filter()),
         (os.environ["UC5_TRANSACTIONS_TX"], UC5Filter()),
@@ -54,17 +55,41 @@ def make_default_filter() -> Filter:
         for queue, fn in route_specs
     ]
 
+    # period-B feeds the UC3 broadcast-join merges; shard it across N when scaled
+    # (opt-in via UC3_PERIOD_B_SHARDS), otherwise keep the single broadcast queue.
+    pb = os.environ["UC3_PERIOD_B_TRANSACTIONS_TX"]
+    n_pb = int(os.getenv("UC3_PERIOD_B_SHARDS", "1"))
+    sharded_routes = []
+    if n_pb > 1:
+        pb_shards = [
+            DerivedStampingMOM(
+                ExchangeRabbitMQ(
+                    MOM_HOST, pb, routing_keys=[f"{i}"], queue_name=f"{pb}{i}"
+                ),
+                input_ctx,
+            )
+            for i in range(n_pb)
+        ]
+        sharded_routes = [(pb_shards, UC3FilterPeriodB())]
+    else:
+        routes.append(
+            (DerivedStampingMOM(QueueRabbitMQ(MOM_HOST, pb), input_ctx), UC3FilterPeriodB())
+        )
+
     prefetch = CHECKPOINT_EVERY if STATE_DIR else 1
     transactions_rx = QueueRabbitMQ(MOM_HOST, RX, prefetch_count=prefetch)
 
-    txs = [tx for tx, _ in routes]
+    txs = [tx for tx, _ in routes] + [tx for shards, _ in sharded_routes for tx in shards]
     eof_handler = make_stateless_eof_handler(MOM_HOST, txs)
     checkpointer = make_checkpointer(
         STATE_DIR, f"{STRATEGY}_{idx}", (), CHECKPOINT_EVERY,
         extra_state={"eof": eof_handler},
     )
 
-    return Filter(transactions_rx, routes, eof_handler, checkpointer, input_ctx)
+    return Filter(
+        transactions_rx, routes, eof_handler, checkpointer, input_ctx,
+        sharded_routes=sharded_routes,
+    )
 
 
 def make_filter(
@@ -89,7 +114,7 @@ def make_filter(
         derived_stamping=not affinity_upstream,
     )
 
-    eof_handler = make_stateless_eof_handler(MOM_HOST, (external_txs[0],))
+    eof_handler = make_stateless_eof_handler(MOM_HOST, external_txs)
     checkpointer = make_checkpointer(
         STATE_DIR, f"{STRATEGY}_{idx}",
         () if input_ctx else external_txs, CHECKPOINT_EVERY,

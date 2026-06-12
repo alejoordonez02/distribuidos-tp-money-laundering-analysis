@@ -55,6 +55,6 @@ class GroupBy:
         for group, affinity in self.fn.group_by(msg):
             external_tx_idx = affinity % len(self.external_txs)
             self.external_txs[external_tx_idx].send(group.serialize())
-            self.eof_handler.add_sent_data_count(msg.client_id)
+            self.eof_handler.add_sent_data_count(msg.client_id, external_tx_idx)
 
         self.eof_handler.add_processed_count(msg.client_id)

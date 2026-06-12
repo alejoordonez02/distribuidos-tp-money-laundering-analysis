@@ -103,16 +103,19 @@ class Merge:
             return
 
         # Round-robin results across the downstream shards (deterministic, so a
-        # re-emit after a crash lands each result on the same shard). The single
-        # EOF goes to shard 0; the downstream stateful ring coordinates the rest.
-        sent = 0
-        for result in self._fn.get_result(client_id):
-            txs[sent % len(txs)].send(result.serialize())
-            sent += 1
+        # re-emit after a crash lands each result on the same shard), then send each
+        # shard its own per-shard EOF so an affinity downstream peer learns exactly
+        # how many messages to expect (a single downstream is just shard 0).
+        sent_per_shard: dict[int, int] = {}
+        for i, result in enumerate(self._fn.get_result(client_id)):
+            shard = i % len(txs)
+            txs[shard].send(result.serialize())
+            sent_per_shard[shard] = sent_per_shard.get(shard, 0) + 1
 
-        eof = EOF(client_id, expected_count=sent)
-        logging.info(f"downstreaming eof: {eof.__dict__}")
-        txs[0].send(eof.serialize())
+        for shard, tx in enumerate(txs):
+            eof = EOF(client_id, expected_count=sent_per_shard.get(shard, 0))
+            logging.info(f"downstreaming per-shard eof: {eof.__dict__}")
+            tx.send(eof.serialize())
 
     def _handle_left_message(self, bytes2, ack, _, txs):
         self._handle(bytes2, ack, txs, self._fn.left, is_left=True)

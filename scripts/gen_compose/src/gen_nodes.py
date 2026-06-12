@@ -17,6 +17,7 @@ def gen_nodes(
     rx_name: str,
     tx_name: str,
     checkpoint_every: int | None = None,
+    broadcast_downstream: bool = False,
 ) -> str:
     """
     Gen a ring of nodes.
@@ -64,6 +65,7 @@ def gen_nodes(
       - RING_NAME={name}_ring
       - AFFINITY_UPSTREAM={1 if affinity_upstream else 0}
       - NAFFINITY_DOWNSTREAM={naffinity_downstream}
+      - BROADCAST_DOWNSTREAM={1 if broadcast_downstream else 0}
       - PYTHONHASHSEED=2026"""
 
         if checkpoint_every is not None:

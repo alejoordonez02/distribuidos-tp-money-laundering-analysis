@@ -32,8 +32,23 @@ class MultiQueueConsumer:
         self._chan = self._conn.channel()
         self._sources: list[_Source] = []
 
-    def add_queue(self, queue_name: str, handler: MessageHandler, prefetch: int = 1):
-        self._chan.queue_declare(queue=queue_name)
+    def add_queue(
+        self,
+        queue_name: str,
+        handler: MessageHandler,
+        prefetch: int = 1,
+        durable: bool = False,
+        exchange: str | None = None,
+        routing_key: str | None = None,
+    ):
+        # durable + exchange-bound queues survive a crash and keep accumulating
+        # (redelivering un-acked messages) until the node returns.
+        self._chan.queue_declare(queue=queue_name, durable=durable)
+        if exchange is not None:
+            self._chan.exchange_declare(exchange=exchange)
+            self._chan.queue_bind(
+                exchange=exchange, queue=queue_name, routing_key=routing_key or ""
+            )
         self._sources.append(_Source(queue_name, handler, prefetch))
 
     def _ack(self, method):

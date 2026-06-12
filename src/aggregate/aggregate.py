@@ -22,6 +22,7 @@ class Aggregate:
         eof_handler: StatefulEOFHandler,
         internal_eofs_rx: Queue[EOF],
         checkpointer: Optional[Checkpointer] = None,
+        broadcast_downstream: bool = False,
     ):
         self.external_rx = external_rx
         self.fn = fn
@@ -29,6 +30,9 @@ class Aggregate:
         self.eof_handler = eof_handler
         self.internal_eofs_rx = internal_eofs_rx
         self.checkpointer = checkpointer
+        # broadcast: send every result to ALL downstream txs (a small global state
+        # fanned out to N broadcast-join replicas) instead of sharding by affinity.
+        self.broadcast_downstream = broadcast_downstream
 
         self._should_keep_running = False
         self.internal_eofs_handle: Thread
@@ -75,10 +79,16 @@ class Aggregate:
                 affinity_groups = list(self.fn.get_result(eof.client_id))
 
             for aggregated, affinity in affinity_groups:
+                if self.broadcast_downstream:
+                    # every replica gets the full state; count once (each tx gets all)
+                    for tx in self.external_txs:
+                        tx.send(aggregated.serialize())
+                    self.eof_handler.add_sent_data_count(eof.client_id)
+                    continue
                 external_tx_idx = affinity % len(self.external_txs)
                 self.external_txs[external_tx_idx].send(aggregated.serialize())
 
-                self.eof_handler.add_sent_data_count(eof.client_id)
+                self.eof_handler.add_sent_data_count(eof.client_id, external_tx_idx)
 
             self.eof_handler.confirm_sent_data(eof.client_id)
 

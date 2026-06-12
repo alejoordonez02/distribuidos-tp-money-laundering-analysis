@@ -6,7 +6,7 @@ from uuid import UUID
 from common.comms.messages import EOF
 from common.comms.middleware import MOM
 
-from .eof_handler import StatefulEOFHandler, StatelessEOFHandler
+from .eof_handler import StatefulEOFHandler, StatelessEOFHandler, total_sent
 
 
 class StatelessSingleNodeEOFHandler(StatelessEOFHandler):
@@ -14,7 +14,7 @@ class StatelessSingleNodeEOFHandler(StatelessEOFHandler):
         self.external_txs = external_txs
 
         self.processed_counts: dict[UUID, int] = {}
-        self.sent_data: dict[UUID, int] = {}
+        self.sent_data: dict[UUID, dict[int, int]] = {}
 
     def start(self):
         pass
@@ -23,10 +23,13 @@ class StatelessSingleNodeEOFHandler(StatelessEOFHandler):
         pass
 
     def handle(self, eof: EOF):
-        eof.expected_count = self.sent_data.get(eof.client_id, 0)
-        logging.info(f"downstreaming eof: {eof.__dict__}")
-        for tx in self.external_txs:
-            tx.send(eof.serialize())
+        # one EOF per downstream shard, each with its own count (a single downstream
+        # is just shard 0; the default filter's routes are shards too).
+        shards = self.sent_data.get(eof.client_id, {})
+        for shard, tx in enumerate(self.external_txs):
+            shard_eof = EOF(eof.client_id, expected_count=shards.get(shard, 0))
+            logging.info(f"downstreaming per-shard eof: {shard_eof.__dict__}")
+            tx.send(shard_eof.serialize())
 
 
 class StatefulSingleNodeEOFHandler(StatefulEOFHandler):
@@ -35,7 +38,7 @@ class StatefulSingleNodeEOFHandler(StatefulEOFHandler):
         self.internal_eofs_tx = internal_eofs_tx
 
         self.processed_counts: dict[UUID, int] = {}
-        self.sent_data: dict[UUID, int] = {}
+        self.sent_data: dict[UUID, dict[int, int]] = {}
 
     def start(self):
         pass
@@ -50,7 +53,7 @@ class StatefulSingleNodeEOFHandler(StatefulEOFHandler):
         pass
 
     def downstream(self, eof: EOF):
-        eof.expected_count = self.sent_data.get(eof.client_id, 0)
+        eof.expected_count = total_sent(self.sent_data, eof.client_id)
         logging.info(f"downstreaming eof: {eof.__dict__}")
         for tx in self.external_txs:
             tx.send(eof.serialize())

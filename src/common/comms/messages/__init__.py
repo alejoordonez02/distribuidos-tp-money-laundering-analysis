@@ -30,6 +30,7 @@ from .node_msg import NodeMsg
 from .path_count import PathCounts
 from .path_msg import PathMsg
 from .response import Response
+from .ring_barrier import RingBarrier
 from .ring_done import RingDone
 from .ring_sent_data import RingSentData
 from .sum_by_payment_format import SumByPaymentFormat

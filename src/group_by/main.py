@@ -53,7 +53,7 @@ def make_groupby(
         derived_stamping=not affinity_upstream,
     )
 
-    eof_handler = make_stateless_eof_handler(MOM_HOST, (external_txs[0],))
+    eof_handler = make_stateless_eof_handler(MOM_HOST, external_txs)
 
     checkpointer = make_checkpointer(
         STATE_DIR,
