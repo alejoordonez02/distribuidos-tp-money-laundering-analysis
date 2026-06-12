@@ -30,8 +30,6 @@ class Aggregate:
         self.eof_handler = eof_handler
         self.internal_eofs_rx = internal_eofs_rx
         self.checkpointer = checkpointer
-        # broadcast: send every result to ALL downstream txs (a small global state
-        # fanned out to N broadcast-join replicas) instead of sharding by affinity.
         self.broadcast_downstream = broadcast_downstream
 
         self._should_keep_running = False
@@ -99,7 +97,7 @@ class Aggregate:
 
     def _handle_message(self, bytes2: bytes, ack: Callable, _: Callable):
         msg = deserialize_message(bytes2)
-        logging.debug("received msg: %s", msg.__dict__)  # lazy: str() only if DEBUG
+        logging.debug("received msg: %s", msg.__dict__)
 
         if msg.type() == MessageType.EOF:
             if self.checkpointer:

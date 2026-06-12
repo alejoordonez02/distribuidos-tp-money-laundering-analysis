@@ -26,20 +26,6 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
         internal_eofs_tx: Queue[EOF],
     ):
         self.id = id2
-        # NOTE: estos quizás habría que clonarlos
-        #       no puedo pensar mucho más así que
-        #       me limito a dejar este comentario.
-        #       No me gustaría clonarlos
-        #       innecesariamente...
-        #       Creo que la razón por la cuál no
-        #       es necesario es que a diferencia
-        #       de en stateless eof handler, acá
-        #       el thread que los usa es el mismo
-        #       thread en el que se está corriendo
-        #       el dueño de este componente,
-        #       es ahí donde se decide cuándo
-        #       mandar el eof llamando a
-        #       `downstream`.
         self.mom_ring = mom_ring
         self.external_txs = external_txs
         self.internal_eofs_tx = internal_eofs_tx
@@ -64,12 +50,9 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
         self.mom_ring.send(eof.serialize())
 
     def downstream(self, eof: EOF):
-        # si no soy el "líder" de esta vuelta me voy
         if eof.origin != self.id:
             return
 
-        # appendeo la data que mandé yo y lo hago girar,
-        # eventualmente me va a llegar a mí con todo sumado
         with self.mtx:
             ring_data = RingSentData(
                 client_id=eof.client_id,
@@ -143,7 +126,6 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
             EOF(client_id=ring_done.client_id, origin=ring_done.origin)
         )
 
-        # da una sola vuelta
         if ring_done.origin == self.id:
             return
 
@@ -153,7 +135,6 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
     def _handle_ring_sent_data(
         self, ring_data: RingSentData, mom_ring_tx: MOMRing, external_txs: Sequence[MOM]
     ):
-        # 6. si ya terminamos limpio los recursos, y sólo corto si soy el líder
         if ring_data.done:
             logging.info(f"ring sent data done: {ring_data.__dict__}")
             self.sent_data.pop(ring_data.client_id, None)
@@ -170,8 +151,6 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
             mom_ring_tx.send(ring_data.serialize())
             return
 
-        # 1. no importa quién sea, si alguien no terminó entonces sent data
-        # es false y appendeo mi sent_data_amount al msj
         with self.mtx:
             ring_data.sent_data_amount += total_sent(self.sent_data, ring_data.client_id)
             self.sent_data.pop(ring_data.client_id, None)
@@ -179,14 +158,11 @@ class StatefulRingEOFHandler(RingEOFHandler, StatefulEOFHandler):
                 ring_data.client_id, False
             )
 
-        # 2. si no soy el "líder" forwardeo y me voy
         if self.id != ring_data.origin:
             logging.info(f"forwarding internal ring sent data: {ring_data.__dict__}")
             mom_ring_tx.send(ring_data.serialize())
             return
 
-        # 3. si todavía no todos confirmaron que mandaron sigo girando el msj
-        # y me voy
         if not ring_data.sent_data:
             ring_data.sent_data = True
             time.sleep(RING_LOOP_TIMEOFF)

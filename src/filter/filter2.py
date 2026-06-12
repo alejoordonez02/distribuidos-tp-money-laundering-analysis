@@ -22,8 +22,6 @@ class Filter:
     ):
         self.messages_rx = messages_rx
         self.routes = routes
-        # each sharded route partitions its output across N downstream shards (vs the
-        # broadcast `routes`); used to fan a large stream out to N parallel consumers.
         self.sharded_routes = sharded_routes or []
         self.eof_handler = eof_handler
         self.checkpointer = checkpointer

@@ -47,7 +47,6 @@ class UC4AggregateGraphs(AggregateFn):
             self._preds[msg.client_id].setdefault(node, set()).update(predecessors)
             self._succs[msg.client_id].setdefault(node, set()).update(successors)
 
-        # Sharding
         if len(self._preds[msg.client_id]) >= MAX_AMOUNT:
             self.downstream(msg.client_id)
 

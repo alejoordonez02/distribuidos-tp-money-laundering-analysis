@@ -9,5 +9,4 @@ def setup_graceful_shutdown(stop: Callable[[], None]) -> None:
 
     signal(SIGTERM, _handler)
     signal(SIGINT, _handler)
-    # SIGUSR1 dumps all thread stacks for live debugging
     faulthandler.register(SIGUSR1, all_threads=True)

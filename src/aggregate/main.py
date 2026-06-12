@@ -52,12 +52,10 @@ def make_aggregate(
 
     npeers = int(os.getenv("NPEERS", "1"))
     if npeers > 1:
-        # affinity ring: per-peer completion on a single consume thread (data + ring)
         return _make_ring_aggregate(
             fn, idx, naffinities_downstream, mom_host, rx_name, tx_name, npeers
         )
 
-    # single node: emits at EOF, no ring barrier
     external_rx, external_txs, _ = make_rx_tx(
         idx,
         rx_name,

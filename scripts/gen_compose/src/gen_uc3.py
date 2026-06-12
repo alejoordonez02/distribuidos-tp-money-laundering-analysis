@@ -12,17 +12,15 @@ from .gen_nodes import gen_nodes
 
 # UC3_AVERAGE is a reducer partitioned by payment_format: the group_by routes its
 # partial sums by hash(format) (affinity downstream) so each aggregate owns a
-# disjoint set of formats and computes a correct average. Same proven topology UC2
-# uses (group_by -> affinity -> aggregate). Capped at the format cardinality
-# (~7 payment formats); 3 maximizes that without idle peers.
+# disjoint set of formats and computes a correct average. Capped at the format
+# cardinality (~7 payment formats); 3 maximizes that without idle peers.
 UC3_AGGREGATES = 3
 
 # The UC3_SUM group_by is stateless (per-message fan-out by format); scaled as an
 # affinity ring (RingGroupBy) so each peer owns its period-A input shard and recovers
 # crash-safely. The default filters shard period A across the N group_bys (by message
 # identity), so a crash re-emit lands on the same peer and its dedup catches it — no
-# double-count inflating the downstream aggregate's expected_count. The group_by still
-# routes its partials by hash(format) to the affinity aggregates.
+# double-count inflating the downstream aggregate's expected_count.
 UC3_GROUP_BYS = 3
 
 # The merge is the real bottleneck: it spills ALL of period B to disk and streams it
@@ -36,8 +34,7 @@ UC3_MERGES = 3
 
 # The UC3_AVG filter is stateless; scaled as an affinity ring (RingFilter) so each
 # peer owns its input shard and recovers crash-safely (vs the competing working-queue
-# path). The merge routes its merged output by affinity to the N filters, and the
-# filter ring consolidates into one downstream EOF to the join.
+# path).
 UC3_FILTERS = 3
 
 

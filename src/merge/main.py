@@ -55,7 +55,6 @@ def main():
     producer_id = derive_producer_id(TX, IDX, 0)
 
     def make_txs():
-        # naffinity_downstream 0 = single work queue; >0 = one affinity-routed tx per shard
         if NAFFINITY_DOWNSTREAM == 0:
             return [StampingMOM(QueueRabbitMQ(MOM_HOST, TX), producer_id, out_counter)]
         return [

@@ -36,7 +36,6 @@ def gen_uc2() -> str:
         checkpoint_every=5,
     )
     max_amounts_to_merge = "uc2_max_amounts_by_bank"
-    # left side of the merge: broadcast the full max-by-bank state to every merge peer.
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
         strategy=AggregateStrategy.UC2_MAX_AMOUNT,
@@ -50,9 +49,6 @@ def gen_uc2() -> str:
     )
 
     bank_names_to_aggregate = "uc2_partial_bank_names"
-    # stateless group_by (per-message fan-out by bank); affinity ring so each peer owns
-    # its accounts shard (the gateway shards client_accounts by identity) and a crash
-    # re-emit lands on the same peer -> dedup catches it, no aggregate count inflation.
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,
         strategy=GroupByStrategy.UC2_BANK_NAMES,
@@ -64,7 +60,6 @@ def gen_uc2() -> str:
         checkpoint_every=5,
     )
     bank_names_to_merge = "uc2_bank_id_name_mappings"
-    # right side of the merge: shard the bank-id->name mappings across the merge peers.
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
         strategy=AggregateStrategy.UC2_BANK_NAMES,

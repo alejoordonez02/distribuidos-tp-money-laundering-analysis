@@ -35,7 +35,6 @@ def gen_uc4() -> str:
         checkpoint_every=5,
     )
     queue1 = "uc4_graphs_to_prune"
-    # right side of the prune: shard the graph across the prune peers.
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
         strategy=AggregateStrategy.UC4_AGGREGATE_GRAPHS,
@@ -58,7 +57,6 @@ def gen_uc4() -> str:
         checkpoint_every=5,
     )
     queue3 = "uc4_high_degree"
-    # left side of the prune: broadcast the full high-degree set to every prune peer.
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
         strategy=AggregateStrategy.UC4_DEGREE,

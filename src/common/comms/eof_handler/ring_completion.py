@@ -88,7 +88,6 @@ class RingCompletion:
         c = self._client(client_id)
         if c.phase != Phase.PROCESSING or c.expected < 0 or c.received < c.expected:
             return []
-        # input fully received: tell the controller to emit, then await report_sent
         return [Emit(client_id)]
 
     def report_sent(self, client_id: UUID, sent: dict[int, int]) -> list[Any]:
