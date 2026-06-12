@@ -18,7 +18,6 @@ from common.comms.middleware import (
     MOM,
     SeqCounter,
     StampingMOM,
-    UniqueStampingMOM,
     derive_producer_id,
 )
 
@@ -52,14 +51,14 @@ class ClientStreamHandler:
         self._register(self)
         self.conn.send(HelloAck(self.id).serialize())
 
-        # Each stream is sharded by affinity to its downstream ring. Transactions get a
-        # UNIQUE producer per message (the default filter's dedup needs that), accounts
-        # a single producer + monotonic seq; in both cases one shared counter across the
-        # shard publishers keeps ids consistent, and each shard owns a durable queue.
+        # Each stream is round-robined across its downstream ring's shards. A single
+        # producer per stream with a monotonic seq dedups exactly under the affinity
+        # routing (each shard is consumed in order by one peer); one shared counter
+        # across the shard publishers keeps the seq monotonic, each shard durable.
         trans_counter = SeqCounter()
         trans_base = derive_producer_id(str(self.id), 0, 0)
         trans_shards = [
-            UniqueStampingMOM(tx, trans_base, trans_counter)
+            StampingMOM(tx, trans_base, trans_counter)
             for tx in self.trans_tx_factory()
         ]
         accs_counter = SeqCounter()
