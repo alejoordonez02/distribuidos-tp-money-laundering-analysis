@@ -4,6 +4,7 @@ from typing import Callable
 
 from filter2 import Filter
 from filter_fns import FilterFn, UC3AvgFilter, UC4PathFilter, UC5AmountFilter
+from ring_broadcast_filter import RingBroadcastFilter
 from ring_filter import RingFilter, SentCounts
 from strategies import FilterStrategy
 
@@ -30,7 +31,7 @@ CHECKPOINT_EVERY = int(os.getenv("CHECKPOINT_EVERY", 5))
 LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "WARNING")
 
 
-def make_default_filter() -> Filter:
+def make_default_filter() -> "Filter | RingBroadcastFilter":
     from filter_fns import (
         UC1Filter,
         UC2Filter,
@@ -41,8 +42,12 @@ def make_default_filter() -> Filter:
     )
 
     idx = int(os.getenv("IDX", 0))
+    npeers = int(os.getenv("NPEERS", "1"))
 
-    # competing input: derived stamping for crash-stable output ids
+    # outputs feed competing downstream stages, so stamp each with an id derived from
+    # the input (DerivedStampingMOM) regardless of which peer produced it. In affinity
+    # mode the same input always lands on the same shard, so a re-emit after a crash
+    # derives the same id and dedups downstream.
     input_ctx = InputContext()
 
     # broadcast routes: every transaction reaches each UC's queue
@@ -80,6 +85,12 @@ def make_default_filter() -> Filter:
             (DerivedStampingMOM(QueueRabbitMQ(MOM_HOST, pb), input_ctx), UC3FilterPeriodB())
         )
 
+    if npeers > 1:
+        # affinity ring: the gateway routes each transaction to this peer's durable
+        # shard queue (RX{idx} bound to the RX exchange), so one thread consumes only
+        # this slice (data + ring) and a crash restores a consistent shard + barrier.
+        return _make_default_ring_filter(idx, npeers, input_ctx, routes, sharded_routes)
+
     prefetch = CHECKPOINT_EVERY if STATE_DIR else 1
     transactions_rx = QueueRabbitMQ(MOM_HOST, RX, prefetch_count=prefetch)
 
@@ -93,6 +104,44 @@ def make_default_filter() -> Filter:
     return Filter(
         transactions_rx, routes, eof_handler, checkpointer, input_ctx,
         sharded_routes=sharded_routes,
+    )
+
+
+def _make_default_ring_filter(
+    idx, npeers, input_ctx, routes, sharded_routes
+) -> "RingBroadcastFilter":
+    ring_name = os.environ["RING_NAME"]
+    peer_ids = [i for i in range(npeers) if i != idx]
+    rc = RingCompletion(idx, peer_ids)
+    sent = SentCounts()
+    consumer = MultiQueueConsumer(MOM_HOST)
+    ring = RingRabbitMQ(MOM_HOST, ring_name, idx, peer_ids)
+
+    # DerivedStampingMOM has no per-route seq to restore (the sub-index resets per
+    # input), so only the dedup + ring + sent counters ride the checkpoint.
+    checkpointer = make_checkpointer(
+        STATE_DIR,
+        f"{STRATEGY}_{idx}",
+        (),
+        CHECKPOINT_EVERY,
+        extra_state={"eof": rc, "sent": sent},
+    )
+
+    return RingBroadcastFilter(
+        routes,
+        sharded_routes,
+        input_ctx,
+        idx,
+        rc,
+        sent,
+        consumer,
+        ring,
+        data_queue=f"{RX}{idx}",
+        data_exchange=RX,
+        ring_queue=f"{ring_name}_queue{idx}",
+        ring_exchange=ring_name,
+        data_prefetch=max(CHECKPOINT_EVERY, 10),
+        checkpointer=checkpointer,
     )
 
 

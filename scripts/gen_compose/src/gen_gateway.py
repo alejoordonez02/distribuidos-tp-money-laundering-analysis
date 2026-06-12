@@ -1,4 +1,5 @@
 from .common_queues import CLIENT_ACCOUNTS, CLIENT_TRANSACTIONS, RESPONSES
+from .gen_default_filters import DEFAULT_FILTERS
 
 
 def gen_gateway():
@@ -20,4 +21,5 @@ def gen_gateway():
       - MOM_PORT=5672
       - SERVER_QUEUE_RX={RESPONSES}
       - TRANSACTIONS_TX={CLIENT_TRANSACTIONS}
-      - ACCOUNTS_TX={CLIENT_ACCOUNTS}"""
+      - ACCOUNTS_TX={CLIENT_ACCOUNTS}
+      - NDEFAULT_FILTERS={DEFAULT_FILTERS}"""

@@ -1,12 +1,13 @@
 import logging
 from threading import Thread
-from typing import Callable
+from typing import Callable, Sequence
 from uuid import uuid4
 
 from common.comms.connection import Connection
 from common.comms.messages import (
     PREFIX_RANGE,
     TYPE_RANGE,
+    EOF,
     Hello,
     HelloAck,
     Message,
@@ -14,7 +15,9 @@ from common.comms.messages import (
     peek_type,
 )
 from common.comms.middleware import (
+    MOM,
     MOMQueue,
+    SeqCounter,
     StampingMOM,
     UniqueStampingMOM,
     derive_producer_id,
@@ -26,7 +29,7 @@ class ClientStreamHandler:
         self,
         conn: Connection,
         register: "Callable[[ClientStreamHandler], None]",
-        trans_tx_factory: Callable[[], MOMQueue],
+        trans_tx_factory: Callable[[], Sequence[MOM]],
         accs_tx_factory: Callable[[], MOMQueue],
     ):
         self.id = uuid4()
@@ -50,17 +53,46 @@ class ClientStreamHandler:
         self._register(self)
         self.conn.send(HelloAck(self.id).serialize())
 
-        # unique producer per message so the competing default_filter's watermark
-        # dedup stays exact under out-of-order/crash redelivery
-        trans_tx = UniqueStampingMOM(
-            self.trans_tx_factory(), derive_producer_id(str(self.id), 0, 0)
-        )
+        # unique producer per message so the competing downstream's watermark dedup
+        # stays exact under out-of-order/crash redelivery. one shared counter across
+        # the shard publishers keeps every transaction's producer id globally unique.
+        counter = SeqCounter()
+        base = derive_producer_id(str(self.id), 0, 0)
+        shard_txs = [
+            UniqueStampingMOM(tx, base, counter) for tx in self.trans_tx_factory()
+        ]
         accs_tx = StampingMOM(
             self.accs_tx_factory(), derive_producer_id(str(self.id), 0, 1)
         )
-        self._forward_until_eof(trans_tx, MessageType.TRANSACTIONS)
+        self._forward_transactions(shard_txs)
         self._forward_until_eof(accs_tx, MessageType.ACCOUNTS)
         logging.info("finished forwarding all client's data")
+
+    def _forward_transactions(self, shard_txs: Sequence[MOM]):
+        """Route each transaction to one shard by round-robin (even split, stable
+        once landed since shard queues are durable), counting per shard. On EOF send
+        each shard its own EOF carrying that shard's expected_count, so each default
+        filter peer knows when its input slice is complete."""
+        n = len(shard_txs)
+        counts = [0] * n
+        rr = 0
+        while True:
+            raw = self.conn.recv()
+            if not raw:
+                logging.error("client connection closed before EOF")
+                return
+            t = peek_type(raw)
+            if t == MessageType.EOF:
+                for i, tx in enumerate(shard_txs):
+                    tx.send(EOF(self.id, expected_count=counts[i]).serialize())
+                return
+            elif t == MessageType.TRANSACTIONS:
+                shard_txs[rr % n].send(self._stamp_id(raw))
+                counts[rr % n] += 1
+                rr += 1
+            else:
+                logging.error(f"client handler got unexpected msg type {t}")
+                return
 
     def _forward_until_eof(self, tx: MOMQueue, data_type: MessageType):
         while True:
