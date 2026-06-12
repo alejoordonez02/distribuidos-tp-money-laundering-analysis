@@ -1,9 +1,11 @@
 # Roadmap: competing → affinity (crash-safe FT)
 
-Estado al cierre de la sesión. Objetivo: que TODOS los nodos recuperen de crashes
-en `make test_ft`. El bloqueante es el modelo **competing (working-queue)**, que no
-es crash-safe; la solución es convertir cada competing a **affinity per-peer +
-RingCompletion**, el patrón que ya usan aggregate y merge.
+**OBJETIVO EXPLÍCITO: `make test_ft` 100% verde — TODOS los nodos, incluido lo
+pre-existente.** No alcanza con dejar UC3 limpio: el grueso del pipeline son
+competing-consumers (default_filter, group_bys y filters de los 5 UCs) y TODOS
+stallean igual. Hay que convertirlos a **affinity per-peer + RingCompletion**, el
+patrón que ya usan aggregate y merge. Es un proyecto de varias sesiones, nodo por
+nodo, validando cada uno (correctitud perfect/small/medium + FT 10/10).
 
 ## Qué FUNCIONA (committeado + validado)
 
