@@ -16,7 +16,6 @@ from common.comms.messages import (
 )
 from common.comms.middleware import (
     MOM,
-    MOMQueue,
     SeqCounter,
     StampingMOM,
     UniqueStampingMOM,
@@ -30,7 +29,7 @@ class ClientStreamHandler:
         conn: Connection,
         register: "Callable[[ClientStreamHandler], None]",
         trans_tx_factory: Callable[[], Sequence[MOM]],
-        accs_tx_factory: Callable[[], MOMQueue],
+        accs_tx_factory: Callable[[], Sequence[MOM]],
     ):
         self.id = uuid4()
         self.conn = conn
@@ -53,26 +52,30 @@ class ClientStreamHandler:
         self._register(self)
         self.conn.send(HelloAck(self.id).serialize())
 
-        # unique producer per message so the competing downstream's watermark dedup
-        # stays exact under out-of-order/crash redelivery. one shared counter across
-        # the shard publishers keeps every transaction's producer id globally unique.
-        counter = SeqCounter()
-        base = derive_producer_id(str(self.id), 0, 0)
-        shard_txs = [
-            UniqueStampingMOM(tx, base, counter) for tx in self.trans_tx_factory()
+        # Each stream is sharded by affinity to its downstream ring. Transactions get a
+        # UNIQUE producer per message (the default filter's dedup needs that), accounts
+        # a single producer + monotonic seq; in both cases one shared counter across the
+        # shard publishers keeps ids consistent, and each shard owns a durable queue.
+        trans_counter = SeqCounter()
+        trans_base = derive_producer_id(str(self.id), 0, 0)
+        trans_shards = [
+            UniqueStampingMOM(tx, trans_base, trans_counter)
+            for tx in self.trans_tx_factory()
         ]
-        accs_tx = StampingMOM(
-            self.accs_tx_factory(), derive_producer_id(str(self.id), 0, 1)
-        )
-        self._forward_transactions(shard_txs)
-        self._forward_until_eof(accs_tx, MessageType.ACCOUNTS)
+        accs_counter = SeqCounter()
+        accs_base = derive_producer_id(str(self.id), 0, 1)
+        accs_shards = [
+            StampingMOM(tx, accs_base, accs_counter) for tx in self.accs_tx_factory()
+        ]
+        self._forward_sharded(trans_shards, MessageType.TRANSACTIONS)
+        self._forward_sharded(accs_shards, MessageType.ACCOUNTS)
         logging.info("finished forwarding all client's data")
 
-    def _forward_transactions(self, shard_txs: Sequence[MOM]):
-        """Route each transaction to one shard by round-robin (even split, stable
-        once landed since shard queues are durable), counting per shard. On EOF send
-        each shard its own EOF carrying that shard's expected_count, so each default
-        filter peer knows when its input slice is complete."""
+    def _forward_sharded(self, shard_txs: Sequence[MOM], data_type: MessageType):
+        """Route each message to one shard by round-robin (even split, stable once
+        landed since shard queues are durable), counting per shard. On EOF send each
+        shard its own EOF carrying that shard's expected_count, so each downstream peer
+        knows when its input slice is complete. A single working queue is just N=1."""
         n = len(shard_txs)
         counts = [0] * n
         rr = 0
@@ -86,26 +89,10 @@ class ClientStreamHandler:
                 for i, tx in enumerate(shard_txs):
                     tx.send(EOF(self.id, expected_count=counts[i]).serialize())
                 return
-            elif t == MessageType.TRANSACTIONS:
+            elif t == data_type:
                 shard_txs[rr % n].send(self._stamp_id(raw))
                 counts[rr % n] += 1
                 rr += 1
-            else:
-                logging.error(f"client handler got unexpected msg type {t}")
-                return
-
-    def _forward_until_eof(self, tx: MOMQueue, data_type: MessageType):
-        while True:
-            raw = self.conn.recv()
-            if not raw:
-                logging.error("client connection closed before EOF")
-                return
-            t = peek_type(raw)
-            if t == MessageType.EOF:
-                tx.send(self._stamp_id(raw))
-                return
-            elif t == data_type:
-                tx.send(self._stamp_id(raw))
             else:
                 logging.error(f"client handler got unexpected msg type {t}")
                 return

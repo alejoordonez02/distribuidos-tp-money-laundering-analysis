@@ -41,11 +41,14 @@ def gen_uc2() -> str:
     )
 
     bank_names_to_aggregate = "uc2_partial_bank_names"
+    # stateless group_by (per-message fan-out by bank); affinity ring so each peer owns
+    # its accounts shard (the gateway shards client_accounts by identity) and a crash
+    # re-emit lands on the same peer -> dedup catches it, no aggregate count inflation.
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,
         strategy=GroupByStrategy.UC2_BANK_NAMES,
         npeers=BANK_NAMES_GROUPBYS,
-        affinity_upstream=False,
+        affinity_upstream=True,
         naffinity_downstream=BANK_NAMES_AGGREGATES,
         rx_name=CLIENT_ACCOUNTS,
         tx_name=bank_names_to_aggregate,
