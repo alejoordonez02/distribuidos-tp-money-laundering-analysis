@@ -141,7 +141,7 @@ class RingNode:
                 action.client_id,
                 expected_count=action.expected_per_shard.get(shard, 0),
             )
-            logging.info(f"downstreaming per-shard eof: {eof.__dict__}")
+            logging.info("downstreaming per-shard eof: %s", eof.__dict__)
             tx.send(eof.serialize())
 
 

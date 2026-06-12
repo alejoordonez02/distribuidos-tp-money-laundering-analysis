@@ -32,8 +32,8 @@ class UC2BankIdMergeFn(MergeFn):
     def get_result(self, client_id: UUID) -> Iterator[MergedBankData]:  # type: ignore[reportIncompatibleMethodOverride]
         max_amounts = self._max_amounts.pop(client_id, MaxByBank(client_id, {})).data
         bank_names = self._bank_names.pop(client_id, BankNames(client_id, {})).data
-        logging.debug(f"max_amounts:\n{max_amounts}")
-        logging.debug(f"bank_names:\n{bank_names}")
+        logging.debug("max_amounts:\n%s", max_amounts)
+        logging.debug("bank_names:\n%s", bank_names)
 
         entries = [
             (bank_id, account, amount, bank_names[bank_id])
@@ -44,7 +44,7 @@ class UC2BankIdMergeFn(MergeFn):
         # UC2 output is bounded by the number of banks (small), so a single
         # message is fine; yield to satisfy the streaming MergeFn contract.
         merged = MergedBankData(client_id, entries)
-        logging.debug(f"merged:\n{merged.__dict__}")
+        logging.debug("merged:\n%s", merged.__dict__)
         yield merged
 
     def snapshot_state(self) -> dict[str, Any]:

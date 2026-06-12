@@ -93,7 +93,7 @@ class ClientStreamHandler:
                 counts[rr % n] += 1
                 rr += 1
             else:
-                logging.error(f"client handler got unexpected msg type {t}")
+                logging.error("client handler got unexpected msg type %s", t)
                 return
 
     def _stamp_id(self, raw: bytes) -> bytes:
