@@ -2,7 +2,7 @@ import logging
 import time
 from typing import Callable, Optional, Sequence
 
-from filter_fns import FilterFn
+from group_by_fns import GroupByFn
 
 from common.checkpoint import Checkpointer, dispatch
 from common.comms.eof_handler.ring_completion import (
@@ -20,19 +20,21 @@ from common.graceful_shutdown import setup_graceful_shutdown
 RING_THROTTLE_SECS = 1
 
 
-class RingFilter:
-    """Stateless filter over an affinity input shard, completing per-peer.
+class RingGroupBy:
+    """Stateless group-by over an affinity input shard, completing per-peer.
 
-    The stateless counterpart of RingAggregate: one thread consumes the data shard
-    and the barrier ring, filtering and forwarding each message immediately (no
-    state to emit at EOF). It tracks how many it sent per downstream shard; when its
-    input shard is locally complete, a single barrier token collects every peer's
-    per-shard sent counts and the leader forwards one downstream EOF per shard.
+    The affinity counterpart of the competing GroupBy: one thread consumes the data
+    shard and the barrier ring, fanning each input out to its grouped partials and
+    routing each by affinity to a downstream shard (no state to emit at EOF). It
+    tracks how many it sent per downstream shard; when its input shard is locally
+    complete, a single barrier token collects every peer's per-shard sent counts and
+    the leader forwards one downstream EOF per shard. Mirrors RingFilter; the only
+    difference is the per-input fan-out instead of a single filtered send.
     """
 
     def __init__(
         self,
-        fn: FilterFn,
+        fn: GroupByFn,
         node_id: int,
         rc: RingCompletion,
         sent: SentCounts,
@@ -95,14 +97,13 @@ class RingFilter:
         dispatch(self.checkpointer, msg, ack, self._on_eof, self._on_data)
 
     def _on_data(self, msg: Message):
-        # deterministic by message identity so a re-emit after a crash lands on the
-        # same shard (single downstream is just shard 0).
-        shard = (
-            (int.from_bytes(msg.producer_id[-4:], "big") + msg.seq)
-            % len(self.external_txs)
-        )
-        self.external_txs[shard].send(self.fn.filter(msg).serialize())
-        self.sent.add(msg.client_id, shard)
+        # fan out: each input yields one or more grouped partials, each routed to a
+        # downstream shard by affinity. Deterministic so a re-emit after a crash lands
+        # on the same shard with the same restored seq (single downstream is shard 0).
+        for group, affinity in self.fn.group_by(msg):
+            shard = affinity % len(self.external_txs)
+            self.external_txs[shard].send(group.serialize())
+            self.sent.add(msg.client_id, shard)
         self.rc.on_data(msg.client_id)
 
     def _on_eof(self, eof: Message):

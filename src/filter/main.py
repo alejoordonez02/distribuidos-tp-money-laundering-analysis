@@ -5,12 +5,13 @@ from typing import Callable
 from filter2 import Filter
 from filter_fns import FilterFn, UC3AvgFilter, UC4PathFilter, UC5AmountFilter
 from ring_broadcast_filter import RingBroadcastFilter
-from ring_filter import RingFilter, SentCounts
+from ring_filter import RingFilter
 from strategies import FilterStrategy
 
 from common.checkpoint import make_checkpointer
 from common.comms.eof_handler import make_stateless_eof_handler
 from common.comms.eof_handler.ring_completion import RingCompletion
+from common.comms.eof_handler.sent_counts import SentCounts
 from common.comms.middleware import (
     DerivedStampingMOM,
     ExchangeRabbitMQ,
@@ -54,7 +55,6 @@ def make_default_filter() -> "Filter | RingBroadcastFilter":
     route_specs = [
         (os.environ["UC1_TRANSACTIONS_TX"], UC1Filter()),
         (os.environ["UC2_TRANSACTIONS_TX"], UC2Filter()),
-        (os.environ["UC3_PERIOD_A_TRANSACTIONS_TX"], UC3FilterPeriodA()),
         (os.environ["UC4_TRANSACTIONS_TX"], UC4Filter()),
         (os.environ["UC4_DEGREE_TRANSACTIONS_TX"], UC4Filter()),
         (os.environ["UC5_TRANSACTIONS_TX"], UC5Filter()),
@@ -64,26 +64,33 @@ def make_default_filter() -> "Filter | RingBroadcastFilter":
         for queue, fn in route_specs
     ]
 
-    # period-B feeds the UC3 broadcast-join merges; shard it across N when scaled
-    # (opt-in via UC3_PERIOD_B_SHARDS), otherwise keep the single broadcast queue.
-    pb = os.environ["UC3_PERIOD_B_TRANSACTIONS_TX"]
-    n_pb = int(os.getenv("UC3_PERIOD_B_SHARDS", "1"))
+    # UC3 period A (feeds the group_bys) and period B (feeds the merges) shard across
+    # N when those consumers are scaled to an affinity ring (opt-in via *_SHARDS), so
+    # each consumer owns its own per-peer queue; otherwise a single broadcast queue.
+    # Sharding by message identity makes a re-emit after a crash land on the SAME
+    # downstream shard, so its (per-shard) dedup catches the duplicate — the affinity
+    # consumer never double-counts it (unlike a competing working queue).
     sharded_routes = []
-    if n_pb > 1:
-        pb_shards = [
-            DerivedStampingMOM(
-                ExchangeRabbitMQ(
-                    MOM_HOST, pb, routing_keys=[f"{i}"], queue_name=f"{pb}{i}"
-                ),
-                input_ctx,
+    for env_tx, filter_fn, shards_env in [
+        (os.environ["UC3_PERIOD_A_TRANSACTIONS_TX"], UC3FilterPeriodA(), "UC3_PERIOD_A_SHARDS"),
+        (os.environ["UC3_PERIOD_B_TRANSACTIONS_TX"], UC3FilterPeriodB(), "UC3_PERIOD_B_SHARDS"),
+    ]:
+        n = int(os.getenv(shards_env, "1"))
+        if n > 1:
+            shards = [
+                DerivedStampingMOM(
+                    ExchangeRabbitMQ(
+                        MOM_HOST, env_tx, routing_keys=[f"{i}"], queue_name=f"{env_tx}{i}"
+                    ),
+                    input_ctx,
+                )
+                for i in range(n)
+            ]
+            sharded_routes.append((shards, filter_fn))
+        else:
+            routes.append(
+                (DerivedStampingMOM(QueueRabbitMQ(MOM_HOST, env_tx), input_ctx), filter_fn)
             )
-            for i in range(n_pb)
-        ]
-        sharded_routes = [(pb_shards, UC3FilterPeriodB())]
-    else:
-        routes.append(
-            (DerivedStampingMOM(QueueRabbitMQ(MOM_HOST, pb), input_ctx), UC3FilterPeriodB())
-        )
 
     if npeers > 1:
         # affinity ring: the gateway routes each transaction to this peer's durable

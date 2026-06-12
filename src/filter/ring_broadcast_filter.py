@@ -7,7 +7,8 @@ from common.comms.messages import deserialize_message
 from common.comms.middleware import MOM, InputContext, MOMRing, MultiQueueConsumer
 
 from common.comms.eof_handler.ring_completion import RingCompletion
-from ring_filter import RingFilter, SentCounts
+from common.comms.eof_handler.sent_counts import SentCounts
+from ring_filter import RingFilter
 
 
 class RingBroadcastFilter(RingFilter):

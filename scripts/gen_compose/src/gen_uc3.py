@@ -17,6 +17,14 @@ from .gen_nodes import gen_nodes
 # (~7 payment formats); 3 maximizes that without idle peers.
 UC3_AGGREGATES = 3
 
+# The UC3_SUM group_by is stateless (per-message fan-out by format); scaled as an
+# affinity ring (RingGroupBy) so each peer owns its period-A input shard and recovers
+# crash-safely. The default filters shard period A across the N group_bys (by message
+# identity), so a crash re-emit lands on the same peer and its dedup catches it — no
+# double-count inflating the downstream aggregate's expected_count. The group_by still
+# routes its partials by hash(format) to the affinity aggregates.
+UC3_GROUP_BYS = 3
+
 # The merge is the real bottleneck: it spills ALL of period B to disk and streams it
 # back to join against the averages. It is scaled as a broadcast-join: the small
 # averages (left) are BROADCAST so every merge peer holds them in full, while period
@@ -39,8 +47,8 @@ def gen_uc3() -> str:
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,
         strategy=GroupByStrategy.UC3_SUM,
-        npeers=3,
-        affinity_upstream=False,
+        npeers=UC3_GROUP_BYS,
+        affinity_upstream=True,
         naffinity_downstream=UC3_AGGREGATES,
         rx_name=UC3_PERIOD_A_TRANSACTIONS,
         tx_name=queue0,
