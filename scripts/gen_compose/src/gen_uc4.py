@@ -5,6 +5,14 @@ from .container_type import ContainerType
 from .gen_merge import gen_merge
 from .gen_nodes import gen_nodes
 
+# The compute_graph group_bys are stateless (each builds a partial graph from ONE
+# message's transactions and fans it out by node affinity; the aggregates do the
+# cross-message merge). Scaled as affinity rings (RingGroupBy): the default filters
+# shard the filtered/degree transactions across the N peers, so a crash re-emit lands
+# on the same peer and its dedup catches the duplicate (no aggregate count inflation).
+UC4_COMPUTE_GRAPHS = 3
+UC4_DEGREE_COMPUTE_GRAPHS = 3
+
 
 def gen_uc4() -> str:
     compose = "\n# === uc4 ==="
@@ -12,8 +20,8 @@ def gen_uc4() -> str:
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,
         strategy=GroupByStrategy.UC4_COMPUTE_GRAPH,
-        npeers=3,
-        affinity_upstream=False,
+        npeers=UC4_COMPUTE_GRAPHS,
+        affinity_upstream=True,
         naffinity_downstream=3,
         rx_name=UC4_TRANSACTIONS,
         tx_name=queue0,
@@ -34,8 +42,8 @@ def gen_uc4() -> str:
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,
         strategy=GroupByStrategy.UC4_DEGREE_COMPUTE_GRAPH,
-        npeers=3,
-        affinity_upstream=False,
+        npeers=UC4_DEGREE_COMPUTE_GRAPHS,
+        affinity_upstream=True,
         naffinity_downstream=3,
         rx_name=UC4_DEGREE_TRANSACTIONS,
         tx_name=queue2,
