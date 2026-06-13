@@ -1,12 +1,10 @@
 import json
-import os
-import tempfile
 from datetime import datetime
-from pathlib import Path
-from typing import Iterator
+from typing import Any, Iterator
 from uuid import UUID
 
-from common.comms.messages import MergedTransactions, AvgByFormat, Transactions
+from common.checkpoint import PersistentSpill
+from common.comms.messages import AvgByFormat, MergedTransactions, Transactions
 from common.data.transaction import Transaction
 
 from .merge_fn import MergeFn
@@ -38,16 +36,9 @@ def _deserialize(line: str) -> Transaction:
 
 class UC3BankIdMergeFn(MergeFn):
 
-    def __init__(self):
-        self._files: dict[UUID, Path] = {}
+    def __init__(self, spill: PersistentSpill):
+        self._spill = spill
         self._averages: dict[UUID, dict[str, float]] = {}
-
-    def _file_for(self, client_id: UUID) -> Path:
-        if client_id not in self._files:
-            fd, path = tempfile.mkstemp(prefix=f"uc3_{client_id}_", suffix=".jsonl")
-            os.close(fd)
-            self._files[client_id] = Path(path)
-        return self._files[client_id]
 
     def left(self, msg: AvgByFormat):  # type: ignore[reportIncompatibleMethodOverride]
         if msg.client_id not in self._averages:
@@ -56,31 +47,25 @@ class UC3BankIdMergeFn(MergeFn):
             self._averages[msg.client_id][fmt] = avg
 
     def right(self, msg: Transactions):  # type: ignore[reportIncompatibleMethodOverride]
-        path = self._file_for(msg.client_id)
-        with open(path, "a") as f:
-            for t in msg.transactions:
-                f.write(_serialize(t) + "\n")
+        for t in msg.transactions:
+            self._spill.append(msg.client_id, _serialize(t) + "\n")
 
     def get_result(self, client_id: UUID) -> Iterator[MergedTransactions]:  # type: ignore[reportIncompatibleMethodOverride]
         averages = self._averages.pop(client_id, {})
-        path = self._files.pop(client_id, None)
 
         # Stream the spilled right side back in bounded batches. Every chunk
         # carries the (small) averages dict so the downstream filter can process
         # each message independently — same data, same result as one big message.
         batch: list[Transaction] = []
         emitted = False
-        if path and path.exists():
-            with open(path) as f:
-                for line in f:
-                    t = _deserialize(line)
-                    if t.payment_format in averages:
-                        batch.append(t)
-                        if len(batch) >= _CHUNK_SIZE:
-                            yield MergedTransactions(client_id, batch, averages)
-                            emitted = True
-                            batch = []
-            path.unlink()
+        for line in self._spill.iter_lines_and_clear(client_id):
+            t = _deserialize(line.rstrip("\n"))
+            if t.payment_format in averages:
+                batch.append(t)
+                if len(batch) >= _CHUNK_SIZE:
+                    yield MergedTransactions(client_id, batch, averages)
+                    emitted = True
+                    batch = []
 
         if batch:
             yield MergedTransactions(client_id, batch, averages)
@@ -90,3 +75,15 @@ class UC3BankIdMergeFn(MergeFn):
         # (downstream expects >= 1 even when there are no matching transactions).
         if not emitted:
             yield MergedTransactions(client_id, [], averages)
+
+    def snapshot_state(self) -> dict[str, Any]:
+        return {
+            "averages": {str(c): v for c, v in self._averages.items()},
+            "spill": self._spill.snapshot_state(),
+        }
+
+    def restore_state(self, snapshot: dict[str, Any]):
+        self._averages = {
+            UUID(c): dict(v) for c, v in snapshot.get("averages", {}).items()
+        }
+        self._spill.restore_state(snapshot.get("spill", {}))

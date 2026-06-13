@@ -1,3 +1,4 @@
+from . import topology as topo
 from .common_queues import CLIENT_ACCOUNTS, CLIENT_TRANSACTIONS, RESPONSES
 
 
@@ -20,4 +21,6 @@ def gen_gateway():
       - MOM_PORT=5672
       - SERVER_QUEUE_RX={RESPONSES}
       - TRANSACTIONS_TX={CLIENT_TRANSACTIONS}
-      - ACCOUNTS_TX={CLIENT_ACCOUNTS}"""
+      - ACCOUNTS_TX={CLIENT_ACCOUNTS}
+      - NDEFAULT_FILTERS={topo.DEFAULT_FILTERS}
+      - NBANK_NAMES={topo.UC2_BANK_NAMES_GROUP_BYS}"""

@@ -28,3 +28,9 @@ test/expected_responses
 **.log
 **.toc
 **/_minted/
+
+# fault-tolerance checkpoints (local)
+state/
+
+# cached oracle outputs per dataset (avoid re-running gen_input_output)
+test/expected_cache/

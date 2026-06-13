@@ -1,4 +1,4 @@
-from typing import Iterable
+from typing import Any, Iterable
 from uuid import UUID
 
 from common.comms.messages import BankNames
@@ -40,3 +40,12 @@ class UC2BankNamesAggregateFn(AggregateFn):
         for bank_id, bank_name in bank_names.data.items():
             bank_id_name = BankNames(client_id, {bank_id: bank_name})
             yield bank_id_name, hash(bank_id)
+
+    def snapshot_state(self) -> dict[str, Any]:
+        return {str(cid): bn.data for cid, bn in self._state.items()}
+
+    def restore_state(self, snapshot: dict[str, Any]):
+        self._state = {
+            UUID(cid): BankNames(UUID(cid), dict(data))
+            for cid, data in snapshot.items()
+        }

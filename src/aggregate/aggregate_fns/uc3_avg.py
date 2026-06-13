@@ -1,4 +1,4 @@
-from typing import Iterable
+from typing import Any, Iterable
 from uuid import UUID
 
 from common.comms.messages import AvgByFormat, SumByPaymentFormat
@@ -31,3 +31,17 @@ class UC3AvgAggregateFn(AggregateFn):
         for format2, average in averages.items():
             format_average = AvgByFormat(client_id, {format2: average})
             yield format_average, hash(format2)
+
+    def snapshot_state(self) -> dict[str, Any]:
+        return {
+            str(cid): list(sc.sum_counts.items())
+            for cid, sc in self.sum_counts.items()
+        }
+
+    def restore_state(self, snapshot: dict[str, Any]):
+        self.sum_counts = {
+            UUID(cid): SumByPaymentFormat(
+                UUID(cid), {fmt: (float(s), int(c)) for fmt, (s, c) in entries}
+            )
+            for cid, entries in snapshot.items()
+        }

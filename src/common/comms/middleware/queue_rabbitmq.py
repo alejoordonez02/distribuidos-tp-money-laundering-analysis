@@ -12,15 +12,18 @@ from .queue_mom import MOMQueue
 
 
 class QueueRabbitMQ(MOMQueue):
-    def __init__(self, host: str, queue_name: str):
+    def __init__(self, host: str, queue_name: str, prefetch_count: int = 1):
         self.host = host
         self.queue_name = queue_name
+        # Must be >= the checkpoint batch size, otherwise holding acks for a batch
+        # deadlocks against the broker (it won't deliver past the prefetch window).
+        self.prefetch_count = prefetch_count
 
         # TODO: heartbeat=600 may be starved by blocking callbacks in start_consuming — revisit
         self.conn = BlockingConnection(ConnectionParameters(host, heartbeat=0))
         self.chan = self.conn.channel()
         self.chan.queue_declare(queue=queue_name)
-        self.chan.basic_qos(prefetch_count=1)
+        self.chan.basic_qos(prefetch_count=prefetch_count)
 
     def start_consuming(
         self, on_message_callback: Callable[[bytes, Callable, Callable], None]
@@ -84,10 +87,17 @@ class QueueRabbitMQ(MOMQueue):
             raise MOMMessageError(str(e)) from e
 
     def clone(self) -> "QueueRabbitMQ":
-        return QueueRabbitMQ(self.host, self.queue_name)
+        return QueueRabbitMQ(self.host, self.queue_name, self.prefetch_count)
 
     def _ack(self, chan, method) -> None:
-        chan.basic_ack(delivery_tag=method.delivery_tag)
+        # Schedule on the connection's own thread: acks may be flushed (batched
+        # checkpointing) from a different thread than the one owning this channel
+        # (e.g. the merge's two side threads), and pika is not thread-safe.
+        self.conn.add_callback_threadsafe(
+            lambda: chan.basic_ack(delivery_tag=method.delivery_tag)
+        )
 
     def _nack(self, chan, method) -> None:
-        chan.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+        self.conn.add_callback_threadsafe(
+            lambda: chan.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+        )

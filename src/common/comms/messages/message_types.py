@@ -23,3 +23,4 @@ class MessageType(IntEnum):
     HIGH_DEGREE = 18
     HELLO = 19
     HELLO_ACK = 20
+    RING_BARRIER = 21
