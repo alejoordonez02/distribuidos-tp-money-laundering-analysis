@@ -13,8 +13,6 @@ from .src import (
     gen_uc5,
 )
 
-NDEFAULT_FILTERS = 3
-
 
 def main():
     args = sys.argv

@@ -59,15 +59,9 @@ def gen_merge(
 ):
     name = strategy
 
-    # single node: keep the bespoke two-thread merge (UC2/UC4 and unscaled UC3)
-    if npeers <= 1:
-        return _merge_service(
-            name, name, strategy, left_rx_name, right_rx_name, tx_name,
-            naffinity_downstream, checkpoint_every,
-        )
-
-    # scaled broadcast-join: a ring of N peers, each joining its right-side shard
-    # against the broadcast left state, consolidating outputs through a barrier.
+    # A merge is always a ring of N peers (N=1 is a single-peer ring, still routed by
+    # exchange + barrier), each joining its right-side shard against the broadcast left
+    # state and consolidating outputs through a barrier.
     ring_name = f"{name}_ring"
     compose = ""
     for idx in range(npeers):

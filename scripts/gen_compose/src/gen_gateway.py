@@ -1,6 +1,5 @@
+from . import topology as topo
 from .common_queues import CLIENT_ACCOUNTS, CLIENT_TRANSACTIONS, RESPONSES
-from .gen_default_filters import DEFAULT_FILTERS
-from .gen_uc2 import BANK_NAMES_GROUPBYS
 
 
 def gen_gateway():
@@ -23,5 +22,5 @@ def gen_gateway():
       - SERVER_QUEUE_RX={RESPONSES}
       - TRANSACTIONS_TX={CLIENT_TRANSACTIONS}
       - ACCOUNTS_TX={CLIENT_ACCOUNTS}
-      - NDEFAULT_FILTERS={DEFAULT_FILTERS}
-      - NBANK_NAMES={BANK_NAMES_GROUPBYS}"""
+      - NDEFAULT_FILTERS={topo.DEFAULT_FILTERS}
+      - NBANK_NAMES={topo.UC2_BANK_NAMES_GROUP_BYS}"""
