@@ -2,9 +2,6 @@ import os
 
 from scripts.cfg import ACCOUNTS_PATH, NCLIENTS  # type: ignore[reportMissingImports]
 
-# The client must read the SAME accounts file the dataset/cfg uses, otherwise the
-# bank-id → bank-name join (UC2) is built from the wrong universe of banks. This
-# used to be hardcoded to LI-Small, which silently broke UC2 on any other dataset.
 _ACCOUNTS_FILE = os.path.basename(ACCOUNTS_PATH)
 
 _CLIENT_TEMPLATE = """\n

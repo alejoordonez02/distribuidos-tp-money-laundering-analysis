@@ -11,9 +11,6 @@ from .common_queues import (
 )
 from .gen_nodes import CHECKPOINT_EVERY
 
-# Each UC route's shard count = the replica count of the ring it feeds, so the default
-# filter shards to exactly as many peers as exist downstream. UC1 goes to the join, a
-# plain work queue, so its shard count is 0.
 _ROUTE_SHARDS = {
     "UC1_TRANSACTIONS_SHARDS": 0,
     "UC2_TRANSACTIONS_SHARDS": topo.UC2_MAX_AMOUNT_GROUP_BYS,

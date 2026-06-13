@@ -2,11 +2,6 @@ from enum import StrEnum
 
 from .container_type import ContainerType
 
-# Checkpoint/ack batch size (= how many messages a node holds + reprocesses on a
-# crash). Higher amortizes the per-checkpoint cost — at hundreds of millions of rows,
-# checkpointing every few dozen messages dominates the runtime — and the rx prefetch
-# is raised to match (messages are small, so a large in-flight window is cheap). The
-# `checkpoint_every` arg on the gen_* fns is only an on/off switch; this is the value.
 CHECKPOINT_EVERY = 1000
 
 
@@ -20,25 +15,6 @@ def gen_nodes(
     checkpoint_every: int | None = None,
     broadcast_downstream: bool = False,
 ) -> str:
-    """
-    Gen a ring of nodes.
-
-    # Args
-    * `type2` - the type of the controller.
-    * `name` - the name of the container.
-    * `strategy` - the strategy for the controller to use.
-    * `npeers` - the amount of nodes in the ring, including this one.
-    * `naffinity_downstream` - the amount of downstream affinities
-      ready to handle this controller's downstream messages. If none,
-      this can be set to zero (which does not mean that there are not
-      controllers waiting for messages on the other side).
-    * `rx_name` - the name prefix of the upstream channel.
-    * `tx_name` - the name prefix of the downstream channel.
-
-    # Returns
-    A string containing the nodes compose declaration.
-    """
-
     name = strategy
     compose = ""
 

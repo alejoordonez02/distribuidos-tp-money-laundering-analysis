@@ -58,10 +58,6 @@ def gen_merge(
     npeers: int = 1,
 ):
     name = strategy
-
-    # A merge is always a ring of N peers (N=1 is a single-peer ring, still routed by
-    # exchange + barrier), each joining its right-side shard against the broadcast left
-    # state and consolidating outputs through a barrier.
     ring_name = f"{name}_ring"
     compose = ""
     for idx in range(npeers):

@@ -7,9 +7,6 @@ from .gen_nodes import gen_nodes
 
 
 def gen_uc5() -> str:
-    # The whole UC5 chain (convert -> amount filter -> count group_by) is stateless and
-    # per-message: each stage shards its output to the next and owns its input shard
-    # (crash-safe, re-emits dedup downstream).
     compose = "\n# === uc5 ==="
     queue0 = "uc5_converted_transactions"
     compose += gen_nodes(

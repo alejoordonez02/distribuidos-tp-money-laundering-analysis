@@ -10,9 +10,6 @@ from .gen_nodes import gen_nodes
 def gen_uc4() -> str:
     compose = "\n# === uc4 ==="
     queue0 = "uc4_graphs"
-    # stateless: each builds a partial graph from one message and fans it out by node
-    # affinity; the aggregate does the cross-message merge. The default filters shard
-    # the input, so a crash re-emit lands on the same peer and its dedup catches it.
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,
         strategy=GroupByStrategy.UC4_COMPUTE_GRAPH,
@@ -43,7 +40,6 @@ def gen_uc4() -> str:
         checkpoint_every=5,
     )
     queue3 = "uc4_high_degree"
-    # the high-degree node set is BROADCAST to every prune peer.
     compose += gen_nodes(
         type2=ContainerType.AGGREGATE,
         strategy=AggregateStrategy.UC4_DEGREE,
@@ -55,8 +51,6 @@ def gen_uc4() -> str:
         checkpoint_every=5,
     )
     queue4 = "uc4_pruned"
-    # broadcast-join: high-degree set (left) broadcast, graph to prune (right) sharded
-    # across the peers; the peers' outputs partition the nodes with no overlap.
     compose += gen_merge(
         strategy=MergeStrategy.UC4_PRUNE,
         left_rx_name=queue3,
