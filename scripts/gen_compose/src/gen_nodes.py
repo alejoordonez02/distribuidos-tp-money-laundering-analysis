@@ -3,9 +3,11 @@ from enum import StrEnum
 from .container_type import ContainerType
 
 # Checkpoint/ack batch size (= how many messages a node holds + reprocesses on a
-# crash). Higher amortizes the per-checkpoint fsync/spill cost; the rx prefetch is
-# raised to match. `checkpoint_every` on the gen_* fns is the on/off switch.
-CHECKPOINT_EVERY = 50
+# crash). Higher amortizes the per-checkpoint cost — at hundreds of millions of rows,
+# checkpointing every few dozen messages dominates the runtime — and the rx prefetch
+# is raised to match (messages are small, so a large in-flight window is cheap). The
+# `checkpoint_every` arg on the gen_* fns is only an on/off switch; this is the value.
+CHECKPOINT_EVERY = 1000
 
 
 def gen_nodes(
