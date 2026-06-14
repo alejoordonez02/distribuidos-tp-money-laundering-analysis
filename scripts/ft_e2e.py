@@ -300,7 +300,12 @@ def run_combo(node, point):
 
 
 def prepare():
-    run(f"uv run -m scripts.gen_compose.gen_compose {COMPOSE}", capture=True)
+    # self-crash points rely on docker's restart policy to recover the node, so the
+    # e2e opts back into it (it is off by default, where the supervisor revives).
+    run(
+        f"GEN_RESTART_ON_FAILURE=1 uv run -m scripts.gen_compose.gen_compose {COMPOSE}",
+        capture=True,
+    )
     if not SKIP_GEN:
         print("[ft] generating expected responses (oracle) once ...", flush=True)
         guard = ""
