@@ -10,4 +10,4 @@ def supervisor_env(node_name: str, kind: str) -> str:
       - SUPERVISOR_PORT={SUPERVISOR_PORT}
       - NODE_NAME={node_name}
       - NODE_KIND={kind}
-      - HEARTBEAT_INTERVAL=${{HEARTBEAT_INTERVAL:-2}}"""
+      - HEARTBEAT_INTERVAL=${{HEARTBEAT_INTERVAL:-1}}"""
