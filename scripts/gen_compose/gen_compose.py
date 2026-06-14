@@ -1,11 +1,13 @@
 import sys
 
 from .src import (
+    gen_chaos,
     gen_clients,
     gen_default_filters,
     gen_gateway,
     gen_join,
     gen_rabbitmq,
+    gen_supervisor,
     gen_uc1,
     gen_uc2,
     gen_uc3,
@@ -24,6 +26,7 @@ def main():
 
     compose = "services:"
     compose += gen_rabbitmq()
+    compose += gen_supervisor()
     compose += gen_gateway()
     compose += gen_default_filters()
     compose += gen_uc1()
@@ -32,6 +35,7 @@ def main():
     compose += gen_uc4()
     compose += gen_uc5()
     compose += gen_join()
+    compose += gen_chaos()
     compose += gen_clients()
 
     with open(filename, "w") as f:
