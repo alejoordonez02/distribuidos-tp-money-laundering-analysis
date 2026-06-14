@@ -6,7 +6,7 @@ from typing import Callable
 from client_stream_handler import ClientStreamHandler
 from client_stream_monitor import ClientStreamMonitor, ClientNotFoundError
 
-from common.comms.connection import Connection
+from common.comms.transport import Connection
 from common.comms.messages import (
     Response,
     UnknownMessageError,

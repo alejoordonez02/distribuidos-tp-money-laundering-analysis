@@ -53,6 +53,10 @@ class Connection:
         missing = amount
         while missing:
             received = self.skt.recv(missing)
+            if not received:
+                # Peer closed cleanly mid-read; surface it so recv() can report
+                # the closed connection instead of spinning on empty reads.
+                raise OSError("connection closed by peer")
             buf += received
             missing -= len(received)
 
