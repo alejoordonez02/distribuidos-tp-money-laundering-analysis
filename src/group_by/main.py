@@ -12,6 +12,7 @@ from group_by_fns import (
 from strategies import GroupByStrategy
 
 from common.checkpoint import make_checkpointer
+from common.heartbeat import run_with_heartbeat
 from common.comms.eof_handler.ring_completion import RingCompletion
 from common.comms.eof_handler.sent_counts import SentCounts
 from common.comms.middleware import MultiQueueConsumer, RingRabbitMQ, make_txs
@@ -97,7 +98,7 @@ def main():
     groupby = make_groupby(fn, IDX, NAFFINITY_DOWNSTREAM, MOM_HOST, RX, TX)
 
     logging.info("starting groupby: fn=%s idx=%s rx=%s tx=%s", type(fn), IDX, RX, TX)
-    groupby.start()
+    run_with_heartbeat(groupby.start)
 
 
 if __name__ == "__main__":
