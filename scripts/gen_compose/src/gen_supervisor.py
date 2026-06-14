@@ -1,4 +1,5 @@
-from .fault_tolerance import HEARTBEAT_TIMEOUT, REVIVE_INTERVAL, SUPERVISOR_PORT
+from .fault_tolerance import HEARTBEAT_TIMEOUT, REVIVE_INTERVAL
+from .supervisor_env import SUPERVISOR_PORT
 
 
 def gen_supervisor() -> str:
