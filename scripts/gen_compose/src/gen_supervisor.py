@@ -4,7 +4,7 @@ from .supervisor_env import SUPERVISOR_PORT
 # heartbeat intervals wide so a momentary hiccup is not flagged as a crash.
 HEARTBEAT_TIMEOUT = 6
 # How often the supervisor scans for dead nodes to revive (0 = detection only).
-REVIVE_INTERVAL = 5
+REVIVE_INTERVAL = 4
 
 
 def gen_supervisor() -> str:

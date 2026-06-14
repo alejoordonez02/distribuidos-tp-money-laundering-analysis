@@ -5,7 +5,7 @@
 # (node restart policy is OFF so the supervisor is the sole reviver). The run
 # passes if verify is still 5/5 after the carnage.
 #
-# Defaults: medium, kill 1-3 nodes every 10s, supervisor revives every 2s.
+# Defaults: medium, kill 1-8 nodes every 4s, supervisor revives every 4s.
 # Override via env, e.g.:  DATASET=small CHAOS_INTERVAL=1 bash scripts/resilience_demo.sh
 set -u
 cd "$(dirname "$0")/.." || exit 1
@@ -21,11 +21,11 @@ esac
 
 # chaos / supervisor knobs (compose reads these via ${VAR:-default} substitution)
 export CHAOS_ENABLED=1
-export CHAOS_INTERVAL="${CHAOS_INTERVAL:-10}"
+export CHAOS_INTERVAL="${CHAOS_INTERVAL:-4}"
 export CHAOS_KILLS_MIN="${CHAOS_KILLS_MIN:-1}"
-export CHAOS_KILLS_MAX="${CHAOS_KILLS_MAX:-3}"
+export CHAOS_KILLS_MAX="${CHAOS_KILLS_MAX:-8}"
 export CHAOS_START_DELAY="${CHAOS_START_DELAY:-15}"
-export REVIVE_INTERVAL="${REVIVE_INTERVAL:-2}"
+export REVIVE_INTERVAL="${REVIVE_INTERVAL:-4}"
 export HEARTBEAT_TIMEOUT="${HEARTBEAT_TIMEOUT:-6}"
 export HEARTBEAT_INTERVAL="${HEARTBEAT_INTERVAL:-2}"
 

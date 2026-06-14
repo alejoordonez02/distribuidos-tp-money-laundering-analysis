@@ -50,9 +50,11 @@ test_ft:
 supervisor:
 	docker attach supervisor
 
-# arm the chaos monkey on a running cluster (override CHAOS_INTERVAL / CHAOS_KILLS)
+# arm the chaos monkey on a running cluster and stream what it kills
+# (Ctrl-C stops watching the logs; the chaos container keeps running)
 chaos:
 	CHAOS_ENABLED=1 $(COMPOSE) up -d --force-recreate --no-deps chaos
+	$(COMPOSE) logs -f chaos
 
 # disarm the chaos monkey
 chaos_stop:

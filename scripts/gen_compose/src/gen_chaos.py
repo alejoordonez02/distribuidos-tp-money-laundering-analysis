@@ -11,9 +11,9 @@ def gen_chaos() -> str:
     container_name: chaos
     environment:
       - CHAOS_ENABLED=${CHAOS_ENABLED:-0}
-      - CHAOS_INTERVAL=${CHAOS_INTERVAL:-30}
+      - CHAOS_INTERVAL=${CHAOS_INTERVAL:-4}
       - CHAOS_KILLS_MIN=${CHAOS_KILLS_MIN:-1}
-      - CHAOS_KILLS_MAX=${CHAOS_KILLS_MAX:-1}
+      - CHAOS_KILLS_MAX=${CHAOS_KILLS_MAX:-8}
       - CHAOS_START_DELAY=${CHAOS_START_DELAY:-5}
       - CHAOS_TARGETS=${CHAOS_TARGETS:-}
       - CHAOS_EXCLUDE=${CHAOS_EXCLUDE:-rabbitmq,supervisor,gateway,chaos}
