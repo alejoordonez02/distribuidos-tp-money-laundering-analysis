@@ -6,7 +6,7 @@ COMPOSE := docker compose -f $(COMPOSE_FILE)
 RABBIT_CONTAINER := rabbitmq
 SCRIPTS_DIR := scripts
 
-.PHONY: help gen_input_output gen_compose up stop_server down logs test test_ft report demo supervisor chaos chaos_stop resilience
+.PHONY: help gen_input_output gen_compose up stop_server down logs test test_ft report demo supervisor chaos chaos_stop
 
 help:
 	@echo '* opciones: help (esto) - gen_input_output - gen_compose - up - stop_server - down - logs - test - test_ft - supervisor - chaos - chaos_stop - report - demo'
@@ -59,10 +59,6 @@ chaos:
 # disarm the chaos monkey
 chaos_stop:
 	CHAOS_ENABLED=0 $(COMPOSE) up -d --force-recreate --no-deps chaos
-
-# end-to-end resilience demo under chaos, then verify 5/5 (DATASET=small|medium|large)
-resilience:
-	bash $(SCRIPTS_DIR)/resilience_demo.sh
 
 report:
 	cd doc/informe && ./make_report
