@@ -5,9 +5,7 @@ import time
 from .registry import NodeRegistry, Status
 
 _RESET = "\033[0m"
-_HOME = "\033[H"
-_CLEAR_BELOW = "\033[J"
-_CLEAR_LINE = "\033[K"
+_CLEAR = "\033[2J\033[3J\033[H"  # clear screen + scrollback, home cursor
 _HIDE_CURSOR = "\033[?25l"
 _SHOW_CURSOR = "\033[?25h"
 _COLORS = {Status.ALIVE: "\033[32m", Status.DEAD: "\033[31m", Status.UNKNOWN: "\033[33m"}
@@ -29,9 +27,10 @@ def _age(last_hb, now: float) -> str:
 
 
 class Dashboard:
-    """Live ANSI dashboard for the supervisor. Redraws in place (cursor home +
-    per-line clear, never scrolling) and shows the node table next to a stream of
-    recent events. Dependency-free so it runs on the bare python:alpine image."""
+    """Live ANSI dashboard for the supervisor. Clears and redraws each frame in
+    place, with the node table beside its recent events (the event column is
+    capped to the node count so the frame keeps a fixed height). Dependency-free
+    so it runs on the bare python:alpine image."""
 
     def __init__(self, registry: NodeRegistry, refresh: float = 1.0):
         self._registry = registry
@@ -54,7 +53,9 @@ class Dashboard:
         dead = sum(1 for n in nodes if n.status is Status.DEAD)
 
         node_cells = [self._node_cell(n, now) for n in nodes]
-        event_cells = [self._event_cell(e) for e in reversed(events)]
+        # show only the newest events, as many as there are nodes, so both columns
+        # are the same height and the frame does not grow over time
+        event_cells = [self._event_cell(e) for e in reversed(events)][: len(node_cells)]
 
         rows = [
             "SUPERVISOR — node liveness (heartbeat-driven)   "
@@ -63,13 +64,11 @@ class Dashboard:
             _pad(f"{'NODE':<30}{'KIND':<11}{'STATUS':<8}{'HB':<7}", _NODE_W) + " │ EVENTS (newest first)",
             "-" * _NODE_W + "-┼-" + "-" * 40,
         ]
-        for i in range(max(len(node_cells), len(event_cells))):
-            left = node_cells[i] if i < len(node_cells) else ""
+        for i in range(len(node_cells)):
             right = event_cells[i] if i < len(event_cells) else ""
-            rows.append(_pad(left, _NODE_W) + " │ " + right)
+            rows.append(_pad(node_cells[i], _NODE_W) + " │ " + right)
 
-        frame = (_CLEAR_LINE + "\n").join(rows)
-        return _HOME + frame + _CLEAR_LINE + _CLEAR_BELOW
+        return _CLEAR + "\n".join(rows)
 
     def _node_cell(self, node, now: float) -> str:
         color = _COLORS.get(node.status, "")
