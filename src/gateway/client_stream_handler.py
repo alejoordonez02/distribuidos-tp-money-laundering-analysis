@@ -3,7 +3,7 @@ from threading import Thread
 from typing import Callable, Sequence
 from uuid import uuid4
 
-from common.comms.connection import Connection
+from common.comms.transport import Connection
 from common.comms.messages import (
     PREFIX_RANGE,
     TYPE_RANGE,

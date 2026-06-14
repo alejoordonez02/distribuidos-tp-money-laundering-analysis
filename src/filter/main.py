@@ -8,6 +8,7 @@ from ring_filter import RingFilter
 from strategies import FilterStrategy
 
 from common.checkpoint import make_checkpointer
+from common.heartbeat import run_with_heartbeat
 from common.comms.eof_handler.ring_completion import RingCompletion
 from common.comms.eof_handler.sent_counts import SentCounts
 from common.comms.middleware import (
@@ -140,7 +141,7 @@ def main():
 
     match STRATEGY:
         case FilterStrategy.DEFAULT:
-            return make_default_filter().start()
+            return run_with_heartbeat(make_default_filter().start)
         case FilterStrategy.UC3_AVG:
             fn = UC3AvgFilter
         case FilterStrategy.UC4_PATH:
@@ -152,7 +153,9 @@ def main():
 
     idx = int(os.getenv("IDX", 0))
     naffinity_downstream = int(os.environ["NAFFINITY_DOWNSTREAM"])
-    make_filter(fn, idx, naffinity_downstream, MOM_HOST, RX, os.environ["TX"]).start()
+    run_with_heartbeat(
+        make_filter(fn, idx, naffinity_downstream, MOM_HOST, RX, os.environ["TX"]).start
+    )
 
 
 if __name__ == "__main__":

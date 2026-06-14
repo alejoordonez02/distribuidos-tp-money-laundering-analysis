@@ -1,3 +1,4 @@
+from .gen_chaos import gen_chaos
 from .gen_clients import gen_clients
 from .gen_default_filters import gen_default_filters
 from .gen_gateway import gen_gateway
@@ -5,6 +6,7 @@ from .gen_join import gen_join
 from .gen_merge import gen_merge
 from .gen_nodes import gen_nodes
 from .gen_rabbitmq import gen_rabbitmq
+from .gen_supervisor import gen_supervisor
 from .gen_uc1 import gen_uc1
 from .gen_uc2 import gen_uc2
 from .gen_uc3 import gen_uc3

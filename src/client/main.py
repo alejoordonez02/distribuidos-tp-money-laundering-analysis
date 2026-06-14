@@ -4,7 +4,7 @@ import time
 from socket import AF_INET, SOCK_STREAM, socket
 
 from client import Client  # type: ignore
-from common.comms.connection import Connection
+from common.comms.transport import Connection
 
 TRANSACTIONS_PATH = os.environ["TRANSACTIONS_PATH"]
 ACCOUNTS_PATH = os.environ["ACCOUNTS_PATH"]

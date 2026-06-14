@@ -10,6 +10,8 @@ from .common_queues import (
     UC5_TRANSACTIONS,
 )
 from .gen_nodes import CHECKPOINT_EVERY
+from .runtime import restart_line
+from .supervisor_env import supervisor_env
 
 _ROUTE_SHARDS = {
     "UC1_TRANSACTIONS_SHARDS": 0,
@@ -26,13 +28,13 @@ def gen_default_filters() -> str:
     compose = "\n# === default filters ==="
 
     for idx in range(topo.DEFAULT_FILTERS):
+        sup = supervisor_env(f"default_filter_{idx}", "filter")
         compose += f"""\n
   default_filter_{idx}:
     build:
       context: ./src/
       dockerfile: filter/Dockerfile
-    container_name: default_filter_{idx}
-    restart: on-failure
+    container_name: default_filter_{idx}{restart_line()}
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -59,7 +61,7 @@ def gen_default_filters() -> str:
       - RING_NAME=default_filter_ring
       - STRATEGY=default
       - STATE_DIR=/state
-      - CHECKPOINT_EVERY={CHECKPOINT_EVERY}
+      - CHECKPOINT_EVERY={CHECKPOINT_EVERY}{sup}
     volumes:
       - ./state/default_filter_{idx}:/state"""
 

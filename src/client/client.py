@@ -9,7 +9,7 @@ from uuid import UUID
 
 from parser import AccountParser, TransactionParser
 
-from common.comms.connection import Connection
+from common.comms.transport import Connection
 from common.comms.messages import EOF, Accounts, Hello, HelloAck, Response, Transactions
 from common.graceful_shutdown import setup_graceful_shutdown
 

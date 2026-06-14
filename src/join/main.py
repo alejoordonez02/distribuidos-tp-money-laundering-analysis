@@ -5,6 +5,7 @@ from join_fns import UC1Join, UC2Join, UC3Join, UC4Join, UC5Join
 
 from common.checkpoint import PersistentSpill
 from common.comms.middleware import QueueRabbitMQ
+from common.heartbeat import run_with_heartbeat
 from join import Join
 
 MOM_HOST = os.environ["MOM_HOST"]
@@ -48,9 +49,10 @@ def main():
     def responses_tx_factory():
         return QueueRabbitMQ(MOM_HOST, RESPONSES_TX)
 
-    Join(
+    join = Join(
         partial_res_handlers, responses_tx_factory, STATE_DIR, CHECKPOINT_EVERY
-    ).start()
+    )
+    run_with_heartbeat(join.start)
 
 
 if __name__ == "__main__":

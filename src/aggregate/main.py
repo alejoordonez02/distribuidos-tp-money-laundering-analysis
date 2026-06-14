@@ -15,6 +15,7 @@ from strategies import AggregateStrategy
 
 from ring_aggregate import RingAggregate
 from common.checkpoint import MultiShardSpill, make_checkpointer
+from common.heartbeat import run_with_heartbeat
 from common.comms.eof_handler.ring_completion import RingCompletion
 from common.comms.middleware import MultiQueueConsumer, RingRabbitMQ, make_txs
 
@@ -108,7 +109,7 @@ def main():
     aggregate = make_aggregate(fn, IDX, NAFFINITY_DOWNSTREAM, MOM_HOST, RX, TX)
 
     logging.info("starting aggregate: fn=%s idx=%s rx=%s tx=%s", type(fn), IDX, RX, TX)
-    aggregate.start()
+    run_with_heartbeat(aggregate.start)
 
 
 if __name__ == "__main__":
