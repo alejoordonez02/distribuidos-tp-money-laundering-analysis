@@ -1,5 +1,4 @@
-SUPERVISOR_HOST = "supervisor"
-SUPERVISOR_PORT = 9100
+from .fault_tolerance import HEARTBEAT_INTERVAL, SUPERVISOR_HOST, SUPERVISOR_PORT
 
 
 def supervisor_env(node_name: str, kind: str) -> str:
@@ -10,4 +9,4 @@ def supervisor_env(node_name: str, kind: str) -> str:
       - SUPERVISOR_PORT={SUPERVISOR_PORT}
       - NODE_NAME={node_name}
       - NODE_KIND={kind}
-      - HEARTBEAT_INTERVAL=${{HEARTBEAT_INTERVAL:-1}}"""
+      - HEARTBEAT_INTERVAL=${{HEARTBEAT_INTERVAL:-{HEARTBEAT_INTERVAL}}}"""

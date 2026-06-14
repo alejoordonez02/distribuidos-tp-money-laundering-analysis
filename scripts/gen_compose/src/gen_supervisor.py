@@ -1,10 +1,4 @@
-from .supervisor_env import SUPERVISOR_PORT
-
-# A node is considered dead after this long without a heartbeat. A few heartbeat
-# intervals wide (heartbeats are every 1s) so a momentary hiccup is not a crash.
-HEARTBEAT_TIMEOUT = 3
-# How often the supervisor scans for dead nodes to revive (0 = detection only).
-REVIVE_INTERVAL = 2
+from .fault_tolerance import HEARTBEAT_TIMEOUT, REVIVE_INTERVAL, SUPERVISOR_PORT
 
 
 def gen_supervisor() -> str:
