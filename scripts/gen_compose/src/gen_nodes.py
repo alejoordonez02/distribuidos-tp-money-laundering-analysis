@@ -15,6 +15,26 @@ def gen_nodes(
     checkpoint_every: int | None = None,
     broadcast_downstream: bool = False,
 ) -> str:
+    """
+    Gen a ring of nodes.
+
+    # Args
+    * `type2` - the type of the controller.
+    * `name` - the name of the container.
+    * `strategy` - the strategy for the controller to use.
+    * `npeers` - the amount of nodes in the ring, including this one.
+    * `affinity_upstream` - wheter the controller is supposed to
+      expect upstream messages with affinity routing.
+    * `naffinity_downstream` - the amount of downstream affinities
+      ready to handle this controller's downstream messages. If none,
+      this can be set to zero (which does not mean that there are not
+      controllers waiting for messages on the other side).
+    * `rx_name` - the name prefix of the upstream channel.
+    * `tx_name` - the name prefix of the downstream channel.
+
+    # Returns
+    A string containing the nodes compose declaration.
+    """
     name = strategy
     compose = ""
 

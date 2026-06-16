@@ -64,6 +64,16 @@ class JoinRouteHandler:
         state_dir: Optional[str] = None,
         checkpoint_every: int = 5,
     ):
+        """
+        Create a new `JoinRouteHandler`.
+
+        # Args
+        * reponses_tx_factory: a factory for the write half queue.
+        * mom_factory: a factory for the read half queue.
+        * join_fn: the join function to be used.
+        * uc_id: stamped on every Response so the client can demultiplex chunks
+          of different UCs from the shared responses queue.
+        """
         self.responses_tx_factory = responses_tx_factory
         self.responses_tx: MOMQueue
         self.mom_factory = mom_factory
