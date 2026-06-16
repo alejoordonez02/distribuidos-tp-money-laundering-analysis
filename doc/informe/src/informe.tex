@@ -9,6 +9,7 @@
 \usepackage{float}
 \usepackage{minted}
 \usepackage{subcaption}
+\usepackage{rotating}
 
 \title{\textbf{Money Laundering Analysis}}
 \date{\today}
@@ -104,7 +105,7 @@ descarta en esta etapa porque no aporta información al resultado.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.4\textwidth]{../diagrams/v2/11dag-diagram-uc1.png}\\[1cm]
+  \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/11dag-diagram-uc1.png}
   \caption{Diagrama DAG UC1}
 \end{figure}
 
@@ -125,7 +126,7 @@ nombre del banco.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.4\textwidth]{../diagrams/v2/11dag-diagram-uc2.png}\\[1cm]
+  \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/11dag-diagram-uc2.png}
   \caption{Diagrama DAG UC2}
 \end{figure}
 
@@ -143,7 +144,7 @@ que solo se conoce una vez que se procesaron todos los datos de ese período.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.4\textwidth]{../diagrams/v2/11dag-diagram-uc3.png}\\[1cm]
+  \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/11dag-diagram-uc3.png}
   \caption{Diagrama DAG UC3}
 \end{figure}
 
@@ -170,7 +171,7 @@ detección no puede hacerse registro a registro.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.4\textwidth]{../diagrams/v2/11dag-diagram-uc4.png}\\[1cm]
+  \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/11dag-diagram-uc4.png}
   \caption{Diagrama DAG UC4}
 \end{figure}
 
@@ -205,7 +206,7 @@ válida después de convertir.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.4\textwidth]{../diagrams/v2/11dag-diagram-uc5.png}\\[1cm]
+  \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/11dag-diagram-uc5.png}
   \caption{Diagrama DAG UC5}
 \end{figure}
 
@@ -266,7 +267,7 @@ cliente antes de emitir la respuesta.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.4\textwidth]{../diagrams/v2/12robustness-diagram-uc1.png}\\[1cm]
+  \includegraphics[width=0.62\textwidth]{../diagrams/v2/12robustness-diagram-uc1.png}
   \caption{Diagrama de Robustez UC1}
 \end{figure}
 
@@ -297,7 +298,7 @@ shard. El resultado se deposita en la cola de entrada del Join.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.4\textwidth]{../diagrams/v2/12robustness-diagram-uc2.png}\\[1cm]
+  \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/12robustness-diagram-uc2.png}
   \caption{Diagrama de Robustez UC2}
 \end{figure}
 
@@ -327,7 +328,7 @@ average/100} y produce la cola final hacia el Join.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.4\textwidth]{../diagrams/v2/12robustness-diagram-uc3.png}\\[1cm]
+  \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/12robustness-diagram-uc3.png}
   \caption{Diagrama de Robustez UC3}
 \end{figure}
 
@@ -354,7 +355,7 @@ particionado en archivos por shard.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.4\textwidth]{../diagrams/v2/12robustness-diagram-uc4.png}\\[1cm]
+  \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/12robustness-diagram-uc4.png}
   \caption{Diagrama de Robustez UC4}
 \end{figure}
 
@@ -373,7 +374,7 @@ suma en el conteo global definitivo del caso de uso.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.4\textwidth]{../diagrams/v2/12robustness-diagram-uc5.png}\\[1cm]
+  \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/12robustness-diagram-uc5.png}
   \caption{Diagrama de Robustez UC5}
 \end{figure}
 
@@ -381,7 +382,7 @@ suma en el conteo global definitivo del caso de uso.
 
 \begin{figure}[h!]
   \centering
-  \includegraphics[width=0.9\textwidth]{../diagrams/v2/12robustness-diagram.png}\\[1cm]
+  \includegraphics[width=\textwidth,height=0.9\textheight,keepaspectratio]{../diagrams/v2/12robustness-diagram.png}
   \caption{Diagrama de Robustez del sistema completo}
 \end{figure}
 
@@ -451,11 +452,11 @@ al reiniciarse recupera su estado desde el mismo volumen. Estos
 componentes de tolerancia a fallos se detallan en la sección
 correspondiente.
 
-\begin{figure}[h!]
+\begin{sidewaysfigure}
   \centering
-  \includegraphics[width=0.9\textwidth]{../diagrams/v2/14deployment-diagram.png}\\[1cm]
+  \includegraphics[width=0.95\textheight,height=0.92\textwidth,keepaspectratio]{../diagrams/v2/14deployment-diagram.png}
   \caption{Diagrama de despliegue}
-\end{figure}
+\end{sidewaysfigure}
 
 \section{Vista de desarrollo}
 \subsection{Paquetes}
@@ -474,17 +475,16 @@ sobre RabbitMQ (\texttt{middleware/}), el modelo de mensajes
 \texttt{checkpoint/} —persistencia y deduplicación— y \texttt{heartbeat/} —el
 cliente de \textit{heartbeat} hacia el Supervisor—.
 
-\begin{figure}[!h]
-  \captionsetup[subfigure]{labelformat=empty}
-  \begin{subfigure}[b]{0.4\textwidth}
-    \includegraphics[width=\textwidth]{../diagrams/v2/15packages-diagram.png}\\[1cm]
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[b]{0.4\textwidth}
-    \includegraphics[width=\textwidth]{../diagrams/v2/15packages-diagram-filter.png}\\[1cm]
-    \caption{Diagrama de paquetes — \texttt{filter/}}
-  \end{subfigure}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\textwidth,height=0.6\textheight,keepaspectratio]{../diagrams/v2/15packages-diagram.png}
   \caption{Diagrama de paquetes}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.6\textwidth]{../diagrams/v2/15packages-diagram-filter.png}
+  \caption{Diagrama de paquetes — \texttt{filter/}}
 \end{figure}
 
 La razón por la cuál se pueden generalizar los controladores es el
@@ -538,73 +538,73 @@ complejidad bastante más grande que la de éste.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.9\textwidth]{../diagrams/v2/16activity-diagram-uc1.png}\\[1cm]
+  \includegraphics[width=\textwidth,height=0.82\textheight,keepaspectratio]{../diagrams/v2/16activity-diagram-uc1.png}
   \caption{Diagrama de actividades — UC1}
 \end{figure}
 
 \subsubsection{UC2}
-\begin{figure}[H]
+\begin{sidewaysfigure}
   \centering
-  \includegraphics[width=\textwidth]{../diagrams/v2/16activity-diagram-uc2.png}\\[1cm]
+  \includegraphics[width=0.95\textheight,height=0.92\textwidth,keepaspectratio]{../diagrams/v2/16activity-diagram-uc2.png}
   \caption{Diagrama de actividades — UC2}
-\end{figure}
+\end{sidewaysfigure}
 
 \subsubsection{UC3}
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{../diagrams/v2/16activity-diagram-uc3.png}\\[1cm]
+  \includegraphics[width=\textwidth,height=0.9\textheight,keepaspectratio]{../diagrams/v2/16activity-diagram-uc3.png}
   \caption{Diagrama de actividades — UC3}
 \end{figure}
 
 \subsubsection{UC4}
-\begin{figure}[H]
+\begin{sidewaysfigure}
   \centering
-  \includegraphics[width=\textwidth]{../diagrams/v2/16activity-diagram-uc4.png}\\[1cm]
+  \includegraphics[width=0.95\textheight,height=0.92\textwidth,keepaspectratio]{../diagrams/v2/16activity-diagram-uc4.png}
   \caption{Diagrama de actividades — UC4}
-\end{figure}
+\end{sidewaysfigure}
 
 \subsubsection{UC5}
-\begin{figure}[H]
+\begin{sidewaysfigure}
   \centering
-  \includegraphics[width=\textwidth]{../diagrams/v2/16activity-diagram-uc5.png}\\[1cm]
+  \includegraphics[width=0.95\textheight,height=0.92\textwidth,keepaspectratio]{../diagrams/v2/16activity-diagram-uc5.png}
   \caption{Diagrama de actividades — UC5}
-\end{figure}
+\end{sidewaysfigure}
 
 \subsection{Secuencia}
 \subsubsection{UC1}
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.4\textwidth]{../diagrams/v2/13sequence-diagram-uc1.png}\\[1cm]
+  \includegraphics[width=0.7\textwidth,height=0.5\textheight,keepaspectratio]{../diagrams/v2/13sequence-diagram-uc1.png}
   \caption{Diagrama de secuencia — UC1}
 \end{figure}
 
 \subsubsection{UC2}
-\begin{figure}[H]
+\begin{sidewaysfigure}
   \centering
-  \includegraphics[width=0.9\textwidth]{../diagrams/v2/13sequence-diagram-uc2.png}\\[1cm]
+  \includegraphics[width=0.95\textheight,height=0.92\textwidth,keepaspectratio]{../diagrams/v2/13sequence-diagram-uc2.png}
   \caption{Diagrama de secuencia — UC2}
-\end{figure}
+\end{sidewaysfigure}
 
 \subsubsection{UC3}
-\begin{figure}[H]
+\begin{sidewaysfigure}
   \centering
-  \includegraphics[width=0.9\textwidth]{../diagrams/v2/13sequence-diagram-uc3.png}\\[1cm]
+  \includegraphics[width=0.95\textheight,height=0.92\textwidth,keepaspectratio]{../diagrams/v2/13sequence-diagram-uc3.png}
   \caption{Diagrama de secuencia — UC3}
-\end{figure}
+\end{sidewaysfigure}
 
 \subsubsection{UC4}
-\begin{figure}[H]
+\begin{sidewaysfigure}
   \centering
-  \includegraphics[width=0.9\textwidth]{../diagrams/v2/13sequence-diagram-uc4.png}\\[1cm]
+  \includegraphics[width=0.95\textheight,height=0.92\textwidth,keepaspectratio]{../diagrams/v2/13sequence-diagram-uc4.png}
   \caption{Diagrama de secuencia — UC4}
-\end{figure}
+\end{sidewaysfigure}
 
 \subsubsection{UC5}
-\begin{figure}[H]
+\begin{sidewaysfigure}
   \centering
-  \includegraphics[width=0.9\textwidth]{../diagrams/v2/13sequence-diagram-uc5.png}\\[1cm]
+  \includegraphics[width=0.95\textheight,height=0.92\textwidth,keepaspectratio]{../diagrams/v2/13sequence-diagram-uc5.png}
   \caption{Diagrama de secuencia — UC5}
-\end{figure}
+\end{sidewaysfigure}
 
 \newpage
 \section{Tolerancia a fallos}
@@ -642,7 +642,7 @@ procesamiento:
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.9\textwidth]{../diagrams/v2/17ft-architecture-diagram.png}\\[1cm]
+  \includegraphics[width=\textwidth]{../diagrams/v2/17ft-architecture-diagram.png}\\[1cm]
   \caption{Arquitectura de tolerancia a fallos}
 \end{figure}
 
@@ -660,7 +660,7 @@ red); sólo la recuperación toca Docker.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.55\textwidth]{../diagrams/v2/18ft-heartbeat-sequence.png}\\[1cm]
+  \includegraphics[width=0.85\textwidth]{../diagrams/v2/18ft-heartbeat-sequence.png}\\[1cm]
   \caption{Detección por heartbeat y revival}
 \end{figure}
 
@@ -702,7 +702,7 @@ cuenta total que debe esperar.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.8\textwidth]{../diagrams/v2/19ft-eof-barrier-diagram.png}\\[1cm]
+  \includegraphics[width=0.9\textwidth]{../diagrams/v2/19ft-eof-barrier-diagram.png}\\[1cm]
   \caption{Propagación de EOF mediante la barrera de anillo}
 \end{figure}
 
@@ -734,7 +734,7 @@ y se reprocesan sobre el estado restaurado.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.7\textwidth]{../diagrams/v2/20ft-checkpoint-diagram.png}\\[1cm]
+  \includegraphics[width=0.85\textwidth]{../diagrams/v2/20ft-checkpoint-diagram.png}\\[1cm]
   \caption{Checkpoint con acks retenidos y deduplicación}
 \end{figure}
 
@@ -778,7 +778,7 @@ reprocesan limpiamente sobre él.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.7\textwidth]{../diagrams/v2/21ft-failure-midbatch.png}\\[1cm]
+  \includegraphics[width=0.85\textwidth]{../diagrams/v2/21ft-failure-midbatch.png}\\[1cm]
   \caption{Caída a mitad de lote}
 \end{figure}
 
@@ -791,7 +791,7 @@ El estado queda correcto, tomado del \textit{checkpoint}.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.7\textwidth]{../diagrams/v2/22ft-failure-preack.png}\\[1cm]
+  \includegraphics[width=0.85\textwidth]{../diagrams/v2/22ft-failure-preack.png}\\[1cm]
   \caption{Caída tras el checkpoint, antes de los acks}
 \end{figure}
 
@@ -805,7 +805,7 @@ archivos de \textit{spill} se truncan a su \textit{offset} confirmado.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.7\textwidth]{../diagrams/v2/23ft-failure-stateful.png}\\[1cm]
+  \includegraphics[width=0.9\textwidth]{../diagrams/v2/23ft-failure-stateful.png}\\[1cm]
   \caption{Caída de un nodo con estado acumulado}
 \end{figure}
 
@@ -819,7 +819,7 @@ en el que la correctitud depende del reintento del cliente.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.7\textwidth]{../diagrams/v2/24ft-failure-gateway.png}\\[1cm]
+  \includegraphics[width=0.9\textwidth]{../diagrams/v2/24ft-failure-gateway.png}\\[1cm]
   \caption{Caída del Gateway}
 \end{figure}
 
@@ -832,7 +832,7 @@ desacoplada de la correctitud del pipeline.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.7\textwidth]{../diagrams/v2/25ft-failure-supervisor.png}\\[1cm]
+  \includegraphics[width=0.85\textwidth]{../diagrams/v2/25ft-failure-supervisor.png}\\[1cm]
   \caption{Caída del Supervisor}
 \end{figure}
 
