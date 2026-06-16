@@ -22,11 +22,19 @@ class ExchangeRabbitMQ(MOMExchange):
         exchange_name: str,
         routing_keys: list[str],
         queue_name: str,
+        exclusive: bool = True,
+        prefetch_count: int = PREFETCH_COUNT,
     ):
         self.host = host
         self.exchange_name = exchange_name
         self.routing_keys = routing_keys
         self.queue_name = queue_name
+        # Non-exclusive queues survive a consumer crash so RabbitMQ keeps
+        # accumulating (and redelivers un-acked) messages until the node returns.
+        self.exclusive = exclusive
+        # Must be >= the checkpoint batch, otherwise holding acks for a batch
+        # deadlocks against the broker's delivery window.
+        self.prefetch_count = max(prefetch_count, PREFETCH_COUNT)
 
         # TODO: heartbeat=600 may be starved by blocking callbacks in start_consuming — revisit
         self.conn = BlockingConnection(ConnectionParameters(host, heartbeat=0))
@@ -37,7 +45,9 @@ class ExchangeRabbitMQ(MOMExchange):
         self, on_message_callback: Callable[[bytes, Callable, Callable], None]
     ) -> None:
 
-        self.chan.queue_declare(queue=self.queue_name, exclusive=True)
+        self.chan.queue_declare(
+            queue=self.queue_name, exclusive=self.exclusive, durable=not self.exclusive
+        )
         for k in self.routing_keys:
             self.chan.queue_bind(
                 exchange=self.exchange_name, queue=self.queue_name, routing_key=k
@@ -45,7 +55,7 @@ class ExchangeRabbitMQ(MOMExchange):
 
         # Limit unacked messages so a slow consumer doesn't let RabbitMQ fill the
         # socket write buffer (which closes the connection with send_failed,timeout).
-        self.chan.basic_qos(prefetch_count=PREFETCH_COUNT)
+        self.chan.basic_qos(prefetch_count=self.prefetch_count)
 
         def callback(chan, method, _, body):
             on_message_callback(
@@ -108,11 +118,23 @@ class ExchangeRabbitMQ(MOMExchange):
 
     def clone(self) -> "ExchangeRabbitMQ":
         return ExchangeRabbitMQ(
-            self.host, self.exchange_name, self.routing_keys, self.queue_name
+            self.host,
+            self.exchange_name,
+            self.routing_keys,
+            self.queue_name,
+            self.exclusive,
+            self.prefetch_count,
         )
 
     def _ack(self, chan, method) -> None:
-        chan.basic_ack(delivery_tag=method.delivery_tag)
+        # Schedule on the connection's own thread: acks may be flushed (batched
+        # checkpointing) from a different thread than the one owning this channel,
+        # and pika is not thread-safe.
+        self.conn.add_callback_threadsafe(
+            lambda: chan.basic_ack(delivery_tag=method.delivery_tag)
+        )
 
     def _nack(self, chan, method) -> None:
-        chan.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+        self.conn.add_callback_threadsafe(
+            lambda: chan.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+        )

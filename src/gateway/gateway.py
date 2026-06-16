@@ -72,18 +72,18 @@ class Gateway:
         try:
             response = Response.deserialize(bytes2)
         except UnexpectedMessageError as e:
-            logging.error(f"received unexpected from server: {e}")
+            logging.error("received unexpected from server: %s", e)
             nack()
             return
         except UnknownMessageError as e:
-            logging.error(f"received unknown from server: {e}")
+            logging.error("received unknown from server: %s", e)
             nack()
             return
 
         try:
             self.clients.get(response.client_id).send(response)  # type: ignore[reportAttributeAccessIssue]
         except ClientNotFoundError as e:
-            logging.error(f"failed to get client response: {e}")
+            logging.error("failed to get client response: %s", e)
             nack()
             return
 

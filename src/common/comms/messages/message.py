@@ -29,16 +29,25 @@ def _mp_default(o):
     raise TypeError(f"Object of type {type(o).__name__} is not msgpack-serializable")
 
 
-# Wire-format offsets, defined once so the gateway can reuse them when it stamps
-# the id (see ClientStreamHandler._stamp_id) instead of repeating magic numbers.
+# Wire-format offsets, defined once so the gateway and the StampingMOM can stamp
+# header fields without unpacking the payload.
+# Layout: [type:1][client_id:16][producer_id:16][seq:8][msgpack payload]
 TYPE_RANGE = slice(0, 1)
 PREFIX_RANGE = slice(1, 17)
-MSG_RANGE = slice(17, None)
+PRODUCER_RANGE = slice(17, 33)
+SEQ_RANGE = slice(33, 41)
+MSG_RANGE = slice(41, None)
+SEQ_BYTES = SEQ_RANGE.stop - SEQ_RANGE.start
 DEFAULT_PREFIX = b"\x00" * 16
+DEFAULT_PRODUCER = b"\x00" * (PRODUCER_RANGE.stop - PRODUCER_RANGE.start)
+DEFAULT_SEQ = 0
 
 
 class Message:
     client_id: UUID
+    # Null until a producer (StampingMOM/gateway) stamps the message on the wire.
+    producer_id: bytes = DEFAULT_PRODUCER
+    seq: int = DEFAULT_SEQ
 
     def type(self) -> MessageType:
         """
@@ -53,11 +62,11 @@ class Message:
         """
         Serializes a `Message` into `bytes`.
 
-        Layout: ``[1-byte type][16-byte client_id][msgpack payload]``. The
-        client_id is carried as a fixed-position prefix (not inside the msgpack)
-        so the gateway can stamp it without unpacking the payload. By convention
-        it is the first field of `_fields()`; messages without one (Hello) get a
-        null prefix.
+        Layout: ``[1-byte type][16-byte client_id][16-byte producer_id]``
+        ``[8-byte seq][msgpack payload]``. The header fields sit at fixed
+        positions so the gateway and the middleware can stamp them without
+        unpacking the payload. client_id is the first field of `_fields()` by
+        convention; messages without one (Hello) get a null prefix.
 
         # Returns
         The `bytes` of the serialized message.
@@ -72,6 +81,8 @@ class Message:
         return (
             bytes([int(self._type())])
             + prefix
+            + self.producer_id
+            + self.seq.to_bytes(SEQ_BYTES, "big")
             + msgpack.packb(fields, default=_mp_default)
         )
 
@@ -108,7 +119,10 @@ class Message:
         fields = msgpack.unpackb(
             bytes2[MSG_RANGE], raw=False, use_list=True, strict_map_key=False
         )
-        return cls._from_fields([str(client_id), *fields])
+        msg = cls._from_fields([str(client_id), *fields])
+        msg.producer_id = bytes2[PRODUCER_RANGE]
+        msg.seq = int.from_bytes(bytes2[SEQ_RANGE], "big")
+        return msg
 
     @classmethod
     @abstractmethod

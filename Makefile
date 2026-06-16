@@ -6,7 +6,7 @@ COMPOSE := docker compose -f $(COMPOSE_FILE)
 RABBIT_CONTAINER := rabbitmq
 SCRIPTS_DIR := scripts
 
-.PHONY: help gen_input_output gen_compose up stop_server down logs test report demo
+.PHONY: help gen_input_output gen_compose up stop_server down logs test test_ft report demo
 
 help:
 	@echo '* opciones: help (esto) - gen_input_output - gen_compose - up - stop_server - down - logs - test - report - demo'
@@ -40,6 +40,11 @@ logs: gen_compose
 
 test:
 	uv run pytest
+
+# fault-tolerance e2e: crash each controller at each crash point, verify recovery
+test_ft:
+	mkdir -p responses tmp/ft_run
+	PYTHONPATH=src uv run $(SCRIPTS_DIR)/ft_e2e.py
 
 report:
 	cd doc/informe && ./make_report

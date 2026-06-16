@@ -1,3 +1,4 @@
+from typing import Any
 from uuid import UUID
 
 from common.comms.messages import PathCounts, Response
@@ -8,6 +9,14 @@ from .join_fn import JoinFn
 class UC4Join(JoinFn):
     def __init__(self):
         self.client_responses: dict[UUID, PathCounts] = {}
+
+    def snapshot_state(self) -> dict[str, Any]:
+        return {str(c): p.serialize() for c, p in self.client_responses.items()}
+
+    def restore_state(self, snapshot: dict[str, Any]):
+        self.client_responses = {
+            UUID(c): PathCounts.deserialize(b) for c, b in snapshot.items()
+        }
 
     def join(self, el: PathCounts):  # type: ignore[reportIncompatibleMethodOverride]
         if el.client_id not in self.client_responses:

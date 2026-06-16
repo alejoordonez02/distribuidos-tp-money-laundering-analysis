@@ -9,8 +9,8 @@ from .message_types import MessageType
 class HighDegree(Message):
     def __init__(self, client_id: UUID, hi_out: set[Node], hi_in: set[Node]):
         self.client_id = client_id
-        self.hi_out = hi_out  # accounts with out_degree >= MIN
-        self.hi_in = hi_in  # accounts with in_degree >= MIN
+        self.hi_out = hi_out
+        self.hi_in = hi_in
 
     @classmethod
     def _type(cls):

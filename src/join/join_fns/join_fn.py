@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Iterator
+from typing import Any, Iterator
 from uuid import UUID
 
 from common.comms.messages import Message, Response
@@ -9,6 +9,12 @@ class JoinFn:
     @abstractmethod
     def join(self, el: Message):
         pass
+
+    def snapshot_state(self) -> dict[str, Any]:
+        raise NotImplementedError("this join fn is not checkpointable")
+
+    def restore_state(self, snapshot: dict[str, Any]):
+        raise NotImplementedError("this join fn is not checkpointable")
 
     def get_response(self, client_id: UUID) -> Response:
         """Single-message result. Small UCs implement this; the route handler

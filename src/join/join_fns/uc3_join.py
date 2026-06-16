@@ -1,4 +1,4 @@
-from typing import Iterator
+from typing import Any, Iterator
 from uuid import UUID
 
 from common.comms.messages import Response, Transactions
@@ -10,6 +10,12 @@ from .line_spill import Spill, stream_responses
 class UC3Join(JoinFn):
     def __init__(self, spill: Spill):
         self._spill = spill
+
+    def snapshot_state(self) -> dict[str, Any]:
+        return {"spill": self._spill.snapshot_state()}  # type: ignore[attr-defined]
+
+    def restore_state(self, snapshot: dict[str, Any]):
+        self._spill.restore_state(snapshot.get("spill", {}))  # type: ignore[attr-defined]
 
     def join(self, el: Transactions):  # type: ignore[reportIncompatibleMethodOverride]
         for t in el.transactions:

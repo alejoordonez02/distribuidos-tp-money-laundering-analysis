@@ -1,12 +1,10 @@
 import json
 import logging
-import os
-import tempfile
 from collections import defaultdict
-from pathlib import Path as FilePath
-from typing import Iterable
+from typing import Any, Iterable
 from uuid import UUID
 
+from common.checkpoint import MultiShardSpill
 from common.comms.messages import Graph, Path, PathMsg
 from common.comms.messages.message import MessageJSONEncoder
 from common.comms.messages.path_count import PathCounts
@@ -36,20 +34,9 @@ def _deserialize(line: str) -> tuple[Path, int]:
 
 
 class UC4CountPaths(AggregateFn):
-    def __init__(self):
+    def __init__(self, spill: MultiShardSpill):
         self._paths: dict[UUID, dict[Path, int]] = {}
-        self._files: dict[UUID, dict[int, FilePath]] = {}
-
-    def _file_for_shard(self, shard: int, client_id: UUID) -> FilePath:
-        if client_id not in self._files:
-            self._files[client_id] = {}
-        if shard not in self._files[client_id]:
-            fd, file_path = tempfile.mkstemp(
-                prefix=f"UC4CountPaths:{client_id}:{shard}", suffix=".jsonl"
-            )
-            os.close(fd)
-            self._files[client_id][shard] = FilePath(file_path)
-        return self._files[client_id][shard]
+        self._spill = spill
 
     def aggregate(self, msg: Graph):  # type: ignore[reportIncompatibleMethodOverride]
         client_id = msg.client_id
@@ -81,21 +68,14 @@ class UC4CountPaths(AggregateFn):
             self._downstream(client_id)
 
     def get_result(self, client_id: UUID) -> Iterable[tuple[PathCounts, int]]:
-        if client_id not in self._paths and client_id not in self._files:
-            return ()
-
         if client_id in self._paths:
             self._downstream(client_id)
 
-        for _, file in self._files[client_id].items():
+        for shard in self._spill.shards_of(client_id):
             paths: dict[Path, int] = {}
-
-            with open(file, "r") as f:
-                for line in f:
-                    path, count = _deserialize(line)
-                    paths[path] = paths.get(path, 0) + count
-
-            file.unlink()
+            for line in self._spill.read_shard(client_id, shard):
+                path, count = _deserialize(line)
+                paths[path] = paths.get(path, 0) + count
 
             affinities: dict[int, PathCounts] = defaultdict(
                 lambda: PathCounts(client_id, {})
@@ -106,26 +86,32 @@ class UC4CountPaths(AggregateFn):
             for affinity, path_counts in affinities.items():
                 yield path_counts, affinity
 
-        self._files.pop(client_id)
+        self._spill.clear(client_id)
         self._paths.pop(client_id, None)
+
+    def snapshot_state(self) -> dict[str, Any]:
+        # Force the in-memory partials to disk, then the checkpoint only records
+        # each shard's committed length (keeps the checkpoint small).
+        for client_id in list(self._paths.keys()):
+            self._downstream(client_id)
+        return self._spill.snapshot_state()
+
+    def restore_state(self, snapshot: dict[str, Any]):
+        self._spill.restore_state(snapshot)
+        self._paths = {}
 
     def _downstream(self, client_id: UUID):
         logging.info("spilling count_paths to disk")
         paths = self._paths[client_id]
 
-        # Bucket paths by shard in a single O(N) pass, then write each shard file
-        # once. Avoids the O(SHARDING_FILES * N) scan + one open() per path that
-        # used to block the pika event loop long enough for RabbitMQ to drop us.
         by_shard: dict[int, list[tuple[Path, int]]] = defaultdict(list)
         for p, count in paths.items():
             by_shard[_sharding_hash(p, client_id)].append((p, count))
 
         for shard, items in by_shard.items():
-            file = self._file_for_shard(shard, client_id)
-            with open(file, "a") as f:
-                f.writelines(
-                    _serialize(PathMsg(client_id, p, count)) + "\n"
-                    for p, count in items
+            for p, count in items:
+                self._spill.append(
+                    client_id, shard, _serialize(PathMsg(client_id, p, count)) + "\n"
                 )
 
         self._paths.pop(client_id)
