@@ -12,6 +12,7 @@ from common.comms.middleware import (
     make_txs,
 )
 from common.conversion import FrankfurterConversionAPI
+from common.heartbeat import run_with_heartbeat
 from ring_converter import RingConverter
 
 MOM_HOST = os.environ["MOM_HOST"]
@@ -67,7 +68,7 @@ def make_converter() -> RingConverter:
 def main():
     logging.basicConfig(level=LOGGING_LEVEL)
     logging.getLogger("pika").setLevel(logging.WARNING)
-    make_converter().start()
+    run_with_heartbeat(make_converter().start)
 
 
 if __name__ == "__main__":

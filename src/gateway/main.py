@@ -8,6 +8,7 @@ from common.comms.middleware import (
     ExchangeRabbitMQ,
     QueueRabbitMQ,
 )
+from common.heartbeat import run_with_heartbeat
 from gateway import Gateway
 
 GATEWAY_HOST = os.environ["GATEWAY_HOST"]
@@ -71,7 +72,7 @@ def main():
     accs_tx_factory = _make_factory(ACCOUNTS_TX, NBANK_NAMES)
 
     gateway = Gateway(listener, addr, server_rx, trans_tx_factory, accs_tx_factory)
-    gateway.start()
+    run_with_heartbeat(gateway.start)
 
 
 if __name__ == "__main__":

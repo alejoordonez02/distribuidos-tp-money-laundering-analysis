@@ -1,6 +1,8 @@
 from enum import StrEnum
 
 from .container_type import ContainerType
+from .runtime import restart_line
+from .supervisor_env import supervisor_env
 
 CHECKPOINT_EVERY = 1000
 
@@ -44,8 +46,7 @@ def gen_nodes(
     build:
       context: ./src/
       dockerfile: {type2}/Dockerfile
-    container_name: {name}_{idx}
-    restart: on-failure
+    container_name: {name}_{idx}{restart_line()}
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -61,6 +62,7 @@ def gen_nodes(
       - NAFFINITY_DOWNSTREAM={naffinity_downstream}
       - BROADCAST_DOWNSTREAM={1 if broadcast_downstream else 0}
       - PYTHONHASHSEED=2026"""
+        compose += supervisor_env(f"{name}_{idx}", str(type2))
 
         if checkpoint_every is not None:
             compose += f"""

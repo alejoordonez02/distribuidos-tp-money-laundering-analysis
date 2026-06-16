@@ -5,6 +5,7 @@ from merge_fns import UC2BankIdMergeFn, UC3BankIdMergeFn, UC4PruneMergeFn
 from strategies import MergeStrategy
 
 from common.checkpoint import PersistentSpill, make_checkpointer
+from common.heartbeat import run_with_heartbeat
 from common.comms.eof_handler.ring_completion import RingCompletion
 from common.comms.middleware import (
     CounterSeqSource,
@@ -87,7 +88,7 @@ def _start_ring_merge(fn, external_txs, out_counter, producer_id):
         extra_state={"completion": rc, "merge_eof": counts},
     )
 
-    RingMerge(
+    node = RingMerge(
         fn,
         IDX,
         rc,
@@ -103,7 +104,8 @@ def _start_ring_merge(fn, external_txs, out_counter, producer_id):
         ring_exchange=ring_name,
         data_prefetch=max(CHECKPOINT_EVERY, 10),
         checkpointer=checkpointer,
-    ).start()
+    )
+    run_with_heartbeat(node.start)
 
 
 if __name__ == "__main__":

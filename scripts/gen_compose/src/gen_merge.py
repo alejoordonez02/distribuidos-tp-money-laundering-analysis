@@ -1,3 +1,7 @@
+from .runtime import restart_line
+from .supervisor_env import supervisor_env
+
+
 def _merge_service(
     name: str,
     container: str,
@@ -16,8 +20,7 @@ def _merge_service(
     build:
       context: ./src/
       dockerfile: merge/Dockerfile
-    container_name: {container}
-    restart: on-failure
+    container_name: {container}{restart_line()}
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -28,7 +31,7 @@ def _merge_service(
       - RIGHT_RX={right_rx_name}
       - TX={tx_name}
       - STRATEGY={strategy}
-      - NAFFINITY_DOWNSTREAM={naffinity_downstream}"""
+      - NAFFINITY_DOWNSTREAM={naffinity_downstream}{supervisor_env(container, "merge")}"""
 
     if npeers is not None:
         compose += f"""

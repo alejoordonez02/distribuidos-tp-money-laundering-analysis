@@ -1,0 +1,13 @@
+
+# Supervisor
+
+HEARTBEAT_INTERVAL = 1
+HEARTBEAT_TIMEOUT = 3
+REVIVE_INTERVAL = 2
+
+# Chaos Monkey
+CHAOS_INTERVAL = 4
+CHAOS_KILLS_MIN = 1
+CHAOS_KILLS_MAX = 8
+CHAOS_START_DELAY = 5
+CHAOS_EXCLUDE = "rabbitmq,supervisor,gateway,chaos"
