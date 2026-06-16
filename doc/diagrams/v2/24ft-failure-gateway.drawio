@@ -1,0 +1,82 @@
+<mxfile host="app.diagrams.net" version="24.0.0">
+  <diagram name="ft-failure-gateway" id="ftfailgw">
+    <mxGraphModel dx="1060" dy="700" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1060" pageHeight="720" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        
+        <mxCell id="lcli" value="Cliente" style="shape=umlLifeline;perimeter=lifelinePerimeter;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;size=40;" vertex="1" parent="1">
+          <mxGeometry x="20.00" y="20.00" width="140" height="640" as="geometry" />
+        </mxCell>
+        <mxCell id="lgw" value="Gateway" style="shape=umlLifeline;perimeter=lifelinePerimeter;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;size=40;" vertex="1" parent="1">
+          <mxGeometry x="280.00" y="20.00" width="140" height="640" as="geometry" />
+        </mxCell>
+        <mxCell id="lpipe" value="Pipeline" style="shape=umlLifeline;perimeter=lifelinePerimeter;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;size=40;" vertex="1" parent="1">
+          <mxGeometry x="540.00" y="20.00" width="140" height="640" as="geometry" />
+        </mxCell>
+        <mxCell id="ljoin" value="Join" style="shape=umlLifeline;perimeter=lifelinePerimeter;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;size=40;" vertex="1" parent="1">
+          <mxGeometry x="800.00" y="20.00" width="140" height="640" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="m1" value="stream de datos (client_id=A)" style="html=1;endArrow=block;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="90.00" y="95.00" as="sourcePoint" />
+            <mxPoint x="350.00" y="95.00" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        
+        <mxCell id="m2" value="publica parciales" style="html=1;endArrow=block;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="350.00" y="145.00" as="sourcePoint" />
+            <mxPoint x="610.00" y="145.00" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        
+        <mxCell id="crash" value="" style="shape=cross;html=1;strokeColor=#b85450;strokeWidth=4;fillColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="336.00" y="178.00" width="28" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="crashlbl" value="cae a mitad" style="text;html=1;fontSize=11;fontColor=#b85450;fontStyle=2;align=left;" vertex="1" parent="1">
+          <mxGeometry x="378.00" y="211.00" width="140" height="20" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="note1" value="asigna client_id nuevo&#10;en cada conexión" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="275.00" y="238.00" width="175" height="50" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="note2" value="datos de A quedan huérfanos:&#10;nunca llega su EOF" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="535.00" y="238.00" width="175" height="50" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="note3" value="nunca finaliza&#10;la sesión A" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="795.00" y="238.00" width="155" height="50" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="rnote" value="Gateway reinicia" style="shape=note;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="280.00" y="320.00" width="140" height="36" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="m3" value="reconecta y reenvía desde cero (client_id=B)" style="html=1;endArrow=block;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="90.00" y="395.00" as="sourcePoint" />
+            <mxPoint x="350.00" y="395.00" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        
+        <mxCell id="note4" value="⚠ Límite de diseño conocido: los datos de sesión A quedan huérfanos en el pipeline. El cliente debe&#10;reconectar con un nuevo client_id y reenviar todos los datos desde cero. No hay recuperación parcial." style="shape=note;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="20.00" y="455.00" width="940" height="60" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

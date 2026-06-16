@@ -1,0 +1,61 @@
+<mxfile host="app.diagrams.net" version="24.0.0">
+  <diagram name="ft-failure-supervisor" id="ftfailsup">
+    <mxGraphModel dx="900" dy="600" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="820" pageHeight="560" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        
+        <mxCell id="lsup" value="Supervisor" style="shape=umlLifeline;perimeter=lifelinePerimeter;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;size=40;" vertex="1" parent="1">
+          <mxGeometry x="20.00" y="20.00" width="140" height="490" as="geometry" />
+        </mxCell>
+        <mxCell id="ldc" value="Docker Compose" style="shape=umlLifeline;perimeter=lifelinePerimeter;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;size=40;" vertex="1" parent="1">
+          <mxGeometry x="280.00" y="20.00" width="140" height="490" as="geometry" />
+        </mxCell>
+        <mxCell id="lnodes" value="Nodos" style="shape=umlLifeline;perimeter=lifelinePerimeter;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;size=40;" vertex="1" parent="1">
+          <mxGeometry x="540.00" y="20.00" width="140" height="490" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="crash" value="" style="shape=cross;html=1;strokeColor=#b85450;strokeWidth=4;fillColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="76.00" y="78.00" width="28" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="crashlbl" value="cae" style="text;html=1;fontSize=11;fontColor=#b85450;fontStyle=2;align=left;" vertex="1" parent="1">
+          <mxGeometry x="115.00" y="111.00" width="80" height="20" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="m1" value="restart: on-failure" style="html=1;endArrow=block;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="350.00" y="165.00" as="sourcePoint" />
+            <mxPoint x="90.00" y="165.00" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        
+        <mxCell id="note1" value="siguen procesando&#10;sin interrupción" style="shape=note;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="532.00" y="180.00" width="160" height="50" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="note2" value="si un nodo cae en esta ventana, no se revive hasta que el Supervisor vuelve" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="20.00" y="256.00" width="500" height="50" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="m2" value="re-registro (heartbeat reconecta)" style="html=1;endArrow=block;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="610.00" y="340.00" as="sourcePoint" />
+            <mxPoint x="90.00" y="340.00" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        
+        <mxCell id="note3" value="El Supervisor tiene restart: on-failure en Compose. Mientras no vuelve, los nodos operan de forma autónoma&#10;pero sin cobertura de reviva. En cuanto levanta, los nodos se re-registran via heartbeat." style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="20.00" y="405.00" width="680" height="60" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

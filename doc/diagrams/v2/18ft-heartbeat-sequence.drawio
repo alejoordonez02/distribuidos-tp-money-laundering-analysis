@@ -1,0 +1,60 @@
+<mxfile host="app.diagrams.net" version="24.0.0">
+  <diagram name="ft-heartbeat" id="fthb">
+    <mxGraphModel dx="800" dy="600" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="760" pageHeight="500" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        
+        <mxCell id="ln" value="Nodo" style="shape=umlLifeline;perimeter=lifelinePerimeter;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;size=40;" vertex="1" parent="1">
+          <mxGeometry x="50.00" y="20.00" width="140" height="450" as="geometry" />
+        </mxCell>
+        <mxCell id="ls" value="Supervisor" style="shape=umlLifeline;perimeter=lifelinePerimeter;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;size=40;" vertex="1" parent="1">
+          <mxGeometry x="310.00" y="20.00" width="140" height="450" as="geometry" />
+        </mxCell>
+        <mxCell id="ld" value="Docker daemon" style="shape=umlLifeline;perimeter=lifelinePerimeter;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;size=40;" vertex="1" parent="1">
+          <mxGeometry x="560.00" y="20.00" width="140" height="450" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="m1" value="Register(node_id, kind)" style="html=1;endArrow=block;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="120.00" y="90.00" as="sourcePoint" /><mxPoint x="380.00" y="90.00" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m2" value="Heartbeat()  — cada 1s" style="html=1;endArrow=block;fontSize=11;dashed=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="120.00" y="135.00" as="sourcePoint" /><mxPoint x="380.00" y="135.00" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+        
+        <mxCell id="crash" value="" style="shape=cross;html=1;strokeColor=#b85450;strokeWidth=4;fillColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="106.00" y="170.00" width="28" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="crashlbl" value="el nodo cae" style="text;html=1;fontSize=11;fontColor=#b85450;fontStyle=2;align=left;" vertex="1" parent="1">
+          <mxGeometry x="20.00" y="200.00" width="120" height="20" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="note" value="sin heartbeat &gt; 3s&#10;⇒ marca DEAD" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="320.00" y="225.00" width="120" height="50" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="m3" value="docker start(node_id)" style="html=1;endArrow=block;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="380.00" y="305.00" as="sourcePoint" /><mxPoint x="630.00" y="305.00" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        
+        <mxCell id="m4" value="reinicia el contenedor (vol. de estado intacto)" style="html=1;endArrow=block;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="630.00" y="350.00" as="sourcePoint" /><mxPoint x="120.00" y="350.00" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        
+        <mxCell id="m5" value="restaura checkpoint&#10;y reconecta a RabbitMQ" style="html=1;endArrow=block;fontSize=11;rounded=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="120.00" y="385.00" as="sourcePoint" /><mxPoint x="120.00" y="425.00" as="targetPoint" /><Array as="points"><mxPoint x="205.00" y="385.00" /><mxPoint x="205.00" y="425.00" /></Array></mxGeometry>
+        </mxCell>
+        
+        <mxCell id="m6" value="Register()  (re-registro)" style="html=1;endArrow=block;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="120.00" y="450.00" as="sourcePoint" /><mxPoint x="380.00" y="450.00" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

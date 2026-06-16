@@ -1,0 +1,49 @@
+<mxfile host="Electron" version="29.6.1">
+  <diagram name="cluster-08" id="cluster-08">
+    <mxGraphModel dx="-2990" dy="4608" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="hbu_aZBR_J-plnj-UqHW-75" edge="1" parent="1" source="hbu_aZBR_J-plnj-UqHW-76" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;curved=1;" target="hbu_aZBR_J-plnj-UqHW-77">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hbu_aZBR_J-plnj-UqHW-76" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;" value="Send data to&lt;div&gt;server&lt;/div&gt;" vertex="1">
+          <mxGeometry height="81" width="81" x="137.00" y="20.00" as="geometry" />
+        </mxCell>
+        <mxCell id="hbu_aZBR_J-plnj-UqHW-77" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;strokeWidth=2;fillColor=#ffe6cc;strokeColor=#d79b00;" value="Route client&lt;div&gt;data&lt;/div&gt;" vertex="1">
+          <mxGeometry height="89" width="89" x="133.00" y="128.00" as="geometry" />
+        </mxCell>
+        <mxCell id="hbu_aZBR_J-plnj-UqHW-78" edge="1" parent="1" source="hbu_aZBR_J-plnj-UqHW-77" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;curved=1;" target="hbu_aZBR_J-plnj-UqHW-80">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="266.21" y="324.00" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hbu_aZBR_J-plnj-UqHW-79" connectable="0" parent="hbu_aZBR_J-plnj-UqHW-78" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="(origin, destination, amount,&lt;div&gt;format)&lt;/div&gt;" vertex="1">
+          <mxGeometry relative="1" x="0.2476" y="7" as="geometry">
+            <mxPoint x="1" y="14" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hbu_aZBR_J-plnj-UqHW-121" edge="1" parent="1" source="hbu_aZBR_J-plnj-UqHW-80" style="edgeStyle=orthogonalEdgeStyle;shape=connector;curved=1;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=classic;" target="hbu_aZBR_J-plnj-UqHW-131" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hbu_aZBR_J-plnj-UqHW-133" connectable="0" parent="hbu_aZBR_J-plnj-UqHW-121" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="(origin, destination, amount&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212)); color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;)&lt;/span&gt;" vertex="1">
+          <mxGeometry relative="1" x="-0.2105" y="-3" as="geometry">
+            <mxPoint x="51" y="-9" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hbu_aZBR_J-plnj-UqHW-80" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;strokeWidth=2;fillColor=#d5e8d4;strokeColor=#82b366;" value="&lt;b&gt;Filter&lt;/b&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;transactions&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;b&gt;By&lt;/b&gt;&lt;br&gt;&lt;div&gt;currency USD&lt;/div&gt;&lt;/div&gt;&lt;div&gt;&lt;b&gt;And&lt;/b&gt;&lt;/div&gt;&lt;div&gt;amount less&lt;/div&gt;&lt;div&gt;than 50&lt;/div&gt;" vertex="1">
+          <mxGeometry height="109" width="109" x="20.00" y="249.00" as="geometry" />
+        </mxCell>
+        <mxCell id="hbu_aZBR_J-plnj-UqHW-120" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;strokeWidth=2;fillColor=#fff2cc;strokeColor=#d6b656;" value="Send UC1 response to client" vertex="1">
+          <mxGeometry height="78" width="78" x="133.00" y="461.00" as="geometry" />
+        </mxCell>
+        <mxCell id="hbu_aZBR_J-plnj-UqHW-132" edge="1" parent="1" source="hbu_aZBR_J-plnj-UqHW-131" style="edgeStyle=orthogonalEdgeStyle;shape=connector;curved=1;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=classic;" target="hbu_aZBR_J-plnj-UqHW-120">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hbu_aZBR_J-plnj-UqHW-131" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;strokeWidth=2;fillColor=#e1d5e7;strokeColor=#9673a6;" value="&lt;b&gt;Join&lt;/b&gt;&lt;div&gt;client results&lt;/div&gt;" vertex="1">
+          <mxGeometry height="81" width="81" x="184.50" y="328.21" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
