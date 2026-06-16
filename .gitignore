@@ -34,3 +34,6 @@ state/
 
 # cached oracle outputs per dataset (avoid re-running gen_input_output)
 test/expected_cache/
+
+# latex minted cache (named _minted-<jobname>)
+**/_minted-*/
