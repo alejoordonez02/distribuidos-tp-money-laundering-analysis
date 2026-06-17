@@ -96,7 +96,7 @@ Acyclic Graph}). La ausencia de ciclos garantiza que el procesamiento
 siempre converge y que las dependencias entre etapas son explícitas:
 un nodo solo puede procesar datos cuando sus predecesores ya los produjeron.
 
-\subsection{\textbf{UC1} — Filtro directo}
+\subsection{\textbf{UC1} - Filtro directo}
 UC1 establece el patrón base del sistema. El \textbf{Gateway} entrega el
 registro completo \texttt{(origin, destination, amount, format)} y el
 \textbf{Filter} aplica dos condiciones simultáneas: moneda USD y monto
@@ -115,7 +115,7 @@ las demás. No hay computación entre filas, por lo que el pipeline
 puede procesar los registros en cualquier orden y en paralelo sin
 afectar la correctitud del resultado.
 
-\subsection{\textbf{UC2} — Máximo por banco}
+\subsection{\textbf{UC2} - Máximo por banco}
 UC2 introduce dos conceptos nuevos respecto de UC1: múltiples fuentes
 de datos y agregación en dos etapas. Primero se distribuyen dos
 streams simultáneamente: registros de transacciones \texttt{(bank\_id,
@@ -137,7 +137,7 @@ cada partición.
 El \textbf{Aggregate} consolida esos máximos parciales en el máximo global
 definitivo por banco.
 
-\subsection{\textbf{UC3} — Comparación entre períodos}
+\subsection{\textbf{UC3} - Comparación entre períodos}
 UC3 requiere comparar transacciones de dos períodos distintos: el
 umbral \texttt{(amount < promedio\_de\_formato / 100)} no es un valor fijo
 sino que depende del promedio global de cada formato en el período A,
@@ -164,7 +164,7 @@ su formato en el período A.
 Un Filter final aplica la condición \texttt{amount < average/100} y produce
 \texttt{(origin, amount)} para el Join.
 
-\subsection{\textbf{UC4} — Patrón scatter-gather}
+\subsection{\textbf{UC4} - Patrón scatter-gather}
 UC4 requiere detectar el patrón \textit{scatter-gather} en el grafo de
 transacciones: una cuenta origen dispersa fondos hacia múltiples
 intermediarios, que los concentran en una cuenta destino. Esta
@@ -177,7 +177,7 @@ detección no puede hacerse registro a registro.
 \end{figure}
 
 Después del filtro inicial (currency USD y período A), un único
-\textbf{GroupBy Compute graph} construye —una sola vez— la representación
+\textbf{GroupBy Compute graph} construye (una sola vez) la representación
 del grafo de transacciones: para cada nodo, el conjunto de predecesores y
 sucesores observados \texttt{(node, predecessors, successors)}. Esta etapa
 shardea por \texttt{node}, de modo que todas las aristas de un mismo nodo se
@@ -192,8 +192,8 @@ agregadores distintos:
 \begin{itemize}
   \item El \textbf{Aggregate degree} calcula el \textit{grado} de cada nodo y
     selecciona los nodos de \textbf{alto grado}: aquellos con al menos 5
-    predecesores y al menos 5 sucesores —el umbral de 5 proviene del
-    enunciado, que exige al menos 5 intermediarios—. Un nodo que no alcanza
+    predecesores y al menos 5 sucesores (el umbral de 5 proviene del
+    enunciado, que exige al menos 5 intermediarios). Un nodo que no alcanza
     ese grado no puede participar del patrón, por lo que esta rama actúa
     como una poda temprana que reduce el grafo antes del conteo costoso.
   \item El \textbf{Aggregate graphs} materializa el grafo completo
@@ -205,15 +205,15 @@ las aristas cuyos dos extremos son nodos de alto grado.
 
 Sobre ese grafo podado, el \textbf{Count paths} cuenta, para cada par
 \texttt{(origin, destination)}, la cantidad de cuentas que sirven como
-intermediario directo entre ese origen y ese destino —es decir, el número
-de cuentas intermediarias del patrón scatter-gather—, shardeando por par
+intermediario directo entre ese origen y ese destino (es decir, el número
+de cuentas intermediarias del patrón scatter-gather), shardeando por par
 para repartir el conteo. El \textbf{Aggregate paths} consolida esos conteos
 parciales y conserva solo los pares con un conteo mayor o igual a 5. Por el
 volumen del grafo, las etapas que acumulan estado vuelcan sus estructuras
 parciales a disco (\textit{spill}), particionadas en archivos por shard.
 El resultado \texttt{(origin, destination)} llega al Join.
 
-\subsection{\textbf{UC5} — Conteo con conversión de moneda}
+\subsection{\textbf{UC5} - Conteo con conversión de moneda}
 UC5 cuenta cuántas transacciones de formato Wire o ACH en el período
 A tienen un monto menor a \$1 USD. Los montos pueden estar expresados
 en cualquier moneda, por lo que la comparación con el umbral solo es
@@ -261,8 +261,8 @@ recuperación, porque el estado local de cada réplica depende únicamente de
 su propia partición. En una working queue competitiva, en cambio, un
 mensaje reentregado podría ser consumido por otra réplica, lo que complica
 la consistencia del estado local, la deduplicación y la recuperación
-—especialmente cuando el procesamiento deja de ser puramente
-\textit{stateless}—.
+(especialmente cuando el procesamiento deja de ser puramente
+\textit{stateless}).
 
 El \textit{trade-off} es conocido: la ventaja de una working queue es que,
 si una réplica se atrasa, otras pueden compensar consumiendo más mensajes.
@@ -277,8 +277,8 @@ criterios:
 \begin{itemize}
   \item \textbf{Sharding por semántica del problema}: cuando todos los
     registros de una misma clave deben caer en la misma instancia para
-    preservar la correctitud —por ejemplo, todos los del mismo
-    \texttt{bank\_id}, \texttt{format}, nodo del grafo o par del grafo—. El
+    preservar la correctitud (por ejemplo, todos los del mismo
+    \texttt{bank\_id}, \texttt{format}, nodo del grafo o par del grafo). El
     shard se calcula sobre esa clave de dominio.
   \item \textbf{Sharding equitativo (pseudoaleatorio)}: cuando no hay una
     clave de dominio que preservar y solo se quiere repartir carga entre
@@ -288,7 +288,7 @@ criterios:
     queues competitivas.
 \end{itemize}
 Por el primer criterio, todas las instancias de \texttt{group\_by} y
-\texttt{aggregate} fijan \texttt{PYTHONHASHSEED} (en \texttt{2026}) para que la
+\texttt{aggregate} fijan \texttt{PYTHONHASHSEED} para que la
 asignación de shards sea determinística y estable entre reinicios.
 
 El último controlador, el \textbf{Join}, no se escala por datos sino que
@@ -296,9 +296,9 @@ está \textbf{particionado por caso de uso}: recibe una configuración
 (\texttt{JOIN\_PARTITION}) que indica qué casos de uso atiende cada réplica.
 Según la cantidad de réplicas de Join, se asignan uno o más UC a cada
 instancia para equilibrar la carga según el peso relativo de cada caso de
-uso, no según la cantidad de clientes. En el despliegue de referencia hay
-tres réplicas —una atiende UC1, otra UC3 y otra UC2, UC4 y UC5
-(\texttt{JOIN\_PARTITION = [[1], [3], [2, 4, 5]]})—. Esta asignación no es
+uso, no según la cantidad de clientes. Así, por ejemplo, una réplica
+podría atender un único caso de uso y otra agrupar varios más livianos,
+según su peso relativo. Esta asignación no es
 automática: es configurable. La ventaja es que todas las respuestas
 parciales de un mismo cliente para un UC convergen en la misma réplica de
 Join, por lo que cada cola de UC tiene un único consumidor sin necesidad de
@@ -307,7 +307,7 @@ resultados parciales de cada cliente y construye la respuesta final.
 
 \subsubsection{UC1}
 El \texttt{default\_filter} corre con múltiples instancias en paralelo
-(\texttt{DEFAULT\_FILTERS}, dos en el despliegue de referencia), cada una
+(\texttt{DEFAULT\_FILTERS}), cada una
 procesando una partición del stream de transacciones que el Gateway reparte
 de forma equitativa entre ellas.
 Cada instancia aplica las dos condiciones (USD y monto menor a \$50) y,
@@ -327,8 +327,8 @@ conexión correspondiente.
 \subsubsection{UC2}
 El Gateway publica en dos exchanges distintos: \texttt{Transactions} para
 el stream de transacciones y \texttt{Accounts} para el dataset de cuentas.
-Los dos pipelines —el que resuelve el nombre de banco y el que obtiene
-su monto máximo— corren en paralelo. En el de transacciones, el
+Los dos pipelines (el que resuelve el nombre de banco y el que obtiene
+su monto máximo) corren en paralelo. En el de transacciones, el
 \texttt{default\_filter} filtra por USD, el \texttt{GroupBy bank\_id Max amount}
 calcula el máximo parcial por \texttt{bank\_id} en cada partición (con shardeo
 por \texttt{bank\_id} entre GroupBy y Aggregate) y el \texttt{Aggregate max
@@ -337,10 +337,10 @@ amounts} consolida el máximo global por banco. En el de cuentas, el
 \texttt{(bank\_id, bank\_name)} y el \texttt{Aggregate bank names} las consolida.
 
 El \texttt{Merge On bank\_id} cruza ambos pipelines. Corre con varias
-instancias (\texttt{UC2\_MERGES}, dos en el despliegue de referencia)
+instancias (\texttt{UC2\_MERGES})
 coordinadas en anillo. El
-Aggregate de máximos hace \textit{broadcast} de su salida —cada instancia del
-Merge recibe los máximos de todos los bancos—, mientras que el Aggregate
+Aggregate de máximos hace \textit{broadcast} de su salida (cada instancia del
+Merge recibe los máximos de todos los bancos), mientras que el Aggregate
 de nombres shardea por \texttt{bank\_id}, de modo que cada instancia del
 Merge es dueña de un subconjunto de bancos. Así, cada banco es emitido
 por exactamente una instancia del Merge: la que tiene su nombre en su
@@ -384,10 +384,10 @@ average/100} y produce la cola final hacia el Join.
 
 \subsubsection{UC4}
 Tras el \texttt{default\_filter} (USD y período A), un único \texttt{GroupBy
-Compute graph} construye la representación del grafo —ruteando por
-\texttt{node}— y abre su salida (\textit{fan-out}) hacia dos Aggregate
+Compute graph} construye la representación del grafo (ruteando por
+\texttt{node}) y abre su salida (\textit{fan-out}) hacia dos Aggregate
 distintos. Esta etapa corre con varias instancias
-(\texttt{UC4\_COMPUTE\_GRAPHS}, dos en el despliegue de referencia); antes el
+(\texttt{UC4\_COMPUTE\_GRAPHS}); antes el
 stream se duplicaba en dos sub-pipelines que construían el grafo dos veces,
 pero ambos ejecutaban exactamente el mismo cómputo, de modo que se
 unificaron en un solo constructor que alimenta a las dos ramas.
@@ -400,12 +400,12 @@ el grafo completo y lo shardea por \texttt{node} entre las instancias del
 Merge.
 
 El \texttt{Merge prune} corre con varias instancias en anillo
-(\texttt{UC4\_PRUNES}, dos en la referencia): cada una tiene la lista completa
+(\texttt{UC4\_PRUNES}): cada una tiene la lista completa
 de nodos de alto grado (por broadcast) y su shard del grafo (por sharding),
 y conserva solo las aristas cuyos dos extremos son de alto grado. Sobre ese
 grafo podado, el \texttt{Count paths} (\texttt{UC4\_COUNT\_PATHS}) cuenta los
-intermediarios por par \texttt{(origin, destination)} —shardeando por camino
-para repartir el conteo entre instancias— y el \texttt{Aggregate paths}
+intermediarios por par \texttt{(origin, destination)} (shardeando por camino
+para repartir el conteo entre instancias) y el \texttt{Aggregate paths}
 (\texttt{UC4\_PATHS\_AGGREGATES}) consolida los conteos parciales, conservando
 los pares con conteo mayor o igual a 5 y depositándolos en la cola de
 entrada del Join. Por el volumen del grafo, el conteo de caminos vuelca su
@@ -445,8 +445,8 @@ suma en el conteo global definitivo del caso de uso.
 \end{figure}
 
 El sistema completo se organiza como una colección de pipelines
-independientes que comparten un único punto de entrada —el
-\texttt{default\_filter}— y un único punto de salida —el Join—. Cada pipeline
+independientes que comparten un único punto de entrada (el
+\texttt{default\_filter}) y un único punto de salida (el Join). Cada pipeline
 recorre sus etapas de extremo a extremo y solo interactúa con otro en los
 nodos \textbf{Merge} (UC2, UC3 y UC4), los únicos puntos donde se cruzan
 datos de fuentes distintas.
@@ -460,23 +460,23 @@ cada transacción con un costo mínimo, sin acumular estado ni tocar disco,
 de modo que difícilmente sea la etapa limitante. Segundo, si hiciera falta
 más capacidad, el Filter escala horizontalmente con más libertad que otros
 nodos: al ser \textit{stateless}, se le pueden agregar instancias
-(\texttt{DEFAULT\_FILTERS}, dos en la referencia) sin coordinación de estado.
+(\texttt{DEFAULT\_FILTERS}) sin coordinación de estado.
 
 Concentrar el filtrado inicial en un único tipo de controlador es, además,
-lo más simple. Varios casos de uso comparten condiciones iniciales —la
-mayoría filtra primero por currency USD—, así que un Filter común recorre
+lo más simple. Varios casos de uso comparten condiciones iniciales (la
+mayoría filtra primero por currency USD), así que un Filter común recorre
 cada \textit{batch} una sola vez y rutea cada registro a las colas que
 correspondan. Los ruteos por clave hacia los \texttt{aggregate} y
-\texttt{merge} preservan la correctitud —todos los registros de un grupo caen
-en la misma instancia— y se aplican solo donde la cantidad de variantes es
+\texttt{merge} preservan la correctitud (todos los registros de un grupo caen
+en la misma instancia) y se aplican solo donde la cantidad de variantes es
 suficiente para seguir aprovechando la estrategia \textit{multi-computing}.
 
 Se consideraron dos alternativas para el filtrado, ambas descartadas:
 \begin{itemize}
   \item Encadenar el filtrado en varias instancias de Filter (por ejemplo,
     filtrar primero por currency USD y luego por monto menor a \$50). No
-    reduce la cantidad de conexiones —la mayoría de los UC requieren el
-    filtro de USD igual— y obliga a recorrer cada batch varias veces en vez
+    reduce la cantidad de conexiones (la mayoría de los UC requieren el
+    filtro de USD igual) y obliga a recorrer cada batch varias veces en vez
     de una sola.
   \item Segregar los filtros en distintas instancias según el filtro a
     aplicar. Es equivalente en robustez a escalar horizontalmente el único
@@ -510,11 +510,11 @@ ser el borde cliente-sistema, el Gateway se excluye de esas pruebas de
 Chaos Monkey (\texttt{CHAOS\_EXCLUDE}): matarlo rompería la conexión TCP
 activa del cliente.
 
-\begin{sidewaysfigure}
+\begin{figure}[H]
   \centering
-  \includegraphics[width=0.95\textheight,height=0.92\textwidth,keepaspectratio]{../diagrams/v2/14deployment-diagram.png}
+  \includegraphics[width=\textwidth,keepaspectratio]{../diagrams/v2/14deployment-diagram.png}
   \caption{Diagrama de despliegue}
-\end{sidewaysfigure}
+\end{figure}
 
 \section{Vista de desarrollo}
 \subsection{Paquetes}
@@ -526,31 +526,31 @@ archivo \texttt{main.py} que levanta el proceso, su correspondiente
 Dockerfile y sus dependencias específicas.
 Las dependencias comunes se centralizan en \texttt{common/}, que cada
 Dockerfile copia junto al código del controlador. Sus subpaquetes
-principales son \texttt{comms/} —la comunicación, que agrupa el middleware
+principales son: \texttt{comms/}, la comunicación, que agrupa el middleware
 sobre RabbitMQ (\texttt{middleware/}), el modelo de mensajes
-(\texttt{messages/}) y la maquinaria de fin de stream (\texttt{eof\_handler/})—,
-\texttt{data/} —el modelo de dominio (\texttt{Transaction}, \texttt{Account})—,
-\texttt{checkpoint/} —persistencia y deduplicación— y \texttt{heartbeat/} —el
-cliente de \textit{heartbeat} hacia el Supervisor—.
+(\texttt{messages/}) y la maquinaria de fin de stream (\texttt{eof\_handler/});
+\texttt{data/}, el modelo de dominio (\texttt{Transaction} y \texttt{Account});
+\texttt{checkpoint/}, persistencia y deduplicación; y \texttt{heartbeat/}, el
+cliente de \textit{heartbeat} hacia el Supervisor.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.92\textwidth,height=0.6\textheight,keepaspectratio]{../diagrams/v2/15packages-diagram.png}
+  \includegraphics[width=\textwidth,keepaspectratio]{../diagrams/v2/15packages-diagram.png}
   \caption{Diagrama de paquetes}
 \end{figure}
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.6\textwidth]{../diagrams/v2/15packages-diagram-filter.png}
-  \caption{Diagrama de paquetes — \texttt{filter/}}
+  \includegraphics[width=\textwidth,keepaspectratio]{../diagrams/v2/15packages-diagram-filter.png}
+  \caption{Diagrama de paquetes - \texttt{filter/}}
 \end{figure}
 
 La razón por la cuál se pueden generalizar los controladores es el
 patrón de implementación por el que se optó. Cada tipo de controlador
-tiene un nodo genérico —que hereda de \texttt{RingNode} (o de
+tiene un nodo genérico (que hereda de \texttt{RingNode} (o de
 \texttt{StatelessRingNode} cuando no acumula estado) y resuelve el consumo,
 el ruteo por afinidad, la sincronización de fin de stream y el
-\textit{checkpointing}— al que se le inyecta una \textit{función de estrategia}
+\textit{checkpointing}) al que se le inyecta una \textit{función de estrategia}
 que encapsula la lógica propia del caso de uso. La estrategia concreta se
 elige al levantar el proceso mediante la variable de entorno
 \texttt{STRATEGY}.
@@ -597,75 +597,75 @@ complejidad bastante más grande que la de éste.
 \begin{figure}[H]
   \centering
   \includegraphics[width=\textwidth,height=0.82\textheight,keepaspectratio]{../diagrams/v2/16activity-diagram-uc1.png}
-  \caption{Diagrama de actividades — UC1}
+  \caption{Diagrama de actividades - UC1}
 \end{figure}
 
 \FloatBarrier
 \subsubsection{UC2}
-\begin{sidewaysfigure}
+\begin{figure}[H]
   \centering
-  \includegraphics[width=0.95\textheight,height=0.92\textwidth,keepaspectratio]{../diagrams/v2/16activity-diagram-uc2.png}
-  \caption{Diagrama de actividades — UC2}
-\end{sidewaysfigure}
+  \includegraphics[width=\textwidth,keepaspectratio]{../diagrams/v2/16activity-diagram-uc2.png}
+  \caption{Diagrama de actividades - UC2}
+\end{figure}
 
 \FloatBarrier
 \subsubsection{UC3}
-\begin{sidewaysfigure}
+\begin{figure}[H]
   \centering
-  \includegraphics[width=0.95\textheight,height=0.92\textwidth,keepaspectratio]{../diagrams/v2/16activity-diagram-uc3.png}
-  \caption{Diagrama de actividades — UC3}
-\end{sidewaysfigure}
+  \includegraphics[width=\textwidth,keepaspectratio]{../diagrams/v2/16activity-diagram-uc3.png}
+  \caption{Diagrama de actividades - UC3}
+\end{figure}
 
 \FloatBarrier
 \subsubsection{UC4}
-\begin{sidewaysfigure}
+\begin{figure}[H]
   \centering
-  \includegraphics[width=0.95\textheight,height=0.92\textwidth,keepaspectratio]{../diagrams/v2/16activity-diagram-uc4.png}
-  \caption{Diagrama de actividades — UC4}
-\end{sidewaysfigure}
+  \includegraphics[width=\textwidth,keepaspectratio]{../diagrams/v2/16activity-diagram-uc4.png}
+  \caption{Diagrama de actividades - UC4}
+\end{figure}
 
 \subsubsection{UC5}
-\begin{sidewaysfigure}
+\begin{figure}[H]
   \centering
-  \includegraphics[width=0.95\textheight,height=0.92\textwidth,keepaspectratio]{../diagrams/v2/16activity-diagram-uc5.png}
-  \caption{Diagrama de actividades — UC5}
-\end{sidewaysfigure}
+  \includegraphics[width=\textwidth,keepaspectratio]{../diagrams/v2/16activity-diagram-uc5.png}
+  \caption{Diagrama de actividades - UC5}
+\end{figure}
 
 \subsection{Secuencia}
 \subsubsection{UC1}
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.7\textwidth,height=0.5\textheight,keepaspectratio]{../diagrams/v2/13sequence-diagram-uc1.png}
-  \caption{Diagrama de secuencia — UC1}
+  \caption{Diagrama de secuencia - UC1}
 \end{figure}
 
 \subsubsection{UC2}
-\begin{sidewaysfigure}
+\begin{figure}[H]
   \centering
-  \includegraphics[width=0.95\textheight,height=0.92\textwidth,keepaspectratio]{../diagrams/v2/13sequence-diagram-uc2.png}
-  \caption{Diagrama de secuencia — UC2}
-\end{sidewaysfigure}
+  \includegraphics[width=\textwidth,keepaspectratio]{../diagrams/v2/13sequence-diagram-uc2.png}
+  \caption{Diagrama de secuencia - UC2}
+\end{figure}
 
 \subsubsection{UC3}
-\begin{sidewaysfigure}
+\begin{figure}[H]
   \centering
-  \includegraphics[width=0.95\textheight,height=0.92\textwidth,keepaspectratio]{../diagrams/v2/13sequence-diagram-uc3.png}
-  \caption{Diagrama de secuencia — UC3}
-\end{sidewaysfigure}
+  \includegraphics[width=\textwidth,keepaspectratio]{../diagrams/v2/13sequence-diagram-uc3.png}
+  \caption{Diagrama de secuencia - UC3}
+\end{figure}
 
 \subsubsection{UC4}
-\begin{sidewaysfigure}
+\begin{figure}[H]
   \centering
-  \includegraphics[width=0.95\textheight,height=0.92\textwidth,keepaspectratio]{../diagrams/v2/13sequence-diagram-uc4.png}
-  \caption{Diagrama de secuencia — UC4}
-\end{sidewaysfigure}
+  \includegraphics[width=\textwidth,keepaspectratio]{../diagrams/v2/13sequence-diagram-uc4.png}
+  \caption{Diagrama de secuencia - UC4}
+\end{figure}
 
 \subsubsection{UC5}
-\begin{sidewaysfigure}
+\begin{figure}[H]
   \centering
-  \includegraphics[width=0.95\textheight,height=0.92\textwidth,keepaspectratio]{../diagrams/v2/13sequence-diagram-uc5.png}
-  \caption{Diagrama de secuencia — UC5}
-\end{sidewaysfigure}
+  \includegraphics[width=\textwidth,keepaspectratio]{../diagrams/v2/13sequence-diagram-uc5.png}
+  \caption{Diagrama de secuencia - UC5}
+\end{figure}
 
 \newpage
 \section{Tolerancia a fallos}
@@ -717,11 +717,9 @@ pérdida de performance empíricamente despreciable en los datasets evaluados
 \subsection{Detección de caídas}
 Cada nodo levanta, en un \textit{thread} de fondo, un cliente de
 \textit{heartbeat} que se registra contra el Supervisor por TCP y le envía
-un latido cada \texttt{HEARTBEAT\_INTERVAL} segundos (1 en la configuración
-de referencia). El Supervisor mantiene el último latido de cada nodo y, si
-pasan más de \texttt{HEARTBEAT\_TIMEOUT} segundos (3 en la referencia) sin
-recibir uno, lo marca como caído. La detección es puramente por
-\textit{heartbeat} —reloj monótono, sin sondear Docker ni la red—, de modo
+un latido cada cierto intervalo (\texttt{HEARTBEAT\_INTERVAL}). El Supervisor mantiene el último latido de cada nodo y, si
+pasan más de cierto tiempo (\texttt{HEARTBEAT\_TIMEOUT}) sin recibir uno, lo marca como caído. La detección es puramente por
+\textit{heartbeat} (reloj monótono, sin sondear Docker ni la red), de modo
 que el Supervisor siempre puede diagnosticar \textit{qué} nodo dejó de
 responder.
 
@@ -738,9 +736,9 @@ de modo que Docker Compose lo levanta de nuevo si cae; durante su caída los
 nodos siguen procesando con normalidad. No hay elección de líder: la
 liveness del Supervisor está desacoplada de la correctitud del pipeline.
 
-La \textbf{recuperación} de un nodo caído —reiniciar su proceso para que
+La \textbf{recuperación} de un nodo caído (reiniciar su proceso para que
 restaure su \textit{checkpoint}, se reconecte a RabbitMQ y reanude el
-consumo— depende del entorno de ejecución. En la simulación con Docker un
+consumo) depende del entorno de ejecución. En la simulación con Docker un
 \textit{reviver} reinicia el contenedor; ese mecanismo, sus variables de
 configuración y la línea de tiempo de recuperación se describen en Testing.
 En un sistema verdaderamente distribuido el reinicio lo haría el orquestador
@@ -794,8 +792,7 @@ válido: si el nodo cae mientras escribe el temporal, el checkpoint anterior
 queda intacto y es el que se restaura.
 
 La pieza clave es el \textbf{orden entre el checkpoint y los acks}. Los
-mensajes se procesan en lote (\texttt{CHECKPOINT\_EVERY}, 1000 por
-\textit{checkpoint} en la configuración de referencia) y sus \textit{acks} se
+mensajes se procesan en lote (de tamaño \texttt{CHECKPOINT\_EVERY}) y sus \textit{acks} se
 retienen: recién se
 confirman a RabbitMQ \textbf{después} de que el \textit{checkpoint} quedó
 escrito en disco. Así, todo lo confirmado tiene su estado ya persistido;
@@ -810,8 +807,8 @@ y se reprocesan sobre el estado restaurado.
 
 La \textbf{deduplicación} es la que evita que ese reproceso duplique
 efectos. Cada mensaje de datos se \textit{estampa} en origen con un
-identificador de productor estable —derivado de la identidad del nodo y
-su ruta de salida, idéntico entre reinicios— y un número de secuencia
+identificador de productor estable (derivado de la identidad del nodo y
+su ruta de salida, idéntico entre reinicios) y un número de secuencia
 creciente. El receptor mantiene, por productor, el mayor número de
 secuencia visto; un mensaje cuya secuencia no lo supera es un reenvío y
 se descarta. Como bajo ruteo por afinidad un ``productor'' es un par
@@ -821,8 +818,8 @@ topología. Los contadores de secuencia de salida también se restauran del
 misma secuencia que su original y el deduplicador downstream lo reconoce.
 Por último, no todo el estado entra en el bloque del checkpoint. Algunas
 etapas acumulan un estado demasiado grande como para reescribirlo entero en
-cada ciclo —en particular UC4, cuyo procesamiento del grafo y conteo de
-caminos pueden generar estructuras enormes—. Para eso se usa \textit{spill}
+cada ciclo (en particular UC4, cuyo procesamiento del grafo y conteo de
+caminos pueden generar estructuras enormes). Para eso se usa \textit{spill}
 a disco: el estado pesado se vuelca de forma incremental a archivos
 auxiliares particionados por shard, y el checkpoint sólo guarda la metadata
 necesaria (los \textit{offsets} confirmados) para recuperarlo hasta un punto
@@ -916,8 +913,8 @@ desacoplada de la correctitud del pipeline.
 \newpage
 \section{Testing}
 El sistema se valida con dos tipos de pruebas: de \textbf{correctitud del
-pipeline} —que el resultado final de cada caso de uso sea el correcto— y de
-\textbf{tolerancia a fallos} —que esa correctitud se preserve ante caídas—.
+pipeline} (que el resultado final de cada caso de uso sea el correcto) y de
+\textbf{tolerancia a fallos} (que esa correctitud se preserve ante caídas).
 
 \subsection{Testing del pipeline}
 Un script genera, de forma \textbf{secuencial}, los resultados esperados para
@@ -932,9 +929,9 @@ La prueba puede correrse:
   \item con un \textbf{único cliente} o con \textbf{múltiples clientes}
     simultáneos (\texttt{NCLIENTS}), para validar el aislamiento por
     \texttt{client\_id};
-  \item con \textbf{tres tamaños de dataset} de referencia —\texttt{perfect}
-    ($\sim$93\,MB), \texttt{small} ($\sim$620\,MB) y \texttt{medium}
-    ($\sim$2.8\,GB)— seleccionables en \texttt{cfg.py}.
+  \item con \textbf{tres tamaños de dataset} de referencia, seleccionables en
+    \texttt{cfg.py}: \texttt{perfect} ($\sim$93\,MB), \texttt{small}
+    ($\sim$620\,MB) y \texttt{medium} ($\sim$2.8\,GB).
 \end{itemize}
 El objetivo es comprobar que, para cada combinación, la salida de los cinco
 casos de uso coincida exactamente con la del oráculo.
@@ -972,32 +969,32 @@ conexión TCP activa y, como el cliente actual no implementa una sesión
 recuperable, se perdería la demo desde el lado del cliente.
 
 Las variables que gobiernan el Chaos Monkey y el mecanismo de
-supervisión/revival son configurables. En la configuración de referencia:
+supervisión/revival son configurables. Las principales:
 \begin{itemize}
-  \item \texttt{CHAOS\_ENABLED} (\texttt{0}): arma o desarma el Chaos Monkey;
+  \item \texttt{CHAOS\_ENABLED}: arma o desarma el Chaos Monkey;
     en \texttt{1} empieza a matar nodos.
-  \item \texttt{CHAOS\_INTERVAL} (\texttt{4}\,s): cada cuánto mata. Menor =
+  \item \texttt{CHAOS\_INTERVAL}: cada cuánto mata nodos. Menor =
     fallas más frecuentes.
-  \item \texttt{CHAOS\_KILLS\_MIN} / \texttt{CHAOS\_KILLS\_MAX}
-    (\texttt{1}\,/\,\texttt{8}): cuántos nodos mata por ronda. Mayor = fallas
+  \item \texttt{CHAOS\_KILLS\_MIN} / \texttt{CHAOS\_KILLS\_MAX}: cuántos nodos
+    mata por ronda. Mayor = fallas
     más severas y simultáneas.
-  \item \texttt{CHAOS\_START\_DELAY} (\texttt{5}\,s): cuánto espera antes de
+  \item \texttt{CHAOS\_START\_DELAY}: cuánto espera antes de
     empezar, para dar tiempo al \textit{warmup} del sistema.
-  \item \texttt{CHAOS\_EXCLUDE} (\texttt{rabbitmq, supervisor, gateway,
-    chaos}): nodos inmunes; sacar uno lo vuelve vulnerable.
-  \item \texttt{HEARTBEAT\_INTERVAL} (\texttt{1}\,s): cada cuánto late cada
+  \item \texttt{CHAOS\_EXCLUDE}: nodos inmunes al chaos (entre ellos el Gateway,
+    RabbitMQ y el Supervisor); sacar uno lo vuelve vulnerable.
+  \item \texttt{HEARTBEAT\_INTERVAL}: cada cuánto late cada
     nodo. Menor = detección más rápida pero más tráfico.
-  \item \texttt{HEARTBEAT\_TIMEOUT} (\texttt{3}\,s): cuánto sin latidos antes
+  \item \texttt{HEARTBEAT\_TIMEOUT}: cuánto sin latidos antes
     de marcar caído. Menor = detección más rápida pero más falsos positivos.
-  \item \texttt{REVIVE\_INTERVAL} (\texttt{2}\,s): cada cuánto el reviver busca
+  \item \texttt{REVIVE\_INTERVAL}: cada cuánto el reviver busca
     nodos caídos para reiniciarlos.
-  \item \textit{cooldown} de revival (\texttt{15}\,s): espera mínima entre
+  \item \textit{cooldown} de revival: espera mínima entre
     reintentos sobre un mismo nodo, para no martillar a uno que tarda en
     volver.
 \end{itemize}
-Con esos valores, la línea de tiempo de recuperación de un nodo es del orden
-de 5–6 segundos: hasta 1\,s en perder el primer latido, 3\,s hasta que vence
-el \textit{timeout}, y hasta 2\,s más hasta la siguiente pasada del reviver.
+La línea de tiempo de recuperación de un nodo es, así, la suma de tres
+términos: el tiempo hasta perder el primer latido, el \textit{timeout} de
+detección, y la espera hasta la siguiente pasada del reviver.
 
 \newpage
 \section{Desarrollo}
