@@ -624,7 +624,7 @@
 
         <!-- ══ NEW UC4 sub-pipeline (vertical layout: degree branch top, graph branch below) ══ -->
 
-        <!-- [A] GroupBy Compute graph – degree branch (blue, 3-stack) x=858 y=500 -->
+        <!-- GroupBy Compute graph – single builder, fans out to both aggregates (blue, 3-stack) x=858 y=500 -->
         <mxCell id="ov4-gb-deg" connectable="0" parent="1" style="group" value="" vertex="1">
           <mxGeometry height="134" width="119.41" x="858.00" y="500.00" as="geometry" />
         </mxCell>
@@ -638,32 +638,12 @@
           <mxGeometry height="106.13861386138612" width="92.87444444444438" y="27.86138613861387" as="geometry" />
         </mxCell>
 
-        <!-- [B] GroupBy Compute graph – graph branch (blue, 3-stack) x=858 y=882 -->
-        <mxCell id="ov4-gb-grph" connectable="0" parent="1" style="group" value="" vertex="1">
-          <mxGeometry height="134" width="119.41" x="858.00" y="882.00" as="geometry" />
-        </mxCell>
-        <mxCell id="ov4-gb-grph-1" parent="ov4-gb-grph" style="ellipse;shape=umlControl;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="" vertex="1">
-          <mxGeometry height="106.13861386138612" width="92.87444444444438" x="26.535555555555554" as="geometry" />
-        </mxCell>
-        <mxCell id="ov4-gb-grph-2" parent="ov4-gb-grph" style="ellipse;shape=umlControl;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="" vertex="1">
-          <mxGeometry height="106.13861386138612" width="92.87444444444438" x="13.267777777777777" y="14.59405940594059" as="geometry" />
-        </mxCell>
-        <mxCell id="ov4-gb-grph-3" parent="ov4-gb-grph" style="ellipse;shape=umlControl;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;GroupBy&lt;/b&gt;&lt;div&gt;Compute graph&lt;/div&gt;" vertex="1">
-          <mxGeometry height="106.13861386138612" width="92.87444444444438" y="27.86138613861387" as="geometry" />
-        </mxCell>
-
         <!-- Edges from "Filtered by USD and period A" (m3lEM9vwjJh2p-cHX_Ol-119) to both GroupBys -->
         <mxCell id="ov4-e1" edge="1" parent="1" source="m3lEM9vwjJh2p-cHX_Ol-119" target="ov4-gb-deg-3" style="edgeStyle=none;shape=connector;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=classic;">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="ov4-e1-lbl" connectable="0" parent="ov4-e1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="Route by&lt;div&gt;node&lt;/div&gt;" vertex="1">
           <mxGeometry relative="1" x="-0.2" y="-8" as="geometry"><mxPoint as="offset" /></mxGeometry>
-        </mxCell>
-        <mxCell id="ov4-e2" edge="1" parent="1" source="m3lEM9vwjJh2p-cHX_Ol-119" target="ov4-gb-grph-3" style="edgeStyle=none;shape=connector;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=classic;">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ov4-e2-lbl" connectable="0" parent="ov4-e2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="Route by&lt;div&gt;node&lt;/div&gt;" vertex="1">
-          <mxGeometry relative="1" x="0.2" y="-8" as="geometry"><mxPoint as="offset" /></mxGeometry>
         </mxCell>
 
         <!-- Aggregate degree (red, 3-stack) x=863 y=660 -->
@@ -728,7 +708,7 @@
         </mxCell>
 
         <!-- Edges: graph GroupBy → Aggregate graphs → Graph shards -->
-        <mxCell id="ov4-e4" edge="1" parent="1" source="ov4-gb-grph-3" target="ov4-agg-grph-3" style="edgeStyle=none;shape=connector;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=classic;">
+        <mxCell id="ov4-e4" edge="1" parent="1" source="ov4-gb-deg-3" target="ov4-agg-grph-3" style="edgeStyle=none;shape=connector;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=classic;">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="ov4-e6" edge="1" parent="1" source="ov4-agg-grph-3" target="ov4-gsh-cyl" style="edgeStyle=none;shape=connector;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=classic;">

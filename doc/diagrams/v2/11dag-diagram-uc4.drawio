@@ -31,7 +31,7 @@
         </mxCell>
 
         
-        <mxCell id="u4d-e3a" edge="1" parent="1" source="u4d-n3" target="u4d-n4a" style="edgeStyle=orthogonalEdgeStyle;shape=connector;curved=1;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=classic;">
+        <mxCell id="u4d-e3a" edge="1" parent="1" source="u4d-n3" target="u4d-n4" style="edgeStyle=orthogonalEdgeStyle;shape=connector;curved=1;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=classic;">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="u4d-e3a-lbl" connectable="0" parent="u4d-e3a" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="(origin, destination)" vertex="1">
@@ -39,25 +39,12 @@
         </mxCell>
 
         
-        <mxCell id="u4d-e3b" edge="1" parent="1" source="u4d-n3" target="u4d-n4b" style="edgeStyle=orthogonalEdgeStyle;shape=connector;curved=1;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=classic;">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="u4d-e3b-lbl" connectable="0" parent="u4d-e3b" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="(origin, destination)" vertex="1">
-          <mxGeometry relative="1" x="0.25" y="-12" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        <mxCell id="u4d-n4" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;strokeWidth=2;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;GroupBy&lt;/b&gt;&lt;div&gt;Compute graph&lt;/div&gt;" vertex="1">
+          <mxGeometry height="103" width="103" x="223.00" y="362.00" as="geometry" />
         </mxCell>
 
         
-        <mxCell id="u4d-n4a" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;strokeWidth=2;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;GroupBy&lt;/b&gt;&lt;div&gt;Compute graph&lt;/div&gt;" vertex="1">
-          <mxGeometry height="103" width="103" x="23.00" y="362.00" as="geometry" />
-        </mxCell>
-
-        
-        <mxCell id="u4d-n4b" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;strokeWidth=2;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="&lt;b&gt;GroupBy&lt;/b&gt;&lt;div&gt;Compute graph&lt;/div&gt;" vertex="1">
-          <mxGeometry height="103" width="103" x="423.00" y="362.00" as="geometry" />
-        </mxCell>
-
-        
-        <mxCell id="u4d-e4a" edge="1" parent="1" source="u4d-n4a" target="u4d-n5a" style="edgeStyle=orthogonalEdgeStyle;shape=connector;curved=1;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=classic;">
+        <mxCell id="u4d-e4a" edge="1" parent="1" source="u4d-n4" target="u4d-n5a" style="edgeStyle=orthogonalEdgeStyle;shape=connector;curved=1;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=classic;">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="u4d-e4a-lbl" connectable="0" parent="u4d-e4a" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="(node, predecessors,&lt;div&gt;successors)&lt;/div&gt;" vertex="1">
@@ -65,7 +52,7 @@
         </mxCell>
 
         
-        <mxCell id="u4d-e4b" edge="1" parent="1" source="u4d-n4b" target="u4d-n5b" style="edgeStyle=orthogonalEdgeStyle;shape=connector;curved=1;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=classic;">
+        <mxCell id="u4d-e4b" edge="1" parent="1" source="u4d-n4" target="u4d-n5b" style="edgeStyle=orthogonalEdgeStyle;shape=connector;curved=1;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=classic;">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="u4d-e4b-lbl" connectable="0" parent="u4d-e4b" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="(node, predecessors,&lt;div&gt;successors)&lt;/div&gt;" vertex="1">
