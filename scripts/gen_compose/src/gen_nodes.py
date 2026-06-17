@@ -16,6 +16,7 @@ def gen_nodes(
     tx_name: str,
     checkpoint_every: int | None = None,
     broadcast_downstream: bool = False,
+    extra_env: dict[str, str] | None = None,
 ) -> str:
     """
     Gen a ring of nodes.
@@ -62,6 +63,9 @@ def gen_nodes(
       - NAFFINITY_DOWNSTREAM={naffinity_downstream}
       - BROADCAST_DOWNSTREAM={1 if broadcast_downstream else 0}
       - PYTHONHASHSEED=2026"""
+        for key, value in (extra_env or {}).items():
+            compose += f"""
+      - {key}={value}"""
         compose += supervisor_env(f"{name}_{idx}", str(type2))
 
         if checkpoint_every is not None:

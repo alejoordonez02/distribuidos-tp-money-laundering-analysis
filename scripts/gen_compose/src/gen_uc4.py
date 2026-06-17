@@ -1,7 +1,7 @@
 from src import AggregateStrategy, GroupByStrategy, MergeStrategy
 
 from . import topology as topo
-from .common_queues import UC4_DEGREE_TRANSACTIONS, UC4_JOIN, UC4_TRANSACTIONS
+from .common_queues import UC4_JOIN, UC4_TRANSACTIONS
 from .container_type import ContainerType
 from .gen_merge import gen_merge
 from .gen_nodes import gen_nodes
@@ -10,6 +10,9 @@ from .gen_nodes import gen_nodes
 def gen_uc4() -> str:
     compose = "\n# === uc4 ==="
     queue0 = "uc4_graphs"
+    queue2 = "uc4_degree_graphs"
+    # One builder constructs the transaction graph once and fans each partial out to both
+    # aggregates: the full-graph aggregate (queue0) and the degree filter (queue2).
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,
         strategy=GroupByStrategy.UC4_COMPUTE_GRAPH,
@@ -18,6 +21,10 @@ def gen_uc4() -> str:
         rx_name=UC4_TRANSACTIONS,
         tx_name=queue0,
         checkpoint_every=5,
+        extra_env={
+            "TX_DEGREE": queue2,
+            "NAFFINITY_DEGREE": str(topo.UC4_DEGREE_AGGREGATES),
+        },
     )
     queue1 = "uc4_graphs_to_prune"
     compose += gen_nodes(
@@ -27,16 +34,6 @@ def gen_uc4() -> str:
         naffinity_downstream=topo.UC4_PRUNES,
         rx_name=queue0,
         tx_name=queue1,
-        checkpoint_every=5,
-    )
-    queue2 = "uc4_degree_graphs"
-    compose += gen_nodes(
-        type2=ContainerType.GROUP_BY,
-        strategy=GroupByStrategy.UC4_DEGREE_COMPUTE_GRAPH,
-        npeers=topo.UC4_DEGREE_COMPUTE_GRAPHS,
-        naffinity_downstream=topo.UC4_DEGREE_AGGREGATES,
-        rx_name=UC4_DEGREE_TRANSACTIONS,
-        tx_name=queue2,
         checkpoint_every=5,
     )
     queue3 = "uc4_high_degree"
