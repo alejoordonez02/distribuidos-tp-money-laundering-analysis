@@ -929,9 +929,13 @@ La prueba puede correrse:
   \item con un \textbf{único cliente} o con \textbf{múltiples clientes}
     simultáneos (\texttt{NCLIENTS}), para validar el aislamiento por
     \texttt{client\_id};
-  \item con \textbf{tres tamaños de dataset} de referencia, seleccionables en
-    \texttt{cfg.py}: \texttt{perfect} ($\sim$93\,MB), \texttt{small}
-    ($\sim$620\,MB) y \texttt{medium} ($\sim$2.8\,GB).
+  \item con distintos \textbf{datasets}, seleccionables en \texttt{cfg.py}. El
+    dataset \texttt{perfect} es chico, pero está construido a propósito para
+    testear \textbf{correctitud}: incluye todos los casos borde posibles para
+    los casos de uso específicos del enunciado. Los datasets \texttt{small},
+    \texttt{medium} y \texttt{large} son los datasets reales del problema, de
+    tamaño creciente ($\sim$620\,MB, $\sim$2.8\,GB y $\sim$16\,GB
+    respectivamente), para validar el sistema a escala.
 \end{itemize}
 El objetivo es comprobar que, para cada combinación, la salida de los cinco
 casos de uso coincida exactamente con la del oráculo.
