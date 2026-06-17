@@ -35,13 +35,17 @@ LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "WARNING")
 def make_groupby(
     fn: GroupByFn,
     idx: int,
-    naffinities_downstream: int,
+    routes: list[tuple[str, int]],
     mom_host: str,
     rx_name: str,
-    tx_name: str,
 ) -> RingGroupBy:
+    """Build a group-by node. `routes` is one (tx_name, naffinity_downstream) per
+    downstream fleet — a single route for the common one-aggregate case, several to fan
+    one build out to distinct aggregates (UC4). Each fleet gets its own stamping producer
+    id, so downstream dedup stays per-route."""
     npeers = int(os.getenv("NPEERS", "1"))
-    external_txs = make_txs(idx, tx_name, mom_host, naffinities_downstream)
+    fleets = [make_txs(idx, tx, mom_host, naffinity) for tx, naffinity in routes]
+    external_txs = [tx for fleet in fleets for tx in fleet]
 
     ring_name = os.environ["RING_NAME"]
     peer_ids = [i for i in range(npeers) if i != idx]
@@ -65,7 +69,7 @@ def make_groupby(
         sent,
         consumer,
         ring,
-        external_txs,
+        fleets,
         data_queue=f"{rx_name}{idx}",
         data_exchange=rx_name,
         ring_queue=f"{ring_name}_queue{idx}",
@@ -79,6 +83,11 @@ def main():
     logging.basicConfig(level=LOGGING_LEVEL)
     logging.getLogger("pika").setLevel(logging.WARNING)
 
+    # Most group-bys have one downstream fleet. UC4 builds the transaction graph once and
+    # fans it out to two aggregates (the full graph and the degree filter), so it adds a
+    # second route — every group-by goes through the same make_groupby.
+    routes = [(TX, NAFFINITY_DOWNSTREAM)]
+
     match STRATEGY:
         case GroupByStrategy.UC2_MAX_AMOUNT:
             fn = UC2MaxAmountGroupByFn()
@@ -86,18 +95,17 @@ def main():
             fn = UC2BankNamesGroupByFn()
         case GroupByStrategy.UC3_SUM:
             fn = UC3SumGroupByFn()
-        case (
-            GroupByStrategy.UC4_COMPUTE_GRAPH | GroupByStrategy.UC4_DEGREE_COMPUTE_GRAPH
-        ):
+        case GroupByStrategy.UC4_COMPUTE_GRAPH:
             fn = UC4ComputeGraph()
+            routes.append((os.environ["TX_DEGREE"], int(os.environ["NAFFINITY_DEGREE"])))
         case GroupByStrategy.UC5_COUNT:
             fn = UC5CountGroupByFn()
         case _:
             raise ValueError(f"unknown group_by strategy: {STRATEGY}")
 
-    groupby = make_groupby(fn, IDX, NAFFINITY_DOWNSTREAM, MOM_HOST, RX, TX)
+    groupby = make_groupby(fn, IDX, routes, MOM_HOST, RX)
 
-    logging.info("starting groupby: fn=%s idx=%s rx=%s tx=%s", type(fn), IDX, RX, TX)
+    logging.info("starting groupby: fn=%s idx=%s rx=%s routes=%s", type(fn), IDX, RX, routes)
     run_with_heartbeat(groupby.start)
 
 

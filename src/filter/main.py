@@ -50,7 +50,6 @@ def make_default_filter() -> RingBroadcastFilter:
         (os.environ["UC2_TRANSACTIONS_TX"], UC2Filter(), "UC2_TRANSACTIONS_SHARDS"),
         (os.environ["UC3_PERIOD_A_TRANSACTIONS_TX"], UC3FilterPeriodA(), "UC3_PERIOD_A_SHARDS"),
         (os.environ["UC4_TRANSACTIONS_TX"], UC4Filter(), "UC4_TRANSACTIONS_SHARDS"),
-        (os.environ["UC4_DEGREE_TRANSACTIONS_TX"], UC4Filter(), "UC4_DEGREE_TRANSACTIONS_SHARDS"),
         (os.environ["UC5_TRANSACTIONS_TX"], UC5Filter(), "UC5_TRANSACTIONS_SHARDS"),
         (os.environ["UC3_PERIOD_B_TRANSACTIONS_TX"], UC3FilterPeriodB(), "UC3_PERIOD_B_SHARDS"),
     ]
