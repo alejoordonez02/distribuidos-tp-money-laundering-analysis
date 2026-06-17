@@ -898,11 +898,11 @@ en el que la correctitud depende del reintento del cliente.
 \end{figure}
 
 \subsubsection{Caída del Supervisor}
-Docker Compose lo reinicia (\texttt{restart: on-failure}). Los nodos siguen
-procesando sin interrupción; si alguno cae durante la ventana de caída
-del Supervisor, no se revive hasta que éste vuelve y los nodos se
-re-registran. No hay falla en cascada: la liveness del Supervisor está
-desacoplada de la correctitud del pipeline.
+El Supervisor se reinicia solo si cae (\texttt{restart: on-failure}). Los
+nodos siguen procesando sin interrupción; si alguno cae durante la ventana
+de caída del Supervisor, su caída no se detecta hasta que éste vuelve y los
+nodos se re-registran. No hay falla en cascada: la liveness del Supervisor
+está desacoplada de la correctitud del pipeline.
 
 \begin{figure}[H]
   \centering

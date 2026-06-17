@@ -38,7 +38,7 @@
         </mxCell>
 
         
-        <mxCell id="note2" value="si un nodo cae en esta ventana, no se revive hasta que el Supervisor vuelve" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;" vertex="1" parent="1">
+        <mxCell id="note2" value="si un nodo cae en esta ventana, su caída no se detecta hasta que el Supervisor vuelve" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;" vertex="1" parent="1">
           <mxGeometry x="20.00" y="256.00" width="500" height="50" as="geometry" />
         </mxCell>
 
@@ -51,7 +51,7 @@
         </mxCell>
 
         
-        <mxCell id="note3" value="El Supervisor tiene restart: on-failure en Compose. Mientras no vuelve, los nodos operan de forma autónoma&#10;pero sin cobertura de reviva. En cuanto levanta, los nodos se re-registran via heartbeat." style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;" vertex="1" parent="1">
+        <mxCell id="note3" value="El Supervisor se reinicia solo si cae (restart: on-failure en Compose). Mientras no vuelve, los nodos siguen procesando con normalidad,&#10;pero su caída no es detectada. En cuanto vuelve, los nodos se re-registran vía heartbeat y la detección se reanuda." style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;" vertex="1" parent="1">
           <mxGeometry x="20.00" y="405.00" width="680" height="60" as="geometry" />
         </mxCell>
 

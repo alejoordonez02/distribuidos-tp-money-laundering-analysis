@@ -12,15 +12,12 @@
         <mxCell id="ls" value="Supervisor" style="shape=umlLifeline;perimeter=lifelinePerimeter;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;size=40;" vertex="1" parent="1">
           <mxGeometry x="310.00" y="20.00" width="140" height="450" as="geometry" />
         </mxCell>
-        <mxCell id="ld" value="Docker daemon" style="shape=umlLifeline;perimeter=lifelinePerimeter;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;size=40;" vertex="1" parent="1">
-          <mxGeometry x="560.00" y="20.00" width="140" height="450" as="geometry" />
-        </mxCell>
 
         
         <mxCell id="m1" value="Register(node_id, kind)" style="html=1;endArrow=block;fontSize=11;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry"><mxPoint x="120.00" y="90.00" as="sourcePoint" /><mxPoint x="380.00" y="90.00" as="targetPoint" /></mxGeometry>
         </mxCell>
-        <mxCell id="m2" value="Heartbeat()  — cada 1s" style="html=1;endArrow=block;fontSize=11;dashed=0;" edge="1" parent="1">
+        <mxCell id="m2" value="Heartbeat() (periódico)" style="html=1;endArrow=block;fontSize=11;dashed=0;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry"><mxPoint x="120.00" y="135.00" as="sourcePoint" /><mxPoint x="380.00" y="135.00" as="targetPoint" /></mxGeometry>
         </mxCell>
 
@@ -33,26 +30,11 @@
         </mxCell>
 
         
-        <mxCell id="note" value="sin heartbeat &gt; 3s&#10;⇒ marca DEAD" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=center;" vertex="1" parent="1">
+        <mxCell id="note" value="sin heartbeat (timeout)&#10;⇒ marca DEAD" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=center;" vertex="1" parent="1">
           <mxGeometry x="320.00" y="225.00" width="120" height="50" as="geometry" />
         </mxCell>
 
         
-        <mxCell id="m3" value="docker start(node_id)" style="html=1;endArrow=block;fontSize=11;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="380.00" y="305.00" as="sourcePoint" /><mxPoint x="630.00" y="305.00" as="targetPoint" /></mxGeometry>
-        </mxCell>
-        
-        <mxCell id="m4" value="reinicia el contenedor (vol. de estado intacto)" style="html=1;endArrow=block;fontSize=11;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="630.00" y="350.00" as="sourcePoint" /><mxPoint x="120.00" y="350.00" as="targetPoint" /></mxGeometry>
-        </mxCell>
-        
-        <mxCell id="m5" value="restaura checkpoint&#10;y reconecta a RabbitMQ" style="html=1;endArrow=block;fontSize=11;rounded=1;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="120.00" y="385.00" as="sourcePoint" /><mxPoint x="120.00" y="425.00" as="targetPoint" /><Array as="points"><mxPoint x="205.00" y="385.00" /><mxPoint x="205.00" y="425.00" /></Array></mxGeometry>
-        </mxCell>
-        
-        <mxCell id="m6" value="Register()  (re-registro)" style="html=1;endArrow=block;fontSize=11;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="120.00" y="450.00" as="sourcePoint" /><mxPoint x="380.00" y="450.00" as="targetPoint" /></mxGeometry>
-        </mxCell>
 
       </root>
     </mxGraphModel>

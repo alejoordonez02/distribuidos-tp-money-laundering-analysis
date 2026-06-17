@@ -36,24 +36,18 @@
         <mxCell id="ec2" value="checkpoint" style="endArrow=classic;html=1;strokeColor=#666666;fontSize=9;dashed=1;" edge="1" parent="1" source="naggr" target="caggr"><mxGeometry relative="1" as="geometry" /></mxCell>
 
         
-        <mxCell id="rabbit" value="RabbitMQ&#10;(middleware por grupos — colas durables)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1" vertex="1" parent="1">
+        <mxCell id="rabbit" value="RabbitMQ&#10;(middleware por grupos, colas durables)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1" vertex="1" parent="1">
           <mxGeometry x="100.00" y="360.00" width="340" height="55" as="geometry" />
         </mxCell>
         <mxCell id="edata" value="publish / consume" style="endArrow=classic;startArrow=classic;html=1;strokeColor=#d79b00;fontSize=10;" edge="1" parent="1" source="pipe" target="rabbit"><mxGeometry relative="1" as="geometry" /></mxCell>
 
         
-        <mxCell id="sup" value="Supervisor&#10;&#10;heartbeat 1s · timeout 3s&#10;revive 2s · cooldown 15s" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;verticalAlign=top;spacingTop=6" vertex="1" parent="1">
-          <mxGeometry x="620.00" y="20.00" width="230" height="110" as="geometry" />
-        </mxCell>
-        
-        <mxCell id="chaos" value="Chaos Monkey&#10;(docker kill aleatorio)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1" vertex="1" parent="1">
-          <mxGeometry x="620.00" y="330.00" width="230" height="70" as="geometry" />
+        <mxCell id="sup" value="Supervisor&#10;&#10;(detección por heartbeat)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;verticalAlign=top;spacingTop=6" vertex="1" parent="1">
+          <mxGeometry x="620.00" y="60.00" width="230" height="90" as="geometry" />
         </mxCell>
 
-        
-        <mxCell id="ehb" value="heartbeats (TCP, 1s)" style="endArrow=open;html=1;dashed=1;strokeColor=#6c8ebf;fontSize=10;exitX=1;exitY=0.2;exitDx=0;exitDy=0;entryX=0;entryY=0.3;entryDx=0;entryDy=0;" edge="1" parent="1" source="pipe" target="sup"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="erev" value="docker start (revive)" style="endArrow=classic;html=1;strokeColor=#6c8ebf;fontSize=10;exitX=0;exitY=0.85;exitDx=0;exitDy=0;entryX=1;entryY=0.55;entryDx=0;entryDy=0;" edge="1" parent="1" source="sup" target="pipe"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="ekill" value="docker kill" style="endArrow=classic;html=1;dashed=1;strokeColor=#b85450;fontSize=10;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.92;entryDx=0;entryDy=0;" edge="1" parent="1" source="chaos" target="pipe"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="ehb" value="heartbeats (TCP)" style="endArrow=open;html=1;dashed=1;strokeColor=#6c8ebf;fontSize=10;exitX=1;exitY=0.2;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="pipe" target="sup"><mxGeometry relative="1" as="geometry" /></mxCell>
 
       </root>
     </mxGraphModel>
