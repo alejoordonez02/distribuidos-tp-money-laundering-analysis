@@ -24,3 +24,4 @@ class MessageType(IntEnum):
     HELLO = 19
     HELLO_ACK = 20
     RING_BARRIER = 21
+    ABORT = 22

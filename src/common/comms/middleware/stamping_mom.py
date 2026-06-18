@@ -22,6 +22,7 @@ _UNSTAMPED_TYPES = frozenset(
     int(t)
     for t in (
         MessageType.EOF,
+        MessageType.ABORT,
         MessageType.RING_DONE,
         MessageType.RING_SENT_DATA,
         MessageType.FIN,
