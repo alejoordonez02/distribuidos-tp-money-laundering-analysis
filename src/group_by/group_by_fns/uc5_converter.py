@@ -7,14 +7,6 @@ from common.conversion import ConversionAPI
 
 from .group_by_fn import GroupByFn
 
-_PERIOD_A_DATES = [
-    date(2022, 9, 1),
-    date(2022, 9, 2),
-    date(2022, 9, 3),
-    date(2022, 9, 4),
-    date(2022, 9, 5),
-]
-
 _USD_CURRENCY = "US Dollar"
 
 # Bitcoin rates not provided by Frankfurter API; injected from Binance BTCUSDT daily
@@ -29,26 +21,31 @@ _BITCOIN_RATES_USD: dict[date, float] = {
 
 
 class UC5ConverterGroupByFn(GroupByFn):
-    """Converts each transaction's amount to USD using the day's rates, forwarding the
+    """Converts each transaction's amount to USD, fetching a day's rates from the
+    conversion API on a cache miss (one request per day, then cached). Forwards the
     converted batch to a single downstream shard chosen by message identity, so a
     re-emit after a crash lands on the same shard."""
 
     def __init__(self, api: ConversionAPI):
+        self._api = api
         self._cache: dict[date, dict[str, float]] = {}
-        for d in _PERIOD_A_DATES:
-            rates = api.get_rates(d)
-            if d in _BITCOIN_RATES_USD:
-                rates["Bitcoin"] = _BITCOIN_RATES_USD[d]
-            self._cache[d] = rates
 
     def group_by(self, msg: Transactions) -> Iterable[tuple[Transactions, int]]:  # type: ignore[reportIncompatibleMethodOverride]
         converted = [
             replace(
                 t,
-                amount_paid=t.amount_paid * self._cache.get(t.timestamp.date(), {}).get(t.payment_currency, 1.0),
+                amount_paid=t.amount_paid * self._rates_for(t.timestamp.date()).get(t.payment_currency, 1.0),
                 payment_currency=_USD_CURRENCY,
             )
             for t in msg.transactions
         ]
         affinity = hash((msg.producer_id, msg.seq))
         return ((Transactions(msg.client_id, converted), affinity),)
+
+    def _rates_for(self, day: date) -> dict[str, float]:
+        if day not in self._cache:
+            rates = self._api.get_rates(day)
+            if day in _BITCOIN_RATES_USD:
+                rates["Bitcoin"] = _BITCOIN_RATES_USD[day]
+            self._cache[day] = rates
+        return self._cache[day]
