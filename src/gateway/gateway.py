@@ -1,4 +1,5 @@
 import logging
+import os
 from socket import SHUT_RDWR, socket
 from threading import Thread
 from typing import Callable
@@ -16,6 +17,10 @@ from common.comms.middleware import (
     MOMQueue,
 )
 from common.graceful_shutdown import setup_graceful_shutdown
+
+# Cap how long a send to a client may block before we treat it as gone: long enough
+# for a slow-but-alive client, short enough to not wedge the shared response consumer.
+CLIENT_SEND_TIMEOUT_S = int(os.getenv("GATEWAY_CLIENT_SEND_TIMEOUT_S", "10"))
 
 
 class Gateway:
@@ -109,7 +114,7 @@ class Gateway:
                 # TODO: handle specific OSError cases (e.g. socket closed on shutdown vs real error)
                 logging.error("!!! UNHANDLED OSError in gateway accept loop: %s", e, exc_info=True)
                 break
-            conn = Connection(skt)
+            conn = Connection(skt, send_timeout=CLIENT_SEND_TIMEOUT_S)
             client = ClientStreamHandler(
                 conn, self.clients.add, self.clients.remove,
                 self.trans_tx_factory, self.accs_tx_factory,
