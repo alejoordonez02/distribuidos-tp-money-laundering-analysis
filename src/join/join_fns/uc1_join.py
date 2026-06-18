@@ -29,3 +29,6 @@ class UC1Join(JoinFn):
 
     def get_responses(self, client_id: UUID) -> Iterator[Response]:
         yield from stream_responses(self._spill, client_id, "--- UC1 ---")
+
+    def discard(self, client_id: UUID):
+        self._spill.clear(client_id)

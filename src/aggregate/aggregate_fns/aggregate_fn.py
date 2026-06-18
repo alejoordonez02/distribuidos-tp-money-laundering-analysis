@@ -12,6 +12,11 @@ class AggregateFn(ABC):
     @abstractmethod
     def get_result(self, client_id: UUID) -> Iterable[tuple[Message, int]]: ...
 
+    @abstractmethod
+    def discard(self, client_id: UUID):
+        """Drop a client's accumulated state without producing a result (on abort)."""
+        ...
+
     def snapshot_state(self) -> dict[str, Any]:
         raise NotImplementedError("this aggregate fn is not checkpointable")
 
