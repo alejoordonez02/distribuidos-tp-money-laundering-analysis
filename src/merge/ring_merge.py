@@ -91,7 +91,7 @@ class RingMerge(RingNode):
 
     def _on_left_msg(self, body: bytes, ack: Callable, _nack: Callable):
         msg = deserialize_message(body)
-        dispatch(self.checkpointer, msg, ack, self._on_left_eof, self._on_left_data)
+        dispatch(self.checkpointer, msg, ack, self._on_left_eof, self._on_left_data, self._on_abort)
 
     def _on_left_data(self, msg: Message):
         self.fn.left(msg)  # type: ignore[arg-type]
@@ -103,7 +103,7 @@ class RingMerge(RingNode):
 
     def _on_right_msg(self, body: bytes, ack: Callable, _nack: Callable):
         msg = deserialize_message(body)
-        dispatch(self.checkpointer, msg, ack, self._on_right_eof, self._on_right_data)
+        dispatch(self.checkpointer, msg, ack, self._on_right_eof, self._on_right_data, self._on_abort)
 
     def _on_right_data(self, msg: Message):
         self.fn.right(msg)  # type: ignore[arg-type]
