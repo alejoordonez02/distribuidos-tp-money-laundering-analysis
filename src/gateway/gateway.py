@@ -82,9 +82,16 @@ class Gateway:
 
         try:
             self.clients.get(response.client_id).send(response)  # type: ignore[reportAttributeAccessIssue]
-        except ClientNotFoundError as e:
-            logging.error("failed to get client response: %s", e)
-            nack()
+        except ClientNotFoundError:
+            # the client crashed or was aborted; its responses are dropped, not requeued
+            ack()
+            return
+        except OSError as e:
+            # the client socket died after it finished sending (it crashed while
+            # waiting for results); drop the response and stop routing to it
+            logging.warning("client %s unreachable; dropping response (%s)", response.client_id, e)
+            self.clients.remove(response.client_id)
+            ack()
             return
 
         ack()
@@ -103,7 +110,10 @@ class Gateway:
                 logging.error("!!! UNHANDLED OSError in gateway accept loop: %s", e, exc_info=True)
                 break
             conn = Connection(skt)
-            client = ClientStreamHandler(conn, self.clients.add, self.trans_tx_factory, self.accs_tx_factory)
+            client = ClientStreamHandler(
+                conn, self.clients.add, self.clients.remove,
+                self.trans_tx_factory, self.accs_tx_factory,
+            )
             client.start()
 
         self.server_handle.join()
