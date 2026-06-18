@@ -79,6 +79,11 @@ class RingCompletion:
     def on_data(self, client_id: UUID):
         self._client(client_id).received += 1
 
+    def drop(self, client_id: UUID):
+        """Forget a client's completion state when it aborts, so its partial counts
+        never complete; a later client_id starts clean."""
+        self._clients.pop(client_id, None)
+
     def on_upstream_eof(self, client_id: UUID, expected: int) -> list[Any]:
         c = self._client(client_id)
         c.expected = expected

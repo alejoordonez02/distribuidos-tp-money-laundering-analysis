@@ -37,6 +37,16 @@ def test_eof_before_all_received_does_not_complete():
     assert rc.on_upstream_eof(C, expected=5) == [Emit(C)]
 
 
+def test_drop_forgets_a_client():
+    rc = RingCompletion(node_id=0, peer_ids=[])
+    rc.on_data(C)
+    rc.on_data(C)
+    rc.drop(C)
+    # the client is forgotten: a later EOF sees a fresh, zeroed counter
+    assert rc.on_upstream_eof(C, expected=2) == []
+    rc.drop(C)  # idempotent
+
+
 def test_three_nodes_barrier_sums_per_shard_then_leader_closes():
     leader = RingCompletion(node_id=0, peer_ids=[1, 2])
     # each peer sends to two downstream shards; the barrier sums them per shard
