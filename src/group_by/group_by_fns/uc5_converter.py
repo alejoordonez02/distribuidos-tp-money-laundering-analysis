@@ -1,10 +1,11 @@
 from dataclasses import replace
 from datetime import date
+from typing import Iterable
 
 from common.comms.messages import Transactions
 from common.conversion import ConversionAPI
 
-from .converter_fn import ConverterFn
+from .group_by_fn import GroupByFn
 
 _PERIOD_A_DATES = [
     date(2022, 9, 1),
@@ -27,7 +28,11 @@ _BITCOIN_RATES_USD: dict[date, float] = {
 }
 
 
-class UC5USDConverterFn(ConverterFn):
+class UC5ConverterGroupByFn(GroupByFn):
+    """Converts each transaction's amount to USD using the day's rates, forwarding the
+    converted batch to a single downstream shard chosen by message identity, so a
+    re-emit after a crash lands on the same shard."""
+
     def __init__(self, api: ConversionAPI):
         self._cache: dict[date, dict[str, float]] = {}
         for d in _PERIOD_A_DATES:
@@ -36,7 +41,7 @@ class UC5USDConverterFn(ConverterFn):
                 rates["Bitcoin"] = _BITCOIN_RATES_USD[d]
             self._cache[d] = rates
 
-    def convert(self, msg: Transactions) -> Transactions:
+    def group_by(self, msg: Transactions) -> Iterable[tuple[Transactions, int]]:  # type: ignore[reportIncompatibleMethodOverride]
         converted = [
             replace(
                 t,
@@ -45,4 +50,5 @@ class UC5USDConverterFn(ConverterFn):
             )
             for t in msg.transactions
         ]
-        return Transactions(msg.client_id, converted)
+        affinity = hash((msg.producer_id, msg.seq))
+        return ((Transactions(msg.client_id, converted), affinity),)
