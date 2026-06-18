@@ -12,6 +12,11 @@ Only the target node is recreated between combos (to swap its FAULT_CRASH_POINT 
 which is fixed at container creation); the other ~70 containers stay warm, so the
 host load stays flat and the stall detector sees real deadlocks, not starvation.
 
+The client is a system participant too, so it's a crashable target as well: the
+CLIENT_POINTS run a two-phase combo (crash a client mid-stream -> the gateway purges
+its partial data via Abort and the cluster drains -> a fresh client must still match
+the oracle). They run alongside the node combos on the same warm cluster.
+
 Topology and replica counts are read from the generated docker-compose.yaml. Dataset
 comes from scripts/cfg.py.
 
@@ -53,6 +58,13 @@ KILL_POINTS = [
     "after_dup_before_ack",
 ]
 ALL_POINTS = SELF_POINTS + KILL_POINTS
+
+# Client-crash points (injected in client.py); handled by run_client_crash, not run_combo.
+CLIENT_POINTS = [
+    "client_mid_transactions",  # die while sending transactions (before any EOF)
+    "client_mid_accounts",      # die while sending accounts (transactions EOF already sent)
+    "client_after_eof",         # die after both EOFs, while waiting for responses (case 2)
+]
 
 # Per-client hard cap. The real stall detector is progress-based (a run still
 # draining queues is slow, not deadlocked), and is paused while the target node is
@@ -158,10 +170,24 @@ def recreate_node(node):
         capture=True)
 
 
-def recreate_client():
-    """Run one fresh client through the live cluster (new client_id + producer_id)."""
-    run(f"docker compose -f {COMPOSE} up -d --force-recreate --no-deps {CLIENT}",
+def recreate_client(with_fault=False):
+    """Run one fresh client through the live cluster (the gateway stamps a new
+    client_id per connection, so consecutive clients never collide downstream).
+    With with_fault, the client is armed via the FAULT overlay so it crashes."""
+    overlay = f"-f {FAULT}" if with_fault else ""
+    run(f"docker compose -f {COMPOSE} {overlay} up -d --force-recreate --no-deps {CLIENT}",
         capture=True)
+
+
+def wait_clients_gone(timeout=TIMEOUT):
+    """Poll until no client container is running (it finished or crashed). Returns
+    False if one is still up after `timeout`."""
+    deadline = time.time() + timeout
+    while clients_running():
+        if time.time() > deadline:
+            return False
+        time.sleep(3)
+    return True
 
 
 def clear_fault_sentinel(node):
@@ -204,6 +230,20 @@ def queue_total():
     )
     nums = [int(tok) for tok in r.stdout.split() if tok.isdigit()]
     return sum(nums) if nums else None
+
+
+def nonempty_queues():
+    """Names + depths of queues still holding messages — a stall diagnostic that
+    pinpoints WHERE work is stuck (a response queue means the gateway never drained
+    a dead client's results; a ring/aggregate queue means the pipeline never completed)."""
+    r = run("docker exec rabbitmq rabbitmqctl list_queues name messages --quiet",
+            capture=True, timeout=15)
+    stuck = []
+    for line in r.stdout.splitlines():
+        parts = line.split()
+        if len(parts) == 2 and parts[1].isdigit() and int(parts[1]) > 0:
+            stuck.append(f"{parts[0]}={parts[1]}")
+    return stuck
 
 
 def client_exit_codes():
@@ -299,6 +339,46 @@ def run_combo(node, point):
     }
 
 
+def run_client_crash(node, point):
+    """Two-phase client-crash combo (node is the client service).
+
+    Phase 1 — the crashing client: arm the fault, run it, let it die mid-stream. The
+    gateway must detect the dropped connection and emit an Abort that purges the
+    client's partial data (case 1), or for a post-EOF crash drop the dead client's
+    responses (case 2). Either way every queue must drain — no deadlock.
+
+    Phase 2 — a clean client: it gets a fresh gateway-stamped id and must complete and
+    match the oracle, proving the crashed client left no garbage in any dedup table."""
+    # phase 1: the crashing client
+    clear_responses()
+    write_fault(node, point)
+    start = time.time()
+    recreate_client(with_fault=True)
+    crashed_gone = wait_clients_gone()
+    codes = client_exit_codes()
+    fired = bool(codes) and codes[-1] not in ("", "0")  # the injected crash exits 1
+    drained = wait_drain()
+    if not crashed_gone or not drained:
+        return {"node": node, "point": point, "fired": fired, "result": "STALL",
+                "detail": f"crashed_gone={crashed_gone} drained={drained} "
+                          f"stuck={nonempty_queues()}",
+                "secs": int(time.time() - start)}
+
+    # phase 2: a clean client must complete and match the oracle
+    clear_responses()
+    recreate_client(with_fault=False)
+    if not wait_clients_gone():
+        result, detail = "STALL", "clean client did not finish"
+    elif any(c != "0" for c in client_exit_codes()):
+        result, detail = "NO_COMPLETE", f"clean client exit {client_exit_codes()}"
+    else:
+        wait_drain()
+        ok, tail = verify()
+        result, detail = ("PASS" if ok else "FAIL"), tail
+    return {"node": node, "point": point, "fired": fired,
+            "result": result, "detail": detail, "secs": int(time.time() - start)}
+
+
 def prepare():
     # self-crash points rely on docker's restart policy to recover the node, so the
     # e2e opts back into it (it is off by default, where the supervisor revives).
@@ -333,6 +413,7 @@ def main():
     skip_nodes = set(filter(None, os.getenv("FT_SKIP_NODES", "").split(",")))
     only_points = set(filter(None, os.getenv("FT_ONLY_POINTS", "").split(",")))
     points = [p for p in ALL_POINTS if not only_points or p in only_points]
+    client_points = [p for p in CLIENT_POINTS if not only_points or p in only_points]
 
     targets = []
     for type_, names, count in controllers:
@@ -346,9 +427,21 @@ def main():
         for n in chosen:
             targets.append(n)
 
+    # the client is a system participant too: fold it in as a crashable target, gated
+    # by the same only/skip-node filter (match its name or the "client" type alias).
+    client_selected = (
+        client_points
+        and (CLIENT not in skip_nodes and "client" not in skip_nodes)
+        and (not only_nodes or only_nodes & {CLIENT, "client"})
+    )
+
     combos = [(n, p) for n in targets for p in points]
+    if client_selected:
+        combos += [(CLIENT, p) for p in client_points]
     print(f"[ft] one-cluster mode: {len(combos)} combos "
-          f"({len(targets)} nodes x {len(points)} points), per-client cap {TIMEOUT}s\n",
+          f"({len(targets)} nodes x {len(points)} points"
+          f"{f' + {len(client_points)} client-crash' if client_selected else ''}), "
+          f"per-client cap {TIMEOUT}s\n",
           flush=True)
 
     print("[ft] bringing up the cluster once ...", flush=True)
@@ -359,11 +452,12 @@ def main():
     results = []
     try:
         for i, (node, point) in enumerate(combos, 1):
+            handler = run_client_crash if point in CLIENT_POINTS else run_combo
             print(f"[{i}/{len(combos)}] {node} @ {point} ...", flush=True)
-            res = run_combo(node, point)
+            res = handler(node, point)
             if res["result"] == "STALL" and STALL_RETRY:
                 print(f"      -> STALL ({res['secs']}s); retrying once ...", flush=True)
-                res = run_combo(node, point)
+                res = handler(node, point)
             results.append(res)
             flag = "" if res["result"] == "PASS" else "  <<<"
             note = "" if res["fired"] else " (crash did not fire — point not reached)"
