@@ -1,5 +1,6 @@
 from threading import Lock
 from typing import Any, Callable, Mapping, Optional, Protocol, Sequence
+from uuid import UUID
 
 from common.fault_injection import maybe_crash
 
@@ -46,6 +47,7 @@ class Checkpointer:
         # atomically with the business state and dedup table.
         self._extra_state = dict(extra_state or {})
         self._pending_acks: list[Callable] = []
+        self._aborted: set[UUID] = set()
         self._dirty = False
         self.lock = Lock()
 
@@ -63,11 +65,24 @@ class Checkpointer:
         for key, provider in self._extra_state.items():
             if key in extra:
                 provider.restore_state(extra[key])
+        self._aborted = {UUID(c) for c in blob.get("aborted", [])}
         maybe_crash("after_restore_on_startup")
         return True
 
+    def is_aborted(self, client_id: UUID) -> bool:
+        with self.lock:
+            return client_id in self._aborted
+
+    def mark_aborted(self, client_id: UUID):
+        with self.lock:
+            self._aborted.add(client_id)
+            self._dirty = True
+
     def handle_data(self, msg, apply: Callable, ack: Callable):
         with self.lock:
+            if msg.client_id in self._aborted:
+                ack()
+                return
             if self._dedup.is_duplicate(msg.producer_id, msg.seq):
                 maybe_crash("after_dup_before_ack")
                 ack()
@@ -96,6 +111,7 @@ class Checkpointer:
                     "extra": {
                         k: p.snapshot_state() for k, p in self._extra_state.items()
                     },
+                    "aborted": [str(c) for c in self._aborted],
                 }
             )
             self._dirty = False
