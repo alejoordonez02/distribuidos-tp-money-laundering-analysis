@@ -76,6 +76,10 @@ class UC3BankIdMergeFn(MergeFn):
         if not emitted:
             yield MergedTransactions(client_id, [], averages)
 
+    def discard(self, client_id: UUID):
+        self._averages.pop(client_id, None)
+        self._spill.clear(client_id)
+
     def snapshot_state(self) -> dict[str, Any]:
         return {
             "averages": {str(c): v for c, v in self._averages.items()},

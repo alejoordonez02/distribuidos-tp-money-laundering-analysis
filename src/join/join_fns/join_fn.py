@@ -26,3 +26,8 @@ class JoinFn:
         ``last=True``). Default = one chunk; UCs that can produce huge results
         (UC1, UC3) override this to chunk under RabbitMQ's max_message_size."""
         yield self.get_response(client_id)
+
+    @abstractmethod
+    def discard(self, client_id: UUID):
+        """Drop a client's accumulated state without producing a result (on abort)."""
+        ...

@@ -1,4 +1,5 @@
-from socket import SHUT_RDWR, socket
+import struct
+from socket import SHUT_RDWR, SOL_SOCKET, SO_SNDTIMEO, socket
 
 # TODO: mepa que vamos a tener q partir los msjs q mandamos entre
 #       controladores en el server... bajar esto cuando eso esté.
@@ -14,9 +15,13 @@ class Connection:
     A socket wrapper for sending/receiveing *single* messages.
     """
 
-    def __init__(self, skt: socket):
+    def __init__(self, skt: socket, send_timeout: "int | None" = None):
         self._keep_running = True
         self.skt = skt
+        if send_timeout:
+            # SO_SNDTIMEO makes sendall raise instead of blocking forever on a dead
+            # peer; only the send side is bounded (recv stays blocking).
+            self.skt.setsockopt(SOL_SOCKET, SO_SNDTIMEO, struct.pack("ll", send_timeout, 0))
 
     def send(self, bytes2: bytes):
         """

@@ -89,6 +89,10 @@ class UC4CountPaths(AggregateFn):
         self._spill.clear(client_id)
         self._paths.pop(client_id, None)
 
+    def discard(self, client_id: UUID):
+        self._spill.clear(client_id)
+        self._paths.pop(client_id, None)
+
     def snapshot_state(self) -> dict[str, Any]:
         # Force the in-memory partials to disk, then the checkpoint only records
         # each shard's committed length (keeps the checkpoint small).

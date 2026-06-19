@@ -6,10 +6,10 @@ COMPOSE := docker compose -f $(COMPOSE_FILE)
 RABBIT_CONTAINER := rabbitmq
 SCRIPTS_DIR := scripts
 
-.PHONY: help gen_input_output gen_compose up stop_server down logs test test_ft report demo supervisor chaos chaos_stop
+.PHONY: help gen_input_output gen_compose up stop_server down logs test test_ft test_ft_client report demo supervisor chaos chaos_stop
 
 help:
-	@echo '* opciones: help (esto) - gen_input_output - gen_compose - up - stop_server - down - logs - test - test_ft - supervisor - chaos - chaos_stop - report - demo'
+	@echo '* opciones: help (esto) - gen_input_output - gen_compose - up - stop_server - down - logs - test - test_ft - test_ft_client - report - demo - supervisor - chaos - chaos_stop'
 	@echo '* los datasets a usar se configuran en `scripts/cfg.py`, hay que tenerlos bajados en `datasets/`'
 	@echo '* para los targets que se corren en python se usa `uv`. Hay que tenerlo instalado'
 
@@ -45,6 +45,14 @@ test:
 test_ft:
 	mkdir -p responses tmp/ft_run
 	PYTHONPATH=src uv run $(SCRIPTS_DIR)/ft_e2e.py
+
+# convenience shortcut: the SAME ft e2e, filtered to just the client-crash points
+# (drop a client mid-stream, verify the pipeline purges its partial data and a fresh
+# client still gets a correct result). Plain `make test_ft` already covers these too.
+test_ft_client:
+	mkdir -p responses tmp/ft_run
+	FT_ONLY_POINTS=client_mid_transactions,client_mid_accounts,client_after_eof \
+		PYTHONPATH=src uv run $(SCRIPTS_DIR)/ft_e2e.py
 
 # attach to the supervisor's live dashboard (detach with Ctrl-P Ctrl-Q)
 supervisor:

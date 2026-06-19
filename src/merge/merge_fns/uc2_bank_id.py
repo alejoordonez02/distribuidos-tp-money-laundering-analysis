@@ -47,6 +47,10 @@ class UC2BankIdMergeFn(MergeFn):
         logging.debug("merged:\n%s", merged.__dict__)
         yield merged
 
+    def discard(self, client_id: UUID):
+        self._max_amounts.pop(client_id, None)
+        self._bank_names.pop(client_id, None)
+
     def snapshot_state(self) -> dict[str, Any]:
         return {
             "max": {str(c): mbb.data for c, mbb in self._max_amounts.items()},

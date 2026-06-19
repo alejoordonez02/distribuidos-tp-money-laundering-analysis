@@ -25,3 +25,6 @@ class DummyJoin(JoinFn):
         response = Response(client_id, body)
 
         return response
+
+    def discard(self, client_id: UUID):
+        self.client_transactions.pop(client_id, None)

@@ -23,6 +23,11 @@ class MergeFn:
         raise NotImplementedError("this merge fn is not checkpointable")
 
     @abstractmethod
+    def discard(self, client_id: UUID):
+        """Drop a client's accumulated state without producing a result (on abort)."""
+        ...
+
+    @abstractmethod
     def get_result(self, client_id: UUID) -> Iterable[Message]:
         """Yield one or more result messages.
 
