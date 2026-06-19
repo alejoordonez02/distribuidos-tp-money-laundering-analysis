@@ -31,10 +31,20 @@ def test_eof_before_all_received_does_not_complete():
     rc = RingCompletion(node_id=0, peer_ids=[])
     rc.on_data(C)
     assert rc.on_upstream_eof(C, expected=5) == []  # only 1 of 5 received
-    for _ in range(4):
-        rc.on_data(C)
-    # the controller re-checks after more data; emulate by re-sending eof state
-    assert rc.on_upstream_eof(C, expected=5) == [Emit(C)]
+
+
+def test_data_after_eof_completes_when_expected_reached():
+    # The upstream EOF (which carries `expected`) can arrive before the last data
+    # when a multi-peer upstream feeds one shard. on_data must re-check completion,
+    # so the message that finally reaches `expected` is data, not the EOF.
+    rc = RingCompletion(node_id=0, peer_ids=[])
+    rc.on_data(C)
+    assert rc.on_upstream_eof(C, expected=3) == []  # only 1 of 3 received
+    assert rc.on_data(C) == []  # 2 of 3
+    assert rc.on_data(C) == [Emit(C)]  # 3rd data reaches expected -> emit
+    # idempotent once emitted: late duplicate data must not re-emit
+    rc.report_sent(C, {0: 1})
+    assert rc.on_data(C) == []
 
 
 def test_three_nodes_barrier_sums_per_shard_then_leader_closes():
