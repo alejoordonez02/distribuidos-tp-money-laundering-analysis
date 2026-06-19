@@ -1,10 +1,13 @@
+import os
 from enum import StrEnum
 
 from .container_type import ContainerType
 from .runtime import restart_line
 from .supervisor_env import supervisor_env
 
-CHECKPOINT_EVERY = 1000
+# Overridable from the environment so the FT-vs-performance benchmark can sweep it
+# without rewriting this file. Defaults to the production value when unset.
+CHECKPOINT_EVERY = int(os.getenv("CHECKPOINT_EVERY", "1000"))
 
 
 def gen_nodes(

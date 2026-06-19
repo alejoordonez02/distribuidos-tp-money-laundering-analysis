@@ -17,6 +17,9 @@ CLIENT_POINTS run a two-phase combo (crash a client mid-stream -> the gateway pu
 its partial data via Abort and the cluster drains -> a fresh client must still match
 the oracle). They run alongside the node combos on the same warm cluster.
 
+Generic cluster-driving helpers (run/out, bring-up, probes, drain, verify) are shared
+with the scalability and performance benchmarks via scripts/ft_common.py.
+
 Topology and replica counts are read from the generated docker-compose.yaml. Dataset
 comes from scripts/cfg.py.
 
@@ -33,12 +36,25 @@ Env knobs:
 
 import os
 import shutil
-import subprocess
 import sys
 import time
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-COMPOSE = "docker-compose.yaml"
+from ft_common import (
+    COMPOSE,
+    ROOT,
+    clean_all_state,
+    clear_responses,
+    client_exit_codes,
+    clients_running,
+    compose_up_cluster,
+    discover_controllers,
+    node_running,
+    queue_total,
+    run,
+    verify,
+    wait_drain,
+)
+
 FAULT = "tmp/ft_run/ft_e2e_fault.yaml"
 
 # Points that crash during normal processing (fire within a single fresh run).
@@ -61,79 +77,24 @@ ALL_POINTS = SELF_POINTS + KILL_POINTS
 
 # Client-crash points (injected in client.py); handled by run_client_crash, not run_combo.
 CLIENT_POINTS = [
-    "client_mid_transactions",  # die while sending transactions (before any EOF)
-    "client_mid_accounts",      # die while sending accounts (transactions EOF already sent)
-    "client_after_eof",         # die after both EOFs, while waiting for responses (case 2)
+    "client_mid_transactions",
+    "client_mid_accounts",
+    "client_after_eof",
 ]
 
-# Per-client hard cap. The real stall detector is progress-based (a run still
-# draining queues is slow, not deadlocked), and is paused while the target node is
-# down (a frozen queue is then expected, not a deadlock).
 TIMEOUT = int(os.getenv("FT_TIMEOUT", "300"))
 STALL_GRACE = int(os.getenv("FT_STALL_GRACE", "90"))
 PROGRESS_INTERVAL = int(os.getenv("FT_PROGRESS_INTERVAL", "5"))
-# After a client finishes, wait for every queue to drain before the next client, so
-# no leftover EOF/ring message bleeds across clients.
 DRAIN_TIMEOUT = int(os.getenv("FT_DRAIN_TIMEOUT", "120"))
-# retry a stalled combo once (cheap now: re-arm + one client, no full rebuild).
 STALL_RETRY = os.getenv("FT_STALL_RETRY", "1") == "1"
 KILL_DELAY = int(os.getenv("FT_KILL_DELAY", "8"))
-# `docker kill` is treated by the daemon as a manual stop, so `restart: on-failure`
-# does NOT bring the container back (unlike a real process crash / OOM kill). To
-# simulate the orchestrator restarting a hard-crashed node we `docker start` it after
-# the kill; the recovery-path crash point then fires during restore.
 KILL_RESTART_GRACE = int(os.getenv("FT_KILL_RESTART_GRACE", "2"))
 ALL_REPLICAS = os.getenv("FT_ALL_REPLICAS") == "1"
 SKIP_GEN = os.getenv("FT_SKIP_GEN") == "1"
 ORACLE_MEM_MAX = os.getenv("FT_ORACLE_MEM", "5G")
-# One-time warmup for the whole topology to connect + bind before the first client.
 STARTUP_GRACE = int(os.getenv("FT_STARTUP_GRACE", "20"))
-# Let a freshly recreated target node reconnect + re-declare its queues before the
-# client starts publishing (messages queue durably meanwhile, so nothing is lost).
 NODE_READY_GRACE = int(os.getenv("FT_NODE_READY_GRACE", "3"))
 CLIENT = os.getenv("FT_CLIENT", "client_0")
-
-
-def run(cmd, check=False, capture=False, timeout=None):
-    try:
-        return subprocess.run(
-            cmd, shell=True, cwd=ROOT, check=check,
-            stdout=subprocess.PIPE if capture else None,
-            stderr=subprocess.STDOUT if capture else None,
-            text=True, timeout=timeout,
-        )
-    except subprocess.TimeoutExpired:
-        return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="")
-
-
-def out(cmd):
-    return run(cmd, capture=True).stdout.strip()
-
-
-def discover_controllers():
-    """Read the compose and return [(type, [replica names], count)] for every
-    controller (everything except rabbitmq, the gateway and the clients)."""
-    services = out(f"docker compose -f {COMPOSE} config --services").splitlines()
-    services = [s.strip() for s in services if s.strip()]
-    groups: dict[str, list[str]] = {}
-    for name in sorted(services):
-        if name == "rabbitmq" or name == "gateway" or name.startswith("client"):
-            continue
-        type_ = name
-        if "_" in name and name.rsplit("_", 1)[1].isdigit():
-            type_ = name.rsplit("_", 1)[0]  # strip the _<n> replica suffix
-        groups.setdefault(type_, []).append(name)
-    return [(t, sorted(names, key=_idx), len(names)) for t, names in sorted(groups.items())]
-
-
-def _idx(name):
-    tail = name.rsplit("_", 1)[1] if "_" in name else ""
-    return int(tail) if tail.isdigit() else -1
-
-
-def non_client_services():
-    services = out(f"docker compose -f {COMPOSE} config --services").splitlines()
-    return [s.strip() for s in services if s.strip() and not s.strip().startswith("client")]
 
 
 def write_fault(node, point):
@@ -146,21 +107,6 @@ def write_fault(node, point):
             "      - FAULT_INJECTION=1\n"
             f"      - FAULT_CRASH_POINT={point}\n"
         )
-
-
-def clean_all_state():
-    """Wipe every node's persisted state (root-owned, written in-container) so the
-    cluster starts from zero — otherwise stale checkpoints from a previous run are
-    restored on bring-up and pollute the first client."""
-    run(f'docker run --rm -v "{os.path.join(ROOT, "state")}:/state" alpine '
-        "find /state -mindepth 1 -delete", capture=True)
-
-
-def compose_up_cluster():
-    """Bring up rabbitmq + gateway + every controller once, without any client and
-    without any fault override (the cluster starts clean)."""
-    svcs = " ".join(non_client_services())
-    run(f"docker compose -f {COMPOSE} up -d --remove-orphans {svcs}", capture=True)
 
 
 def recreate_node(node):
@@ -204,34 +150,6 @@ def clear_fault_sentinel(node):
         capture=True)
 
 
-def clear_responses():
-    resp = os.path.join(ROOT, "responses")
-    if os.path.isdir(resp):
-        for f in os.listdir(resp):
-            if f.endswith(".csv"):
-                os.remove(os.path.join(resp, f))
-
-
-def node_running(node):
-    return out(f'docker inspect -f "{{{{.State.Running}}}}" {node}') == "true"
-
-
-def clients_running():
-    return bool(out('docker ps --filter "name=client_" --filter "status=running" -q'))
-
-
-def queue_total():
-    """Best-effort in-flight message total across all queues — a cheap progress
-    proxy. Returns None when the broker is too busy to answer (don't penalize that;
-    a missing reading is treated as 'no change', never as a stall by itself)."""
-    r = run(
-        "docker exec rabbitmq rabbitmqctl list_queues messages --quiet",
-        capture=True, timeout=15,
-    )
-    nums = [int(tok) for tok in r.stdout.split() if tok.isdigit()]
-    return sum(nums) if nums else None
-
-
 def nonempty_queues():
     """Names + depths of queues still holding messages — a stall diagnostic that
     pinpoints WHERE work is stuck (a response queue means the gateway never drained
@@ -244,24 +162,6 @@ def nonempty_queues():
         if len(parts) == 2 and parts[1].isdigit() and int(parts[1]) > 0:
             stuck.append(f"{parts[0]}={parts[1]}")
     return stuck
-
-
-def client_exit_codes():
-    names = out('docker ps -a --filter "name=client_" --format "{{.Names}}"').split()
-    codes = []
-    for n in names:
-        codes.append(out(f'docker inspect -f "{{{{.State.ExitCode}}}}" {n}'))
-    return codes
-
-
-def verify():
-    r = run(
-        "uv run pytest test/test_uc1.py test/test_uc2.py test/test_uc3.py "
-        "test/test_uc4.py test/test_uc5.py -q",
-        capture=True,
-    )
-    tail = r.stdout.strip().splitlines()[-1] if r.stdout.strip() else ""
-    return r.returncode == 0, tail
 
 
 def sentinel_fired(node):
@@ -279,27 +179,16 @@ def wait_for_client(node, start):
         if time.time() - start > TIMEOUT:
             return False
         if not node_running(node):
-            frozen_since = time.time()  # node restarting: freezing is not a deadlock
+            frozen_since = time.time()
             continue
         total = queue_total()
         if total is None:
-            continue  # unreadable broker: neither progress nor stall evidence
+            continue
         if total != last_total:
-            last_total, frozen_since = total, time.time()  # still moving
+            last_total, frozen_since = total, time.time()
         elif time.time() - frozen_since > STALL_GRACE:
-            return False  # frozen with the node up and work left -> logical deadlock
+            return False
     return True
-
-
-def wait_drain():
-    """After a client finishes, wait for every queue to empty so no leftover message
-    bleeds into the next client. Returns False if it never fully drains in time."""
-    deadline = time.time() + DRAIN_TIMEOUT
-    while time.time() < deadline:
-        if queue_total() == 0:
-            return True
-        time.sleep(2)
-    return False
 
 
 def run_combo(node, point):
@@ -332,7 +221,7 @@ def run_combo(node, point):
             ok, tail = verify()
             result, detail = ("PASS" if ok else "FAIL"), tail
 
-    wait_drain()  # settle the cluster before the next client
+    wait_drain(DRAIN_TIMEOUT)
     return {
         "node": node, "point": point, "fired": fired,
         "result": result, "detail": detail, "secs": secs,
@@ -349,22 +238,20 @@ def run_client_crash(node, point):
 
     Phase 2 — a clean client: it gets a fresh gateway-stamped id and must complete and
     match the oracle, proving the crashed client left no garbage in any dedup table."""
-    # phase 1: the crashing client
     clear_responses()
     write_fault(node, point)
     start = time.time()
     recreate_client(with_fault=True)
     crashed_gone = wait_clients_gone()
     codes = client_exit_codes()
-    fired = bool(codes) and codes[-1] not in ("", "0")  # the injected crash exits 1
-    drained = wait_drain()
+    fired = bool(codes) and codes[-1] not in ("", "0")
+    drained = wait_drain(DRAIN_TIMEOUT)
     if not crashed_gone or not drained:
         return {"node": node, "point": point, "fired": fired, "result": "STALL",
                 "detail": f"crashed_gone={crashed_gone} drained={drained} "
                           f"stuck={nonempty_queues()}",
                 "secs": int(time.time() - start)}
 
-    # phase 2: a clean client must complete and match the oracle
     clear_responses()
     recreate_client(with_fault=False)
     if not wait_clients_gone():
@@ -372,7 +259,7 @@ def run_client_crash(node, point):
     elif any(c != "0" for c in client_exit_codes()):
         result, detail = "NO_COMPLETE", f"clean client exit {client_exit_codes()}"
     else:
-        wait_drain()
+        wait_drain(DRAIN_TIMEOUT)
         ok, tail = verify()
         result, detail = ("PASS" if ok else "FAIL"), tail
     return {"node": node, "point": point, "fired": fired,
@@ -390,7 +277,6 @@ def prepare():
         print("[ft] generating expected responses (oracle) once ...", flush=True)
         guard = ""
         if shutil.which("systemd-run"):
-            # cap memory so a heavy dataset OOM-kills the oracle, never the host
             guard = (
                 f"systemd-run --user --scope -p MemoryMax={ORACLE_MEM_MAX} "
                 "-p MemorySwapMax=0 --quiet -- "
@@ -427,8 +313,6 @@ def main():
         for n in chosen:
             targets.append(n)
 
-    # the client is a system participant too: fold it in as a crashable target, gated
-    # by the same only/skip-node filter (match its name or the "client" type alias).
     client_selected = (
         client_points
         and (CLIENT not in skip_nodes and "client" not in skip_nodes)
