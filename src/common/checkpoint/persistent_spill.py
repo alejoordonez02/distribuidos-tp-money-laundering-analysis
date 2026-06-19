@@ -41,6 +41,15 @@ class PersistentSpill:
                 yield from f
             os.unlink(path)
 
+    def clear(self, client_id: UUID):
+        """Drop a client's spilled lines without reading them (used on abort)."""
+        handle = self._handles.pop(client_id, None)
+        if handle is not None:
+            handle.close()
+        path = self._path(client_id)
+        if os.path.exists(path):
+            os.unlink(path)
+
     def iter_chunks_and_clear(
         self, client_id: UUID, batch_lines: int
     ) -> Iterator[str]:

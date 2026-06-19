@@ -6,6 +6,7 @@ from uuid import uuid4
 from common.comms.messages import (
     DEFAULT_PRODUCER,
     EOF,
+    Abort,
     TransactionCount,
     Transactions,
     deserialize_message,
@@ -83,5 +84,17 @@ def test_eof_still_round_trips_with_identity_header():
     assert got.next_expected_count == 3
     assert got.origin == 2
     # EOF is not stamped by producers; it round-trips with a null identity header.
+    assert got.producer_id == DEFAULT_PRODUCER
+    assert got.seq == 0
+
+
+def test_abort_round_trips_with_client_id():
+    cid = uuid4()
+
+    got = deserialize_message(Abort(cid).serialize())
+
+    assert isinstance(got, Abort)
+    assert got.client_id == cid
+    # Abort is a control message; like EOF it carries a null identity header.
     assert got.producer_id == DEFAULT_PRODUCER
     assert got.seq == 0

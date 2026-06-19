@@ -34,6 +34,10 @@ class MergeEofCounts:
         self.left = {UUID(c): n for c, n in snapshot.get("left", {}).items()}
         self.right = {UUID(c): n for c, n in snapshot.get("right", {}).items()}
 
+    def drop(self, client_id: UUID):
+        self.left.pop(client_id, None)
+        self.right.pop(client_id, None)
+
 
 class RingMerge(RingNode):
     """Broadcast-join merge over a ring of N peers, completing per-peer.
@@ -91,7 +95,7 @@ class RingMerge(RingNode):
 
     def _on_left_msg(self, body: bytes, ack: Callable, _nack: Callable):
         msg = deserialize_message(body)
-        dispatch(self.checkpointer, msg, ack, self._on_left_eof, self._on_left_data)
+        dispatch(self.checkpointer, msg, ack, self._on_left_eof, self._on_left_data, self._on_abort)
 
     def _on_left_data(self, msg: Message):
         self.fn.left(msg)  # type: ignore[arg-type]
@@ -103,11 +107,15 @@ class RingMerge(RingNode):
 
     def _on_right_msg(self, body: bytes, ack: Callable, _nack: Callable):
         msg = deserialize_message(body)
-        dispatch(self.checkpointer, msg, ack, self._on_right_eof, self._on_right_data)
+        dispatch(self.checkpointer, msg, ack, self._on_right_eof, self._on_right_data, self._on_abort)
 
     def _on_right_data(self, msg: Message):
         self.fn.right(msg)  # type: ignore[arg-type]
         self._run(self.rc.on_data(msg.client_id))
+
+    def _discard(self, client_id):
+        self.fn.discard(client_id)
+        self.counts.drop(client_id)
 
     def _on_right_eof(self, eof: Message):
         self.counts.right[eof.client_id] = eof.expected_count  # type: ignore[attr-defined]

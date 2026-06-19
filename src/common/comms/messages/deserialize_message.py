@@ -1,3 +1,4 @@
+from .abort import Abort
 from .accounts import Accounts
 from .avg_by_format import AvgByFormat
 from .bank_names import BankNames
@@ -88,5 +89,7 @@ def deserialize_message(bytes2: bytes) -> Message:
             return RingSentData.deserialize(bytes2)
         case MessageType.RING_BARRIER:
             return RingBarrier.deserialize(bytes2)
+        case MessageType.ABORT:
+            return Abort.deserialize(bytes2)
         case _:
             raise UnknownMessageError(f"unknown message type {bytes2[0]}")

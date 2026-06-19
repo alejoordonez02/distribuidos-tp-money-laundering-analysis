@@ -64,6 +64,11 @@ class UC4PruneMergeFn(MergeFn):
         if batch:
             yield Graph(client_id, batch)
 
+    def discard(self, client_id: UUID):
+        self._hi_out.pop(client_id, None)
+        self._hi_in.pop(client_id, None)
+        self._spill.clear(client_id)
+
     def snapshot_state(self) -> dict[str, Any]:
         return {
             "hi_out": {str(c): [str(n) for n in s] for c, s in self._hi_out.items()},

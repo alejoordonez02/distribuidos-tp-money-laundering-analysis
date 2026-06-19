@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from uuid import UUID, uuid4
 
 from common.checkpoint.checkpoint_store import CheckpointStore
 from common.checkpoint.checkpointer import Checkpointer
@@ -11,6 +12,7 @@ P1 = b"\x01" * 16
 class FakeMsg:
     producer_id: bytes
     seq: int
+    client_id: UUID = UUID(int=0)
 
 
 class FakeFn:
@@ -89,6 +91,32 @@ def test_restore_rebuilds_state_and_dedup(tmp_path):
 def test_restore_returns_false_when_no_checkpoint(tmp_path):
     _, _, cp = _make(tmp_path, every=1)
     assert cp.restore() is False
+
+
+def test_aborted_client_data_is_dropped_and_acked(tmp_path):
+    fn, _, cp = _make(tmp_path, every=10)
+    cid = uuid4()
+    cp.mark_aborted(cid)
+    acked = {"v": False}
+
+    cp.handle_data(
+        FakeMsg(P1, 1, cid), lambda: fn.applied.append(1), lambda: acked.update(v=True)
+    )
+
+    assert cp.is_aborted(cid)
+    assert fn.applied == []     # aborted client's data is not applied
+    assert acked["v"] is True   # but still acked so it leaves the queue
+
+
+def test_aborted_set_is_checkpointed_and_restored(tmp_path):
+    fn, store, cp = _make(tmp_path, every=10)
+    cid = uuid4()
+    cp.mark_aborted(cid)
+    cp.flush()
+
+    cp2 = Checkpointer(FakeFn(), store, Deduplicator(), 10)
+    assert cp2.restore() is True
+    assert cp2.is_aborted(cid)
 
 
 class FakeSeqSource:

@@ -32,6 +32,9 @@ class UC3AvgAggregateFn(AggregateFn):
             format_average = AvgByFormat(client_id, {format2: average})
             yield format_average, hash(format2)
 
+    def discard(self, client_id: UUID):
+        self.sum_counts.pop(client_id, None)
+
     def snapshot_state(self) -> dict[str, Any]:
         return {
             str(cid): list(sc.sum_counts.items())

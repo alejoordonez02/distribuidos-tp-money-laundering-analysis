@@ -30,3 +30,6 @@ class UC5Join(JoinFn):
         response = Response(client_id, body)
 
         return response
+
+    def discard(self, client_id: UUID):
+        self._state.pop(client_id, None)

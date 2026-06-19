@@ -41,6 +41,9 @@ class UC2BankNamesAggregateFn(AggregateFn):
             bank_id_name = BankNames(client_id, {bank_id: bank_name})
             yield bank_id_name, hash(bank_id)
 
+    def discard(self, client_id: UUID):
+        self._state.pop(client_id, None)
+
     def snapshot_state(self) -> dict[str, Any]:
         return {str(cid): bn.data for cid, bn in self._state.items()}
 
