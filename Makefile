@@ -6,7 +6,7 @@ COMPOSE := docker compose -f $(COMPOSE_FILE)
 RABBIT_CONTAINER := rabbitmq
 SCRIPTS_DIR := scripts
 
-.PHONY: help gen_input_output gen_compose up stop_server down logs test test_ft test_ft_client scalability_test report demo supervisor chaos chaos_stop
+.PHONY: help gen_input_output gen_compose up stop_server down logs test test_ft test_ft_client scalability_test performance_vs_ft perf_plots report demo supervisor chaos chaos_stop
 
 help:
 	@echo '* opciones: help (esto) - gen_input_output - gen_compose - up - stop_server - down - logs - test - test_ft - test_ft_client - report - demo - supervisor - chaos - chaos_stop'
@@ -58,6 +58,16 @@ test_ft_client:
 	mkdir -p responses tmp/ft_run
 	FT_ONLY_POINTS=client_mid_transactions,client_mid_accounts,client_after_eof \
 		PYTHONPATH=src uv run $(SCRIPTS_DIR)/ft_e2e.py
+
+# fault-tolerance vs performance benchmark: proportional chaos + checkpoint sweeps on
+# the min2 topology; dumps tmp/ft_perf/results.csv and regenerates the report figures.
+performance_vs_ft:
+	mkdir -p responses tmp/ft_perf
+	PYTHONPATH=src uv run $(SCRIPTS_DIR)/ft_perf_bench.py
+
+# re-render the report figures from an existing results.csv (no cluster)
+perf_plots:
+	uv run --with matplotlib --with numpy $(SCRIPTS_DIR)/plot_ft_perf.py
 
 # attach to the supervisor's live dashboard (detach with Ctrl-P Ctrl-Q)
 supervisor:

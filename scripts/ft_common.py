@@ -152,10 +152,10 @@ TIERS = {
 }
 
 TIER_CAP = {
-    "perfect": int(os.getenv("FT_CAP_PERFECT", "900")),
-    "small": int(os.getenv("FT_CAP_SMALL", "1800")),
-    "medium": int(os.getenv("FT_CAP_MEDIUM", "3600")),
-    "large": int(os.getenv("FT_CAP_LARGE", "5400")),
+    "perfect": int(os.getenv("FT_CAP_PERFECT", "300")),
+    "small": int(os.getenv("FT_CAP_SMALL", "900")),
+    "medium": int(os.getenv("FT_CAP_MEDIUM", "1800")),
+    "large": int(os.getenv("FT_CAP_LARGE", "4500")),
 }
 
 TOPOLOGY_KEYS = [

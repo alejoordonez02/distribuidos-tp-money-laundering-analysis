@@ -134,16 +134,6 @@ def parse_recovery_metrics(chaos_log, supervisor_log):
     return {"n_kills": n_kills, "n_revives": n_revives, "mean_recovery_s": mean_recovery}
 
 
-def pick_winner(rows):
-    """Fastest topology that validated 5/5, among F1 rows."""
-    ok = [r for r in rows if r.get("phase") == "F1"
-          and str(r.get("validated_5_5")) == "True"
-          and str(r.get("completed")) == "True"]
-    if not ok:
-        return None
-    return min(ok, key=lambda r: float(r["total_s"]))["topology"]
-
-
 def arm_chaos(enabled, interval, kills):
     env = (
         f"CHAOS_ENABLED={1 if enabled else 0} "
@@ -333,61 +323,55 @@ def _ints(env, default):
 
 
 CHECKPOINTS = _ints("FT_PERF_CHECKPOINTS", "10,50,200,1000,4000")
-INTERVALS = _ints("FT_PERF_INTERVALS", "30,15,8,4,2")
+SPEED_WAVES = _ints("FT_PERF_SPEED_WAVES", "3,6,12,24")
 KILLS = _ints("FT_PERF_KILLS", "1,2,4,8")
-FIXED_KILLS = int(os.getenv("FT_PERF_FIXED_KILLS", "1"))
-FIXED_INTERVAL = int(os.getenv("FT_PERF_FIXED_INTERVAL", "8"))
+MAG_WAVES = int(os.getenv("FT_PERF_MAG_WAVES", "6"))
 CHAOS_CHECKPOINT = int(os.getenv("FT_PERF_CHAOS_CHECKPOINT", "200"))
+TOPOLOGY = os.getenv("FT_PERF_TOPOLOGY", "min2")
 
-F1_TOPOLOGIES = [t.strip() for t in
-                 os.getenv("FT_PERF_F1_TOPOS", "current,min2,bottleneck3").split(",") if t.strip()]
+BASE_SECS = {
+    "small": int(os.getenv("FT_BASE_SMALL", "110")),
+    "medium": int(os.getenv("FT_BASE_MEDIUM", "445")),
+    "large": int(os.getenv("FT_BASE_LARGE", "1440")),
+}
 
 
-def phase_F0():
-    log("=== F0 sanity (perfect) ===")
-    measure("F0", "perfect", "current", 1000, False, 0, 0, do_build=True)
-    measure("F0", "perfect", "current", 1000, True, FIXED_INTERVAL, FIXED_KILLS, new_cluster=False)
+def _interval(tier, waves):
+    return max(2, round(BASE_SECS[tier] / waves))
+
+
+def _chaos_sweeps(phase, tier, checkpoint, speed_waves, kills_list, do_build=False):
+    measure(phase, tier, TOPOLOGY, checkpoint, False, 0, 0, do_build=do_build)
+    for w in speed_waves:
+        measure(phase, tier, TOPOLOGY, checkpoint, True, _interval(tier, w), 1, new_cluster=False)
+    mag_interval = _interval(tier, MAG_WAVES)
+    for k in kills_list:
+        measure(phase, tier, TOPOLOGY, checkpoint, True, mag_interval, k, new_cluster=False)
 
 
 def phase_F1():
-    log("=== F1 topology selection (medium, no chaos) ===")
-    for topo in F1_TOPOLOGIES:
-        measure("F1", "medium", topo, 1000, False, 0, 0)
-    winner = pick_winner(load_rows()) or "current"
-    log(f"F1 winner topology: {winner}")
-    return winner
+    log(f"=== F1 chaos sweeps (small, topo={TOPOLOGY}) ===")
+    _chaos_sweeps("F1", "small", CHAOS_CHECKPOINT, SPEED_WAVES, KILLS, do_build=True)
 
 
-def phase_F2(topo):
-    log(f"=== F2 checkpoint dual-curve (medium, topo={topo}) ===")
+def phase_F2():
+    log(f"=== F2 chaos sweeps (medium, topo={TOPOLOGY}) ===")
+    _chaos_sweeps("F2", "medium", CHAOS_CHECKPOINT, SPEED_WAVES, KILLS)
+
+
+def phase_F3():
+    log(f"=== F3 checkpoint dual-curve (medium, topo={TOPOLOGY}) ===")
+    chaos_interval = _interval("medium", MAG_WAVES)
     for ck in CHECKPOINTS:
-        measure("F2", "medium", topo, ck, False, 0, 0)
-        measure("F2", "medium", topo, ck, True, FIXED_INTERVAL, FIXED_KILLS, new_cluster=False)
+        measure("F3", "medium", TOPOLOGY, ck, False, 0, 0)
+        measure("F3", "medium", TOPOLOGY, ck, True, chaos_interval, 1, new_cluster=False)
 
 
-def _chaos_sweeps(phase, tier, topo, checkpoint, intervals, kills_list, reduced=False):
-    measure(phase, tier, topo, checkpoint, False, 0, 0)
-    for iv in intervals:
-        measure(phase, tier, topo, checkpoint, True, iv, FIXED_KILLS, new_cluster=False)
-    for k in kills_list:
-        measure(phase, tier, topo, checkpoint, True, FIXED_INTERVAL, k, new_cluster=False)
-
-
-def phase_F3(topo):
-    log(f"=== F3 chaos sweeps (medium full, topo={topo}) ===")
-    _chaos_sweeps("F3", "medium", topo, CHAOS_CHECKPOINT, INTERVALS, KILLS)
-
-
-def phase_F4(topo):
-    log(f"=== F4 chaos sweeps (small full, topo={topo}) ===")
-    _chaos_sweeps("F4", "small", topo, CHAOS_CHECKPOINT, INTERVALS, KILLS)
-
-
-def phase_F5(topo):
-    log(f"=== F5 chaos sweeps (large reduced, topo={topo}) ===")
-    red_intervals = _ints("FT_PERF_LARGE_INTERVALS", "15,5")
+def phase_F4():
+    log(f"=== F4 chaos sweeps (large reduced, topo={TOPOLOGY}) ===")
+    red_speed = _ints("FT_PERF_LARGE_SPEED_WAVES", "6,12")
     red_kills = _ints("FT_PERF_LARGE_KILLS", "2,6")
-    _chaos_sweeps("F5", "large", topo, CHAOS_CHECKPOINT, red_intervals, red_kills, reduced=True)
+    _chaos_sweeps("F4", "large", CHAOS_CHECKPOINT, red_speed, red_kills)
 
 
 def maybe_plot():
@@ -399,24 +383,18 @@ def maybe_plot():
 def main():
     os.makedirs(RESULTS_DIR, exist_ok=True)
     snapshot_files()
-    phases = os.getenv("FT_PERF_PHASES", "F0,F1,F2,F3,F4,F5").split(",")
+    phases = os.getenv("FT_PERF_PHASES", "F1,F2,F3,F4").split(",")
     phases = [p.strip() for p in phases if p.strip()]
-    log(f"benchmark start — phases: {phases}")
-
-    winner = pick_winner(load_rows()) or "current"
+    log(f"benchmark start — topology: {TOPOLOGY} — phases: {phases}")
     try:
-        if "F0" in phases:
-            phase_F0()
         if "F1" in phases:
-            winner = phase_F1()
+            phase_F1()
         if "F2" in phases:
-            phase_F2(winner)
+            phase_F2()
         if "F3" in phases:
-            phase_F3(winner)
+            phase_F3()
         if "F4" in phases:
-            phase_F4(winner)
-        if "F5" in phases:
-            phase_F5(winner)
+            phase_F4()
     finally:
         teardown()
         restore_files()
