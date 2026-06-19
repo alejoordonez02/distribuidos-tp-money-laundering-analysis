@@ -6,7 +6,7 @@ COMPOSE := docker compose -f $(COMPOSE_FILE)
 RABBIT_CONTAINER := rabbitmq
 SCRIPTS_DIR := scripts
 
-.PHONY: help gen_input_output gen_compose up stop_server down logs test test_ft test_ft_client report demo supervisor chaos chaos_stop
+.PHONY: help gen_input_output gen_compose up stop_server down logs test test_ft test_ft_client scalability_test report demo supervisor chaos chaos_stop
 
 help:
 	@echo '* opciones: help (esto) - gen_input_output - gen_compose - up - stop_server - down - logs - test - test_ft - test_ft_client - report - demo - supervisor - chaos - chaos_stop'
@@ -46,6 +46,11 @@ test_ft:
 	mkdir -p responses tmp/ft_run
 	PYTHONPATH=src uv run $(SCRIPTS_DIR)/ft_e2e.py
 
+# scalability e2e: run several ring topologies against each dataset tier, verify each
+# still matches the oracle. Select with SCALE_TOPOS / SCALE_TIERS / SCALE_REPEAT.
+scalability_test:
+	mkdir -p responses tmp/scalability
+	PYTHONPATH=src uv run $(SCRIPTS_DIR)/scalability_e2e.py
 # convenience shortcut: the SAME ft e2e, filtered to just the client-crash points
 # (drop a client mid-stream, verify the pipeline purges its partial data and a fresh
 # client still gets a correct result). Plain `make test_ft` already covers these too.
