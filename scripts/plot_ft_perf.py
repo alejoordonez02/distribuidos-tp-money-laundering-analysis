@@ -78,25 +78,31 @@ def baseline_for(rows, tier):
     return min(_f(r["total_s"]) for r in base) / 60.0  # minutes
 
 
+def mag_interval_for(rows, tier):
+    big = [r for r in rows if r["tier"] == tier and str(r.get("chaos_enabled")) == "True"
+           and _f(r.get("kills_per_wave")) and _f(r["kills_per_wave"]) > 1]
+    return _f(big[0]["chaos_interval"]) if big else None
+
+
 def plot_interval(rows, tier):
-    """Total time vs kill SPEED (waves/min), fixed kills/wave."""
+    """Total time vs kill SPEED (waves over the run), 1 node per wave."""
+    base = baseline_for(rows, tier)
     pts = [r for r in rows if r["tier"] == tier and str(r.get("chaos_enabled")) == "True"
            and _f(r.get("kills_per_wave")) == 1 and _f(r.get("chaos_interval"))]
-    if not pts:
+    if not pts or base is None:
         return
-    pts = sorted(pts, key=lambda r: 60.0 / _f(r["chaos_interval"]))
-    x = [60.0 / _f(r["chaos_interval"]) for r in pts]
+    base_secs = base * 60.0
+    pts = sorted(pts, key=lambda r: base_secs / _f(r["chaos_interval"]))
+    x = [base_secs / _f(r["chaos_interval"]) for r in pts]
     y = [_f(r["total_s"]) / 60.0 for r in pts]
-    base = baseline_for(rows, tier)
 
     fig, ax = plt.subplots(figsize=(7.2, 4.6))
     ax.plot(x, y, "o-", color=TIER_COLOR[tier], label="con chaos (1 nodo/oleada)")
-    if base is not None:
-        ax.axhline(base, ls="--", color="#555", lw=1.6, label=f"sin chaos (base = {base:.1f} min)")
-        for xi, yi in zip(x, y):
-            ax.annotate(f"+{(yi/base-1)*100:.0f}%", (xi, yi), textcoords="offset points",
-                        xytext=(0, 9), ha="center", fontsize=9, color="#333")
-    ax.set_xlabel("Velocidad de las oleadas (oleadas por minuto)")
+    ax.axhline(base, ls="--", color="#555", lw=1.6, label=f"sin chaos (base = {base:.1f} min)")
+    for xi, yi in zip(x, y):
+        ax.annotate(f"+{(yi/base-1)*100:.0f}%", (xi, yi), textcoords="offset points",
+                    xytext=(0, 9), ha="center", fontsize=9, color="#333")
+    ax.set_xlabel("Velocidad del chaos (oleadas durante el run)")
     ax.set_ylabel("Tiempo total (min)")
     ax.set_title(f"{TIER_LABEL[tier]}: degradación según la VELOCIDAD del chaos")
     ax.set_ylim(bottom=0)
@@ -105,9 +111,12 @@ def plot_interval(rows, tier):
 
 
 def plot_kills(rows, tier):
-    """Total time vs kills/wave (magnitude), fixed wave interval."""
+    """Total time vs kills/wave (magnitude), at the tier's proportional wave interval."""
+    mi = mag_interval_for(rows, tier)
+    if mi is None:
+        return
     pts = [r for r in rows if r["tier"] == tier and str(r.get("chaos_enabled")) == "True"
-           and _f(r.get("chaos_interval")) == 8 and _f(r.get("kills_per_wave"))]
+           and _f(r.get("chaos_interval")) == mi and _f(r.get("kills_per_wave"))]
     if not pts:
         return
     pts = sorted(pts, key=lambda r: _f(r["kills_per_wave"]))
@@ -116,7 +125,7 @@ def plot_kills(rows, tier):
     base = baseline_for(rows, tier)
 
     fig, ax = plt.subplots(figsize=(7.2, 4.6))
-    ax.plot(x, y, "s-", color=TIER_COLOR[tier], label="con chaos (oleada cada 8 s)")
+    ax.plot(x, y, "s-", color=TIER_COLOR[tier], label=f"con chaos (oleada cada {int(mi)} s)")
     if base is not None:
         ax.axhline(base, ls="--", color="#555", lw=1.6, label=f"sin chaos (base = {base:.1f} min)")
         for xi, yi in zip(x, y):
@@ -134,7 +143,7 @@ def plot_kills(rows, tier):
 def plot_checkpoint_dualcurve(rows):
     """The crossover: checkpoint_every helps without chaos, hurts under chaos."""
     tier = "medium"
-    f2 = [r for r in rows if r.get("phase") == "F2" and r["tier"] == tier]
+    f2 = [r for r in rows if r.get("phase") == "F3" and r["tier"] == tier]
     if not f2:
         return
     base = sorted({_f(r["checkpoint_every"]) for r in f2})
@@ -152,7 +161,7 @@ def plot_checkpoint_dualcurve(rows):
                 "o-", color="#2a9d8f", label="sin chaos")
     if any(c in ch for c in xs):
         ax.plot([c for c in xs if c in ch], [ch[c] for c in xs if c in ch],
-                "s-", color="#e76f51", label="con chaos (oleada cada 8 s, 1 nodo)")
+                "s-", color="#e76f51", label="con chaos suave (1 nodo)")
     ax.set_xscale("log")
     ax.set_xlabel("checkpoint_every (mensajes entre checkpoints, escala log)")
     ax.set_ylabel("Tiempo total (min)")
@@ -172,8 +181,9 @@ def plot_overhead_summary(rows):
     bases, chaoses, labels = [], [], []
     for t in tiers:
         base = baseline_for(rows, t)
-        rep = [r for r in rows if r["tier"] == t and str(r.get("chaos_enabled")) == "True"
-               and _f(r.get("chaos_interval")) == 8 and _f(r.get("kills_per_wave")) == 1]
+        mi = mag_interval_for(rows, t)
+        rep = [r for r in rows if mi and r["tier"] == t and str(r.get("chaos_enabled")) == "True"
+               and _f(r.get("chaos_interval")) == mi and _f(r.get("kills_per_wave")) == 1]
         if base is None or not rep:
             continue
         bases.append(base)
@@ -187,7 +197,7 @@ def plot_overhead_summary(rows):
     w = 0.38
     fig, ax = plt.subplots(figsize=(7.2, 4.6))
     b1 = ax.bar(x - w / 2, bases, w, label="sin chaos", color="#8ecae6")
-    b2 = ax.bar(x + w / 2, chaoses, w, label="con chaos (8 s, 1 nodo)", color="#fb8500")
+    b2 = ax.bar(x + w / 2, chaoses, w, label="con chaos (1 nodo, oleada proporcional)", color="#fb8500")
     for rect, base, ch in zip(b2, bases, chaoses):
         ax.annotate(f"+{(ch/base-1)*100:.0f}%", (rect.get_x() + rect.get_width() / 2, ch),
                     textcoords="offset points", xytext=(0, 4), ha="center", fontsize=9)

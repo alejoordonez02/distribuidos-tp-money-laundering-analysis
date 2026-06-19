@@ -911,6 +911,67 @@ está desacoplada de la correctitud del pipeline.
 \end{figure}
 
 \newpage
+\subsection{Rendimiento bajo tolerancia a fallos}
+La tolerancia a fallos no es gratis: cada nodo manda latidos, \textit{checkpointea}
+y, ante una caída, reprocesa desde el último \textit{checkpoint}. Para medir ese costo
+se corrió un \textit{benchmark} con la topología escalada a \texttt{min2} (sin nodos
+únicos, de modo que matar una réplica no detiene una etapa) sometida al \textit{chaos
+monkey}. El chaos se parametriza \textbf{proporcional al tiempo base de cada dataset}:
+en vez de un intervalo fijo entre oleadas, el intervalo se deriva como
+$\text{base}/\text{oleadas}$, así small, medium y large reciben el mismo número de
+oleadas y el estrés es comparable entre ellos. Se compara una corrida \textbf{sin chaos}
+(referencia de rendimiento) contra corridas \textbf{con chaos}, barriendo dos ejes: la
+\textbf{velocidad} (cuántas oleadas durante el run, matando un nodo por vez) y la
+\textbf{magnitud} (cuántos nodos por oleada, a intervalo proporcional fijo).
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.7\textwidth]{../diagrams/v2/ft_perf_overhead_summary.png}\\[0.5cm]
+  \caption{Overhead de la tolerancia a fallos: tiempo total sin chaos vs.\ con chaos
+  sostenido (un nodo por oleada), para cada dataset.}
+\end{figure}
+
+\subsubsection{Degradación según la velocidad del chaos}
+A mayor frecuencia de oleadas hay más caídas que recuperar durante el run. La
+degradación crece de forma suave mientras la tasa de recuperación le gana a la de
+muerte; el sistema solo colapsa cuando se mata más rápido de lo que se recupera, un
+límite inevitable (la acumulación de nodos muertos es matemáticamente imparable).
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.6\textwidth]{../diagrams/v2/ft_perf_interval_small.png}\\
+  \includegraphics[width=0.6\textwidth]{../diagrams/v2/ft_perf_interval_medium.png}\\
+  \includegraphics[width=0.6\textwidth]{../diagrams/v2/ft_perf_interval_large.png}\\[0.5cm]
+  \caption{Degradación según la velocidad del chaos, para small, medium y large.}
+\end{figure}
+
+\subsubsection{Degradación según la magnitud del chaos}
+Con \texttt{min2}, derribar varias réplicas por oleada deja igual a cada etapa con al
+menos una réplica viva mientras el supervisor revive a las caídas, así que el costo
+crece de forma controlada con la cantidad de nodos por oleada.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.6\textwidth]{../diagrams/v2/ft_perf_kills_small.png}\\
+  \includegraphics[width=0.6\textwidth]{../diagrams/v2/ft_perf_kills_medium.png}\\
+  \includegraphics[width=0.6\textwidth]{../diagrams/v2/ft_perf_kills_large.png}\\[0.5cm]
+  \caption{Degradación según la magnitud del chaos, para small, medium y large.}
+\end{figure}
+
+\subsubsection{El costo del checkpoint se invierte bajo fallos}
+La frecuencia de \textit{checkpoint} tiene un efecto opuesto según haya fallos o no.
+Sin chaos, \textit{checkpointear} seguido es puro costo de I/O: cuanto más espaciado,
+más rápido. Con chaos, en cambio, un \textit{checkpoint} espaciado implica reprocesar
+más trabajo en cada caída. El óptimo, por lo tanto, se \textbf{invierte}.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.7\textwidth]{../diagrams/v2/ft_perf_checkpoint_dualcurve.png}\\[0.5cm]
+  \caption{El \texttt{checkpoint\_every} óptimo se invierte bajo fallos (medium): más
+  alto es más rápido sin chaos, pero peor bajo chaos.}
+\end{figure}
+
+\newpage
 \section{Testing}
 El sistema se valida con dos tipos de pruebas: de \textbf{correctitud del
 pipeline} (que el resultado final de cada caso de uso sea el correcto) y de
@@ -999,6 +1060,24 @@ supervisión/revival son configurables. Las principales:
 La línea de tiempo de recuperación de un nodo es, así, la suma de tres
 términos: el tiempo hasta perder el primer latido, el \textit{timeout} de
 detección, y la espera hasta la siguiente pasada del reviver.
+
+\subsection{Testing de escalabilidad}
+Más allá de la correctitud con un cliente, se agregó una prueba e2e dedicada
+(\texttt{make scalability\_test}, hermana de \texttt{make test\_ft}) que verifica que
+los anillos de afinidad siguen produciendo el resultado correcto a medida que cada etapa
+se escala de un nodo a un anillo de 2 o 3. Para cada topología (\texttt{current};
+\texttt{min2}, con todas las etapas en $\geq 2$; \texttt{bottleneck3}, que escala el
+camino caliente de UC4; y variantes por etapa) reescribe los tamaños de los anillos,
+levanta el cluster y corre un cliente por cada dataset (perfect / small / medium /
+large), comparando el resultado contra el oráculo cacheado. Como el \textit{deadlock}
+que cubre dependía del \textit{timing}, cada combinación puede repetirse varias veces.
+Ante una falla vuelca las colas trabadas, los códigos de salida de los nodos caídos y
+los \textit{logs} alrededor, y al terminar verifica que el cluster, el estado en disco
+y las colas queden limpios. Esta prueba fue la que detectó —y luego validó el
+\textit{fix} de— un \textit{deadlock} en la barrera de fin de \textit{stream} que se
+disparaba al convertir una etapa en anillo: el EOF del \textit{upstream} podía llegar
+antes que su última data, y como la completitud sólo se chequeaba al recibir el EOF, el
+nodo nunca emitía y la barrera no cerraba.
 
 \newpage
 \section{Desarrollo}
