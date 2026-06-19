@@ -11,7 +11,7 @@ from common.comms.eof_handler.ring_completion import (
     RingCompletion,
 )
 from common.comms.eof_handler.sent_counts import SentCounts
-from common.comms.messages import EOF, Message, RingBarrier, deserialize_message
+from common.comms.messages import Abort, EOF, Message, RingBarrier, deserialize_message
 from common.comms.middleware import MOM, MOMRing, MultiQueueConsumer
 from common.graceful_shutdown import setup_graceful_shutdown
 
@@ -99,10 +99,23 @@ class RingNode:
 
     def _on_data_msg(self, body: bytes, ack: Callable, _nack: Callable):
         msg = deserialize_message(body)
-        dispatch(self.checkpointer, msg, ack, self._on_eof, self._on_data)
+        dispatch(self.checkpointer, msg, ack, self._on_eof, self._on_data, self._on_abort)
 
     def _on_data(self, msg: Message):
         raise NotImplementedError
+
+    def _on_abort(self, abort: Message):
+        client_id = abort.client_id
+        self.rc.drop(client_id)
+        self._discard(client_id)
+        if self.checkpointer:
+            self.checkpointer.mark_aborted(client_id)
+            self.checkpointer.flush(force=True)
+        self._downstream_abort(client_id)
+
+    def _discard(self, client_id):
+        """Release a client's business state on abort. No-op by default (stateless
+        nodes hold none); stateful nodes override to drop their accumulation."""
 
     def _emit(self, client_id):
         raise NotImplementedError
@@ -144,11 +157,15 @@ class RingNode:
             logging.info("downstreaming per-shard eof: %s", eof.__dict__)
             tx.send(eof.serialize())
 
+    def _downstream_abort(self, client_id):
+        for tx in self.external_txs:
+            tx.send(Abort(client_id).serialize())
+
 
 class StatelessRingNode(RingNode):
-    """A stateless ring node (filter / group-by / converter): emits each input as it
-    processes it, so at EOF it has nothing to emit and only reports the per-shard
-    counts it already sent. Subclasses implement `_on_data`."""
+    """A stateless ring node (filter / group-by): emits each input as it processes
+    it, so at EOF it has nothing to emit and only reports the per-shard counts it
+    already sent. Subclasses implement `_on_data`."""
 
     def __init__(self, sent: SentCounts, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -156,3 +173,6 @@ class StatelessRingNode(RingNode):
 
     def _emit(self, client_id):
         self._run(self.rc.report_sent(client_id, self.sent.pop(client_id)))
+
+    def _discard(self, client_id):
+        self.sent.pop(client_id)

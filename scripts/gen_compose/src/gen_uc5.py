@@ -10,7 +10,7 @@ def gen_uc5() -> str:
     compose = "\n# === uc5 ==="
     queue0 = "uc5_converted_transactions"
     compose += gen_nodes(
-        type2=ContainerType.CONVERTER,
+        type2=ContainerType.GROUP_BY,
         strategy=GroupByStrategy.UC5_CONVERTER,
         npeers=topo.UC5_CONVERTERS,
         naffinity_downstream=topo.UC5_AMOUNT_FILTERS,

@@ -44,6 +44,9 @@ class UC2MaxAmountAggregateFn(AggregateFn):
             bank_max = MaxByBank(client_id, {bank_id: (account, max2)})
             yield bank_max, hash(bank_id)
 
+    def discard(self, client_id: UUID):
+        self.client_maxes_by_bank.pop(client_id, None)
+
     def snapshot_state(self) -> dict[str, Any]:
         return {
             str(cid): list(mbb.data.items())

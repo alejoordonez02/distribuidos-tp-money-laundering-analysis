@@ -35,6 +35,11 @@ class _JoinCounts:
         self._expected.pop(client_id, None)
         self._received.pop(client_id, None)
 
+    def drop(self, client_id: UUID):
+        self._received.pop(client_id, None)
+        self._expected.pop(client_id, None)
+        self._finalized.discard(client_id)
+
     def snapshot_state(self) -> dict[str, Any]:
         return {
             "received": {str(c): v for c, v in self._received.items()},
@@ -114,11 +119,19 @@ class JoinRouteHandler:
 
     def _handle_message(self, bytes2: bytes, ack: Callable, nack: Callable):
         msg = deserialize_message(bytes2)
-        dispatch(self._checkpointer, msg, ack, self._on_eof, self._on_data)
+        dispatch(self._checkpointer, msg, ack, self._on_eof, self._on_data, self._on_abort)
 
     def _on_eof(self, msg: Message):
         self._counts.set_expected(msg.client_id, msg.expected_count)  # type: ignore[attr-defined]
         self._maybe_finalize(msg.client_id)
+
+    def _on_abort(self, msg: Message):
+        client_id = msg.client_id
+        self.join_fn.discard(client_id)
+        self._counts.drop(client_id)
+        if self._checkpointer is not None:
+            self._checkpointer.mark_aborted(client_id)
+            self._checkpointer.flush(force=True)
 
     def _on_data(self, msg: Message):
         self.join_fn.join(msg)

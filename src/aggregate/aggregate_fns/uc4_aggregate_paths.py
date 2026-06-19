@@ -66,6 +66,10 @@ class UC4AggregatePaths(AggregateFn):
         self._spill.clear(client_id)
         self._paths.pop(client_id, None)
 
+    def discard(self, client_id: UUID):
+        self._spill.clear(client_id)
+        self._paths.pop(client_id, None)
+
     def snapshot_state(self) -> dict[str, Any]:
         for client_id in list(self._paths.keys()):
             self.downstream(client_id)

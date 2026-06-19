@@ -73,6 +73,11 @@ class UC4Degree(AggregateFn):
 
         yield HighDegree(client_id, hi_out, hi_in), 0
 
+    def discard(self, client_id: UUID):
+        self._spill.clear(client_id)
+        self._out.pop(client_id, None)
+        self._in.pop(client_id, None)
+
     def snapshot_state(self) -> dict[str, Any]:
         for client_id in list(self._out.keys()):
             self._downstream(client_id)

@@ -13,6 +13,8 @@ class Spill(Protocol):
         self, client_id: UUID, batch_lines: int
     ) -> Iterator[str]: ...
 
+    def clear(self, client_id: UUID) -> None: ...
+
 
 class LineSpill:
     """Append-only on-disk buffer of response lines, keyed by client.
@@ -34,6 +36,14 @@ class LineSpill:
             self._handles[client_id] = handle
             self._paths[client_id] = path
         handle.write(line)  # type: ignore[attr-defined]
+
+    def clear(self, client_id: UUID) -> None:
+        handle = self._handles.pop(client_id, None)
+        path = self._paths.pop(client_id, None)
+        if handle is not None:
+            handle.close()  # type: ignore[attr-defined]
+        if path is not None and os.path.exists(path):
+            os.unlink(path)
 
     def read_and_clear(self, client_id: UUID) -> str:
         handle = self._handles.pop(client_id, None)

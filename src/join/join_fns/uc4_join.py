@@ -42,3 +42,6 @@ class UC4Join(JoinFn):
         response = Response(client_id, body)
 
         return response
+
+    def discard(self, client_id: UUID):
+        self.client_responses.pop(client_id, None)
