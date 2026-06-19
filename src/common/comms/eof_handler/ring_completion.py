@@ -76,8 +76,12 @@ class RingCompletion:
     def _client(self, client_id: UUID) -> _Client:
         return self._clients.setdefault(client_id, _Client())
 
-    def on_data(self, client_id: UUID):
+    def on_data(self, client_id: UUID) -> list[Any]:
         self._client(client_id).received += 1
+        # Re-check completion on every data message: the upstream EOF (which sets
+        # `expected`) can arrive before the last data when a multi-peer upstream feeds
+        # one shard, so the message that reaches `expected` may be data, not the EOF.
+        return self._maybe_local_complete(client_id)
 
     def on_upstream_eof(self, client_id: UUID, expected: int) -> list[Any]:
         c = self._client(client_id)

@@ -40,7 +40,7 @@ class RingAggregate(RingNode):
 
     def _on_data(self, msg: Message):
         self.fn.aggregate(msg)
-        self.rc.on_data(msg.client_id)
+        self._run(self.rc.on_data(msg.client_id))
 
     def _emit(self, client_id):
         sent: dict[int, int] = {}

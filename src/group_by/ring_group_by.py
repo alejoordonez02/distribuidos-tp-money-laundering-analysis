@@ -52,4 +52,4 @@ class RingGroupBy(StatelessRingNode):
                 fleet[shard].send(payload)
                 self.sent.add(msg.client_id, base + shard)
                 base += len(fleet)
-        self.rc.on_data(msg.client_id)
+        self._run(self.rc.on_data(msg.client_id))

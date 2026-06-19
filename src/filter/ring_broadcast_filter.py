@@ -51,4 +51,4 @@ class RingBroadcastFilter(StatelessRingNode):
             shards[i].send(filter_fn.filter(msg).serialize())
             self.sent.add(msg.client_id, shard + i)
             shard += len(shards)
-        self.rc.on_data(msg.client_id)
+        self._run(self.rc.on_data(msg.client_id))

@@ -95,7 +95,7 @@ class RingMerge(RingNode):
 
     def _on_left_data(self, msg: Message):
         self.fn.left(msg)  # type: ignore[arg-type]
-        self.rc.on_data(msg.client_id)
+        self._run(self.rc.on_data(msg.client_id))
 
     def _on_left_eof(self, eof: Message):
         self.counts.left[eof.client_id] = eof.expected_count  # type: ignore[attr-defined]
@@ -107,7 +107,7 @@ class RingMerge(RingNode):
 
     def _on_right_data(self, msg: Message):
         self.fn.right(msg)  # type: ignore[arg-type]
-        self.rc.on_data(msg.client_id)
+        self._run(self.rc.on_data(msg.client_id))
 
     def _on_right_eof(self, eof: Message):
         self.counts.right[eof.client_id] = eof.expected_count  # type: ignore[attr-defined]
