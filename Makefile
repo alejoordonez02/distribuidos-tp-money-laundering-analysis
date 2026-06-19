@@ -9,7 +9,7 @@ SCRIPTS_DIR := scripts
 .PHONY: help gen_input_output gen_compose up stop_server down logs test test_ft test_ft_client report demo supervisor chaos chaos_stop
 
 help:
-	@echo '* opciones: help (esto) - gen_input_output - gen_compose - up - stop_server - down - logs - test - test_ft - supervisor - chaos - chaos_stop - report - demo'
+	@echo '* opciones: help (esto) - gen_input_output - gen_compose - up - stop_server - down - logs - test - test_ft - test_ft_client - report - demo - supervisor - chaos - chaos_stop'
 	@echo '* los datasets a usar se configuran en `scripts/cfg.py`, hay que tenerlos bajados en `datasets/`'
 	@echo '* para los targets que se corren en python se usa `uv`. Hay que tenerlo instalado'
 

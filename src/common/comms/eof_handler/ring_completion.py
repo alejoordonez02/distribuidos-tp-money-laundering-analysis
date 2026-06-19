@@ -22,6 +22,9 @@ from enum import Enum, auto
 from typing import Any
 from uuid import UUID
 
+CLIENTS_KEY = "clients"
+ABORTED_KEY = "aborted"
+
 
 class Phase(Enum):
     PROCESSING = auto()  # still receiving this client's data
@@ -148,7 +151,7 @@ class RingCompletion:
 
     def snapshot_state(self) -> dict[str, Any]:
         return {
-            "clients": {
+            CLIENTS_KEY: {
                 str(cid): [
                     c.expected,
                     c.received,
@@ -157,15 +160,15 @@ class RingCompletion:
                 ]
                 for cid, c in self._clients.items()
             },
-            "aborted": [str(cid) for cid in self._aborted],
+            ABORTED_KEY: [str(cid) for cid in self._aborted],
         }
 
     def restore_state(self, snapshot: dict[str, Any]):
         # tolerate the pre-tombstone flat format (just a clients map) for old checkpoints
-        clients = snapshot["clients"] if "clients" in snapshot else snapshot
+        clients = snapshot[CLIENTS_KEY] if CLIENTS_KEY in snapshot else snapshot
         self._clients = {}
         for cid, (expected, received, sent, phase) in clients.items():
             self._clients[UUID(cid)] = _Client(
                 expected, received, {int(s): n for s, n in sent.items()}, Phase[phase]
             )
-        self._aborted = {UUID(cid) for cid in snapshot.get("aborted", [])}
+        self._aborted = {UUID(cid) for cid in snapshot.get(ABORTED_KEY, [])}

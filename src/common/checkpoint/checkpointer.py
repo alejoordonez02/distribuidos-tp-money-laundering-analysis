@@ -7,6 +7,8 @@ from common.fault_injection import maybe_crash
 from .checkpoint_store import CheckpointStore
 from .deduplicator import Deduplicator
 
+ABORTED_KEY = "aborted"
+
 
 class Snapshotable(Protocol):
     def snapshot_state(self) -> dict[str, Any]: ...
@@ -65,7 +67,7 @@ class Checkpointer:
         for key, provider in self._extra_state.items():
             if key in extra:
                 provider.restore_state(extra[key])
-        self._aborted = {UUID(c) for c in blob.get("aborted", [])}
+        self._aborted = {UUID(c) for c in blob.get(ABORTED_KEY, [])}
         maybe_crash("after_restore_on_startup")
         return True
 
@@ -111,7 +113,7 @@ class Checkpointer:
                     "extra": {
                         k: p.snapshot_state() for k, p in self._extra_state.items()
                     },
-                    "aborted": [str(c) for c in self._aborted],
+                    ABORTED_KEY: [str(c) for c in self._aborted],
                 }
             )
             self._dirty = False

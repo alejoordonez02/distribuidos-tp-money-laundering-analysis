@@ -88,16 +88,12 @@ class Gateway:
         try:
             self.clients.get(response.client_id).send(response)  # type: ignore[reportAttributeAccessIssue]
         except ClientNotFoundError:
-            # the client crashed or was aborted; its responses are dropped, not requeued
-            ack()
-            return
+            pass
         except OSError as e:
-            # the client socket died after it finished sending (it crashed while
-            # waiting for results); drop the response and stop routing to it
-            logging.warning("client %s unreachable; dropping response (%s)", response.client_id, e)
+            logging.warning(
+                "client %s unreachable; dropping response (%s)", response.client_id, e
+            )
             self.clients.remove(response.client_id)
-            ack()
-            return
 
         ack()
 
