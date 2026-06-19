@@ -15,6 +15,9 @@ host load stays flat and the stall detector sees real deadlocks, not starvation.
 Topology and replica counts are read from the generated docker-compose.yaml. Dataset
 comes from scripts/cfg.py.
 
+Generic cluster-driving helpers (run/out, bring-up, probes, drain, verify) are shared
+with the performance benchmark via scripts/ft_common.py.
+
 Env knobs:
   FT_ONLY_NODES=a,b   restrict to these controller types (or exact names)
   FT_SKIP_NODES=a,b   skip these controller types (or exact names)
@@ -28,12 +31,26 @@ Env knobs:
 
 import os
 import shutil
-import subprocess
 import sys
 import time
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-COMPOSE = "docker-compose.yaml"
+from ft_common import (
+    COMPOSE,
+    ROOT,
+    clean_all_state,
+    clear_responses,
+    client_exit_codes,
+    clients_running,
+    compose_up_cluster,
+    discover_controllers,
+    node_running,
+    queue_total,
+    recreate_client,
+    run,
+    verify,
+    wait_drain,
+)
+
 FAULT = "tmp/ft_run/ft_e2e_fault.yaml"
 
 # Points that crash during normal processing (fire within a single fresh run).
@@ -82,48 +99,6 @@ NODE_READY_GRACE = int(os.getenv("FT_NODE_READY_GRACE", "3"))
 CLIENT = os.getenv("FT_CLIENT", "client_0")
 
 
-def run(cmd, check=False, capture=False, timeout=None):
-    try:
-        return subprocess.run(
-            cmd, shell=True, cwd=ROOT, check=check,
-            stdout=subprocess.PIPE if capture else None,
-            stderr=subprocess.STDOUT if capture else None,
-            text=True, timeout=timeout,
-        )
-    except subprocess.TimeoutExpired:
-        return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="")
-
-
-def out(cmd):
-    return run(cmd, capture=True).stdout.strip()
-
-
-def discover_controllers():
-    """Read the compose and return [(type, [replica names], count)] for every
-    controller (everything except rabbitmq, the gateway and the clients)."""
-    services = out(f"docker compose -f {COMPOSE} config --services").splitlines()
-    services = [s.strip() for s in services if s.strip()]
-    groups: dict[str, list[str]] = {}
-    for name in sorted(services):
-        if name == "rabbitmq" or name == "gateway" or name.startswith("client"):
-            continue
-        type_ = name
-        if "_" in name and name.rsplit("_", 1)[1].isdigit():
-            type_ = name.rsplit("_", 1)[0]  # strip the _<n> replica suffix
-        groups.setdefault(type_, []).append(name)
-    return [(t, sorted(names, key=_idx), len(names)) for t, names in sorted(groups.items())]
-
-
-def _idx(name):
-    tail = name.rsplit("_", 1)[1] if "_" in name else ""
-    return int(tail) if tail.isdigit() else -1
-
-
-def non_client_services():
-    services = out(f"docker compose -f {COMPOSE} config --services").splitlines()
-    return [s.strip() for s in services if s.strip() and not s.strip().startswith("client")]
-
-
 def write_fault(node, point):
     os.makedirs(os.path.join(ROOT, "tmp/ft_run"), exist_ok=True)
     with open(os.path.join(ROOT, FAULT), "w") as f:
@@ -136,31 +111,10 @@ def write_fault(node, point):
         )
 
 
-def clean_all_state():
-    """Wipe every node's persisted state (root-owned, written in-container) so the
-    cluster starts from zero — otherwise stale checkpoints from a previous run are
-    restored on bring-up and pollute the first client."""
-    run(f'docker run --rm -v "{os.path.join(ROOT, "state")}:/state" alpine '
-        "find /state -mindepth 1 -delete", capture=True)
-
-
-def compose_up_cluster():
-    """Bring up rabbitmq + gateway + every controller once, without any client and
-    without any fault override (the cluster starts clean)."""
-    svcs = " ".join(non_client_services())
-    run(f"docker compose -f {COMPOSE} up -d --remove-orphans {svcs}", capture=True)
-
-
 def recreate_node(node):
     """Recreate just the target node with the fault override applied (its
     FAULT_CRASH_POINT is fixed at container creation, so a swap needs a recreate)."""
     run(f"docker compose -f {COMPOSE} -f {FAULT} up -d --force-recreate --no-deps {node}",
-        capture=True)
-
-
-def recreate_client():
-    """Run one fresh client through the live cluster (new client_id + producer_id)."""
-    run(f"docker compose -f {COMPOSE} up -d --force-recreate --no-deps {CLIENT}",
         capture=True)
 
 
@@ -176,52 +130,6 @@ def clear_fault_sentinel(node):
     path = os.path.join(ROOT, "state", node)
     run(f'docker run --rm -v "{path}:/state" alpine rm -f /state/.fault_fired',
         capture=True)
-
-
-def clear_responses():
-    resp = os.path.join(ROOT, "responses")
-    if os.path.isdir(resp):
-        for f in os.listdir(resp):
-            if f.endswith(".csv"):
-                os.remove(os.path.join(resp, f))
-
-
-def node_running(node):
-    return out(f'docker inspect -f "{{{{.State.Running}}}}" {node}') == "true"
-
-
-def clients_running():
-    return bool(out('docker ps --filter "name=client_" --filter "status=running" -q'))
-
-
-def queue_total():
-    """Best-effort in-flight message total across all queues — a cheap progress
-    proxy. Returns None when the broker is too busy to answer (don't penalize that;
-    a missing reading is treated as 'no change', never as a stall by itself)."""
-    r = run(
-        "docker exec rabbitmq rabbitmqctl list_queues messages --quiet",
-        capture=True, timeout=15,
-    )
-    nums = [int(tok) for tok in r.stdout.split() if tok.isdigit()]
-    return sum(nums) if nums else None
-
-
-def client_exit_codes():
-    names = out('docker ps -a --filter "name=client_" --format "{{.Names}}"').split()
-    codes = []
-    for n in names:
-        codes.append(out(f'docker inspect -f "{{{{.State.ExitCode}}}}" {n}'))
-    return codes
-
-
-def verify():
-    r = run(
-        "uv run pytest test/test_uc1.py test/test_uc2.py test/test_uc3.py "
-        "test/test_uc4.py test/test_uc5.py -q",
-        capture=True,
-    )
-    tail = r.stdout.strip().splitlines()[-1] if r.stdout.strip() else ""
-    return r.returncode == 0, tail
 
 
 def sentinel_fired(node):
@@ -251,17 +159,6 @@ def wait_for_client(node, start):
     return True
 
 
-def wait_drain():
-    """After a client finishes, wait for every queue to empty so no leftover message
-    bleeds into the next client. Returns False if it never fully drains in time."""
-    deadline = time.time() + DRAIN_TIMEOUT
-    while time.time() < deadline:
-        if queue_total() == 0:
-            return True
-        time.sleep(2)
-    return False
-
-
 def run_combo(node, point):
     is_kill = point in KILL_POINTS
     clear_responses()
@@ -271,7 +168,7 @@ def run_combo(node, point):
     time.sleep(NODE_READY_GRACE)
 
     start = time.time()
-    recreate_client()
+    recreate_client(CLIENT)
     if is_kill:
         time.sleep(KILL_DELAY)
         run(f"docker kill --signal=KILL {node}", capture=True)
@@ -292,7 +189,7 @@ def run_combo(node, point):
             ok, tail = verify()
             result, detail = ("PASS" if ok else "FAIL"), tail
 
-    wait_drain()  # settle the cluster before the next client
+    wait_drain(DRAIN_TIMEOUT)  # settle the cluster before the next client
     return {
         "node": node, "point": point, "fired": fired,
         "result": result, "detail": detail, "secs": secs,
