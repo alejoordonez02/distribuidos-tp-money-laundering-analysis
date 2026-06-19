@@ -163,9 +163,9 @@ class RingNode:
 
 
 class StatelessRingNode(RingNode):
-    """A stateless ring node (filter / group-by / converter): emits each input as it
-    processes it, so at EOF it has nothing to emit and only reports the per-shard
-    counts it already sent. Subclasses implement `_on_data`."""
+    """A stateless ring node (filter / group-by): emits each input as it processes
+    it, so at EOF it has nothing to emit and only reports the per-shard counts it
+    already sent. Subclasses implement `_on_data`."""
 
     def __init__(self, sent: SentCounts, *args, **kwargs):
         super().__init__(*args, **kwargs)
