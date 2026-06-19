@@ -1,3 +1,2 @@
 from .conversion_api import ConversionAPI, ConversionAPIError
 from .frankfurter_conversion_api import FrankfurterConversionAPI
-from .retrying_conversion_api import RetryingConversionAPI

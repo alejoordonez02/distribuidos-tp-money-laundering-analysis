@@ -1,13 +1,17 @@
+import logging
+import time
 from dataclasses import replace
 from datetime import date
 from typing import Iterable
 
 from common.comms.messages import Transactions
-from common.conversion import ConversionAPI
+from common.conversion import ConversionAPI, ConversionAPIError
 
 from .group_by_fn import GroupByFn
 
 _USD_CURRENCY = "US Dollar"
+_BASE_DELAY_SECS = 1.0
+_MAX_DELAY_SECS = 30.0
 
 # Bitcoin rates not provided by Frankfurter API; injected from Binance BTCUSDT daily
 # closing prices (investing.com source per professor email). Same values as gen_input_output.
@@ -26,8 +30,15 @@ class UC5ConverterGroupByFn(GroupByFn):
     converted batch to a single downstream shard chosen by message identity, so a
     re-emit after a crash lands on the same shard."""
 
-    def __init__(self, api: ConversionAPI):
+    def __init__(
+        self,
+        api: ConversionAPI,
+        base_delay: float = _BASE_DELAY_SECS,
+        max_delay: float = _MAX_DELAY_SECS,
+    ):
         self._api = api
+        self._base_delay = base_delay
+        self._max_delay = max_delay
         self._cache: dict[date, dict[str, float]] = {}
 
     def group_by(self, msg: Transactions) -> Iterable[tuple[Transactions, int]]:  # type: ignore[reportIncompatibleMethodOverride]
@@ -44,8 +55,20 @@ class UC5ConverterGroupByFn(GroupByFn):
 
     def _rates_for(self, day: date) -> dict[str, float]:
         if day not in self._cache:
-            rates = self._api.get_rates(day)
+            rates = self._get_rates_with_retry(day)
             if day in _BITCOIN_RATES_USD:
                 rates["Bitcoin"] = _BITCOIN_RATES_USD[day]
             self._cache[day] = rates
         return self._cache[day]
+
+    def _get_rates_with_retry(self, day: date) -> dict[str, float]:
+        delay = self._base_delay
+        while True:
+            try:
+                return self._api.get_rates(day)
+            except ConversionAPIError as e:
+                logging.warning(
+                    "conversion api unavailable (%s); retrying in %.1fs", e, delay
+                )
+                time.sleep(delay)
+                delay = min(delay * 2, self._max_delay)

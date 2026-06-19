@@ -2,19 +2,14 @@ from datetime import date
 
 import pytest
 
-from common.conversion import (
-    ConversionAPI,
-    ConversionAPIError,
-    RetryingConversionAPI,
-)
+from common.conversion import ConversionAPI, ConversionAPIError
+from group_by.group_by_fns.uc5_converter import UC5ConverterGroupByFn
 
 DAY = date(2022, 9, 1)
 RATES = {"US Dollar": 1.0}
 
 
 class _FlakyAPI(ConversionAPI):
-    """Fails the first `failures` calls with ConversionAPIError, then returns RATES."""
-
     def __init__(self, failures: int):
         self._remaining = failures
         self.calls = 0
@@ -29,26 +24,24 @@ class _FlakyAPI(ConversionAPI):
 
 def test_returns_inner_result_without_retry():
     inner = _FlakyAPI(failures=0)
-    api = RetryingConversionAPI(inner, base_delay=0, max_delay=0)
-    assert api.get_rates(DAY) == RATES
+    fn = UC5ConverterGroupByFn(inner, base_delay=0, max_delay=0)
+    assert fn._get_rates_with_retry(DAY) == RATES
     assert inner.calls == 1
 
 
 def test_retries_until_inner_succeeds():
     inner = _FlakyAPI(failures=3)
-    api = RetryingConversionAPI(inner, base_delay=0, max_delay=0)
-    assert api.get_rates(DAY) == RATES
+    fn = UC5ConverterGroupByFn(inner, base_delay=0, max_delay=0)
+    assert fn._get_rates_with_retry(DAY) == RATES
     assert inner.calls == 4
 
 
 def test_backoff_is_capped(monkeypatch):
     slept: list[float] = []
-    monkeypatch.setattr(
-        "common.conversion.retrying_conversion_api.time.sleep", slept.append
-    )
+    monkeypatch.setattr("group_by.group_by_fns.uc5_converter.time.sleep", slept.append)
     inner = _FlakyAPI(failures=5)
-    api = RetryingConversionAPI(inner, base_delay=1.0, max_delay=4.0)
-    api.get_rates(DAY)
+    fn = UC5ConverterGroupByFn(inner, base_delay=1.0, max_delay=4.0)
+    fn._get_rates_with_retry(DAY)
     assert slept == [1.0, 2.0, 4.0, 4.0, 4.0]
 
 
@@ -57,6 +50,6 @@ def test_non_conversion_errors_propagate():
         def get_rates(self, day: date) -> dict[str, float]:
             raise ValueError("boom")
 
-    api = RetryingConversionAPI(_Broken(), base_delay=0, max_delay=0)
+    fn = UC5ConverterGroupByFn(_Broken(), base_delay=0, max_delay=0)
     with pytest.raises(ValueError):
-        api.get_rates(DAY)
+        fn._get_rates_with_retry(DAY)

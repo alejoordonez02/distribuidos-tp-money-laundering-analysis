@@ -13,7 +13,7 @@ from group_by_fns import (
 from strategies import GroupByStrategy
 
 from common.checkpoint import make_checkpointer
-from common.conversion import FrankfurterConversionAPI, RetryingConversionAPI
+from common.conversion import FrankfurterConversionAPI
 from common.heartbeat import run_with_heartbeat
 from common.comms.eof_handler.ring_completion import RingCompletion
 from common.comms.eof_handler.sent_counts import SentCounts
@@ -101,7 +101,7 @@ def main():
             fn = UC4ComputeGraph()
             routes.append((os.environ["TX_DEGREE"], int(os.environ["NAFFINITY_DEGREE"])))
         case GroupByStrategy.UC5_CONVERTER:
-            fn = UC5ConverterGroupByFn(RetryingConversionAPI(FrankfurterConversionAPI()))
+            fn = UC5ConverterGroupByFn(FrankfurterConversionAPI())
         case GroupByStrategy.UC5_COUNT:
             fn = UC5CountGroupByFn()
         case _:
