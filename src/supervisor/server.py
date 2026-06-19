@@ -2,10 +2,9 @@ import logging
 import threading
 import time
 from socket import AF_INET, SO_REUSEADDR, SOCK_STREAM, SOL_SOCKET, socket
-from typing import Optional
 
-from common.comms.transport import Connection
 from common.comms.supervisor import Heartbeat, Register, decode
+from common.comms.transport import Connection
 
 from .registry import NodeRegistry
 
@@ -27,34 +26,30 @@ class SupervisorServer:
         self._registry = registry
         self._sweep_interval = sweep_interval
         self._stop = threading.Event()
-        self._srv: Optional[socket] = None
+        self._skt = socket(AF_INET, SOCK_STREAM)
+
+        self._skt.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+        self._skt.bind((self._host, self._port))
 
     def start(self) -> None:
-        srv = socket(AF_INET, SOCK_STREAM)
-        srv.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-        srv.bind((self._host, self._port))
-        srv.listen()
-        self._srv = srv
+        self._skt.listen()
         threading.Thread(target=self._sweep, name="sweeper", daemon=True).start()
         threading.Thread(target=self._accept_loop, name="accept", daemon=True).start()
 
     def stop(self) -> None:
         self._stop.set()
-        if self._srv is not None:
-            try:
-                self._srv.close()
-            except OSError:
-                pass
+        try:
+            self._skt.close()
+        except OSError:
+            pass
 
     def _accept_loop(self) -> None:
         while not self._stop.is_set():
             try:
-                conn_skt, _ = self._srv.accept()
+                conn_skt, _ = self._skt.accept()
             except OSError:
                 break
-            threading.Thread(
-                target=self._handle, args=(conn_skt,), daemon=True
-            ).start()
+            threading.Thread(target=self._handle, args=(conn_skt,), daemon=True).start()
 
     def _handle(self, conn_skt: socket) -> None:
         conn = Connection(conn_skt)
