@@ -37,7 +37,6 @@ def _transactions_worker(
         while f.tell() < end:
             if shutdown.is_set():
                 queue.cancel_join_thread()
-                logging.warning("Leaving process: A")
                 return
             line = f.readline()
             if not line:
@@ -48,7 +47,6 @@ def _transactions_worker(
                 batch = []
     if shutdown.is_set():
         queue.cancel_join_thread()
-        logging.warning("Leaving process: B")
         return
     if batch:
         queue.put(Transactions(client_id, batch).serialize())
