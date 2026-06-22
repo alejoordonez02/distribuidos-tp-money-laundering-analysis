@@ -87,6 +87,26 @@ class SupervisorNode:
         self._listener_handle.start()
         self._event_handle.start()
 
+    def _broadcast_message(self, msg: Message, peers: Sequence[Peer]) -> int:
+        acks = 0
+        for p in peers:
+            skt = socket(AF_INET, SOCK_STREAM)
+            try:
+                skt.connect((p.host, self._internal_port))
+                conn = Connection(skt)
+                conn.send(msg.serialize())
+                SupervisorACK.deserialize(conn.recv())
+                acks += 1
+                conn.close()
+
+            except (ConnectionRefusedError, NameDoesNotResolveError):
+                logging.debug(
+                    f"could not send {msg.__class__.__name__} message to {p.__dict__}"
+                )
+                continue
+
+        return acks
+
     def _event_worker(self):
         def handle_leader_down(_: LeaderDown):
             if self._on_election:
@@ -94,35 +114,12 @@ class SupervisorNode:
             self._on_election = True
 
             greater_peers = [p for p in self._peers if p > self._idx]
-            acks = 0
-
-            for p in greater_peers:
-                skt = socket(AF_INET, SOCK_STREAM)
-                try:
-                    skt.connect((p.host, self._internal_port))
-                    conn = Connection(skt)
-                    conn.send(SupervisorElection().serialize())
-                    # SupervisorACK.deserialize(conn.recv())
-                    acks += 1
-                    conn.close()
-                except (ConnectionRefusedError, NameDoesNotResolveError):
-                    logging.debug(f"could not send election message to {p.__dict__}")
-                    pass
+            acks = self._broadcast_message(SupervisorElection(), greater_peers)
 
             if acks > 0:
                 return
 
-            for p in self._peers:
-                skt = socket(AF_INET, SOCK_STREAM)
-                try:
-                    skt.connect((p.host, self._internal_port))
-                    conn = Connection(skt)
-                    conn.send(SupervisorLeader(self._idx).serialize())
-                    # SupervisorACK.deserialize(conn.recv())
-                    acks += 1
-                except (ConnectionRefusedError, NameDoesNotResolveError):
-                    logging.debug(f"could not send coordinator message to {p.__dict__}")
-                    pass
+            self._broadcast_message(SupervisorLeader(self._idx), self._peers)
 
             self._runtime.stop()
             self._runtimes.put(
@@ -152,11 +149,11 @@ class SupervisorNode:
             match msg.type():
                 case MessageType.SUPERVISOR_ELECTION:
                     self._events.put(LeaderDown())
-                    conn.send(SupervisorACK().serialize())
                 case MessageType.SUPERVISOR_LEADER:
                     leader_idx = msg.idx  # type:ignore [reportAttributeAccessIssue]
                     handle_new_leader(NewLeader(leader_idx))
 
+            conn.send(SupervisorACK().serialize())
             conn.close()
 
         while self._keep_running:
