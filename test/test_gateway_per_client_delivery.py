@@ -94,6 +94,33 @@ def test_dead_client_does_not_block_other_clients():
             s.close()
 
 
+def test_handler_exits_cleanly_when_client_disconnects_before_handshake():
+    # A client that drops before sending Hello makes recv() return b""; the handler
+    # must exit quietly instead of crashing its thread with an IndexError (#92).
+    a, b = socket.socketpair()
+    b.close()
+    registered: list = []
+    errors: list = []
+    old_hook = threading.excepthook
+    threading.excepthook = lambda args: errors.append(args.exc_type)
+    try:
+        handler = ClientStreamHandler(
+            Connection(a),
+            register=lambda h: registered.append(h),
+            unregister=lambda cid: None,
+            trans_tx_factory=lambda: [],
+            accs_tx_factory=lambda: [],
+        )
+        handler.start()
+        handler.handle.join(timeout=2)
+    finally:
+        threading.excepthook = old_hook
+        a.close()
+    assert not handler.handle.is_alive()
+    assert errors == []
+    assert registered == []
+
+
 def test_send_never_blocks_when_outbox_is_full():
     # With no writer draining and a full outbox, the router must still return at once,
     # dropping the overflow rather than wedging the shared consumer.

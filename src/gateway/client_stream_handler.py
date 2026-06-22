@@ -80,7 +80,12 @@ class ClientStreamHandler:
             self._writer.join()
 
     def _run(self):
-        Hello.deserialize(self.conn.recv())
+        raw = self.conn.recv()
+        if not raw:
+            logging.warning("client disconnected before handshake")
+            self._close()
+            return
+        Hello.deserialize(raw)
         self.id = uuid4()
         self._register(self)
         self.conn.send(HelloAck(self.id).serialize())
