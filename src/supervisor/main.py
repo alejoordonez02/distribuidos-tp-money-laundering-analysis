@@ -16,11 +16,11 @@ def main() -> None:
 
     bind_host = os.getenv("SUPERVISOR_BIND", "0.0.0.0")
     server_port = int(os.getenv("SUPERVISOR_PORT", "9100"))
-    internal_port = int(os.getenv("INTERNAL_PORT", "9100"))
-    leader_port = int(os.getenv("LEADER_PORT", "9100"))
+    internal_port = int(os.getenv("INTERNAL_PORT", "9101"))
+    leader_port = int(os.getenv("LEADER_PORT", "9102"))
     idx = int(os.getenv("IDX", "0"))
     nnodes = int(os.getenv("NNODES", "1"))
-    node_prefix = os.getenv("NODE_PREFIX", "supervisor_node-")
+    node_prefix = os.getenv("NODE_PREFIX", "supervisor_")
     timeout = float(os.getenv("HEARTBEAT_TIMEOUT", "6"))
     expected = [n for n in os.getenv("EXPECTED_NODES", "").split(",") if n]
     # 0 disables revival (detection only); the reviver needs the docker socket.
