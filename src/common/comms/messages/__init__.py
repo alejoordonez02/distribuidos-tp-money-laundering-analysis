@@ -37,5 +37,6 @@ from .ring_sent_data import RingSentData
 from .sum_by_payment_format import SumByPaymentFormat
 from .supervisor_ack import SupervisorACK
 from .supervisor_election import SupervisorElection
+from .supervisor_leader import SupervisorLeader
 from .transaction_count import TransactionCount
 from .transactions import Transactions

@@ -24,6 +24,7 @@ from .ring_sent_data import RingSentData
 from .sum_by_payment_format import SumByPaymentFormat
 from .supervisor_ack import SupervisorACK
 from .supervisor_election import SupervisorElection
+from .supervisor_leader import SupervisorLeader
 from .transaction_count import TransactionCount
 from .transactions import Transactions
 
@@ -97,5 +98,7 @@ def deserialize_message(bytes2: bytes) -> Message:
             return SupervisorElection.deserialize(bytes2)
         case MessageType.SUPERVISOR_ACK:
             return SupervisorACK.deserialize(bytes2)
+        case MessageType.SUPERVISOR_LEADER:
+            return SupervisorLeader.deserialize(bytes2)
         case _:
             raise UnknownMessageError(f"unknown message type {bytes2[0]}")
