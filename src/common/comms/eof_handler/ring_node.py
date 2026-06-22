@@ -68,6 +68,8 @@ class RingNode:
         setup_graceful_shutdown(self.stop)
         if self.checkpointer and self.checkpointer.restore():
             logging.info("restored state from checkpoint")
+            self._run(self.rc.recheck())
+            self.checkpointer.flush(force=True)
         self.consumer.add_queue(
             self._data_queue,
             self._on_data_msg,
@@ -125,11 +127,16 @@ class RingNode:
         if self.checkpointer:
             self.checkpointer.flush(force=True)
 
-    def _on_ring_msg(self, body: bytes, ack: Callable, _nack: Callable):
+    def _on_ring_msg(self, body: bytes, ack: Callable, nack: Callable):
         msg: RingBarrier = deserialize_message(body)  # type: ignore[assignment]
-        self._run(self.rc.on_token(BarrierToken(msg.client_id, msg.origin, msg.sent_by)))
-        if self.checkpointer:
-            self.checkpointer.flush(force=True)
+        try:
+            self._run(self.rc.on_token(BarrierToken(msg.client_id, msg.origin, msg.sent_by)))
+            if self.checkpointer:
+                self.checkpointer.flush(force=True)
+        except Exception:
+            logging.error("ring token processing failed; requeuing for retry", exc_info=True)
+            nack()
+            return
         ack()
 
     def _run(self, actions):

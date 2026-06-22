@@ -81,6 +81,8 @@ class RingMerge(RingNode):
         setup_graceful_shutdown(self.stop)
         if self.checkpointer and self.checkpointer.restore():
             logging.info("restored state from checkpoint")
+            self._run(self.rc.recheck())
+            self.checkpointer.flush(force=True)
         self.consumer.add_queue(
             self._left_queue, self._on_left_msg, prefetch=self._data_prefetch,
             durable=True, exchange=self._left_exchange, routing_key=str(self.node_id),

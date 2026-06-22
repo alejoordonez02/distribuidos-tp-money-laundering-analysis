@@ -108,6 +108,12 @@ class RingCompletion:
             return []
         return [Emit(client_id)]
 
+    def recheck(self) -> list[Any]:
+        actions: list[Any] = []
+        for client_id in list(self._clients):
+            actions.extend(self._maybe_local_complete(client_id))
+        return actions
+
     def report_sent(self, client_id: UUID, sent: dict[int, int]) -> list[Any]:
         """Called by the controller right after it emits (stateful) or finishes its
         per-message output (stateless), with this node's per-shard sent counts."""
