@@ -34,7 +34,7 @@ MAX_ATTEMPTS = 4
 # (label, run_id, tier, interval, kills, cap_s)
 CONFIGS = [
     ("F1 small i2 freq", "F1-small-min2-c1000-chaos-i2-k4", "small", 2, 4, 700),
-    ("F2 medium k24 burst", "F2-medium-min2-c1000-chaos-i20-k24", "medium", 20, 24, 2400),
+    ("F2 medium k24 burst", "F2-medium-min2-c1000-chaos-i20-k24", "medium", 20, 24, 3600),
 ]
 
 
