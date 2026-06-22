@@ -6,7 +6,7 @@ from common.graceful_shutdown import setup_graceful_shutdown
 
 from .registry import NodeRegistry
 from .reviver import Reviver
-from .server import SupervisorNode
+from .server import Peer, SupervisorNode
 from .tui import Dashboard
 
 
@@ -18,14 +18,19 @@ def main() -> None:
     server_port = int(os.getenv("SUPERVISOR_PORT", "9100"))
     internal_port = int(os.getenv("INTERNAL_PORT", "9100"))
     leader_port = int(os.getenv("LEADER_PORT", "9100"))
+    idx = int(os.getenv("IDX", "0"))
+    nnodes = int(os.getenv("NNODES", "1"))
+    node_prefix = os.getenv("NODE_PREFIX", "supervisor_node-")
     timeout = float(os.getenv("HEARTBEAT_TIMEOUT", "6"))
     expected = [n for n in os.getenv("EXPECTED_NODES", "").split(",") if n]
     # 0 disables revival (detection only); the reviver needs the docker socket.
     revive_interval = float(os.getenv("REVIVE_INTERVAL", "5"))
 
+    peers = [Peer(i, f"{node_prefix}{i}") for i in range(nnodes) if i != idx]
+
     registry = NodeRegistry(timeout, expected=expected)
     server = SupervisorNode(
-        bind_host, server_port, internal_port, leader_port, (), registry
+        idx, bind_host, server_port, internal_port, leader_port, peers, registry
     )
     dashboard = Dashboard(registry)
     reviver = (

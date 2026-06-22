@@ -24,6 +24,7 @@ class ReplicaRuntime(SupervisorRuntime):
         while self._keep_running:
             time.sleep(self._ping_delay)
             self._leader.ping_pong()
+            logging.debug("ping ponged leader")
 
     def stop(self):
         self._keep_running = False
