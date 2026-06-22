@@ -74,6 +74,11 @@ class UC4AggregateGraphs(AggregateFn):
         self._preds.pop(client_id, None)
         self._succs.pop(client_id, None)
 
+    def discard(self, client_id: UUID):
+        self._spill.clear(client_id)
+        self._preds.pop(client_id, None)
+        self._succs.pop(client_id, None)
+
     def snapshot_state(self) -> dict[str, Any]:
         for client_id in list(self._preds.keys()):
             self.downstream(client_id)

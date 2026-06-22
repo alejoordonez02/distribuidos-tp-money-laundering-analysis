@@ -31,10 +31,62 @@ def test_eof_before_all_received_does_not_complete():
     rc = RingCompletion(node_id=0, peer_ids=[])
     rc.on_data(C)
     assert rc.on_upstream_eof(C, expected=5) == []  # only 1 of 5 received
-    for _ in range(4):
-        rc.on_data(C)
-    # the controller re-checks after more data; emulate by re-sending eof state
-    assert rc.on_upstream_eof(C, expected=5) == [Emit(C)]
+
+
+def test_data_after_eof_completes_when_expected_reached():
+    # The upstream EOF (which carries `expected`) can arrive before the last data
+    # when a multi-peer upstream feeds one shard. on_data must re-check completion,
+    # so the message that finally reaches `expected` is data, not the EOF.
+    rc = RingCompletion(node_id=0, peer_ids=[])
+    rc.on_data(C)
+    assert rc.on_upstream_eof(C, expected=3) == []  # only 1 of 3 received
+    assert rc.on_data(C) == []  # 2 of 3
+    assert rc.on_data(C) == [Emit(C)]  # 3rd data reaches expected -> emit
+    # idempotent once emitted: late duplicate data must not re-emit
+    rc.report_sent(C, {0: 1})
+    assert rc.on_data(C) == []
+
+
+def test_drop_forgets_a_client():
+    rc = RingCompletion(node_id=0, peer_ids=[])
+    rc.on_data(C)
+    rc.on_data(C)
+    rc.drop(C)
+    # the client is forgotten: a later EOF sees a fresh, zeroed counter
+    assert rc.on_upstream_eof(C, expected=2) == []
+    rc.drop(C)  # idempotent
+
+
+def test_drop_kills_a_circulating_token():
+    # When a client aborts AFTER its EOF already started the barrier, a token is in
+    # flight. The drop must tombstone the client so the relapping token DIES instead
+    # of resurrecting a PROCESSING client and being forwarded forever (the live bug:
+    # the token circulated default_filter's ring at 2 hops/s and never drained).
+    leader = RingCompletion(node_id=0, peer_ids=[1])
+    [fwd] = _drive_local_complete(leader, 0, received=4, expected=4, sent={0: 2})
+    assert isinstance(fwd, Forward)  # a token is now circulating for C
+    leader.drop(C)  # the abort arrives while the token is out
+    assert leader.on_token(fwd.token) == []  # token dropped, not re-forwarded
+
+
+def test_drop_ignores_late_data_and_eof():
+    # tombstone is sticky: late data / a redelivered EOF for an aborted client must
+    # not resurrect it (client ids are gateway-minted per connection, never reused).
+    rc = RingCompletion(node_id=0, peer_ids=[1])
+    rc.drop(C)
+    rc.on_data(C)
+    assert rc.on_upstream_eof(C, expected=1) == []
+    assert rc.on_token(BarrierToken(C, origin=0, sent_by={0: {0: 1}})) == []
+
+
+def test_snapshot_restore_preserves_tombstone():
+    # a node that crashes after an abort must still drop the aborted client's token
+    # once restored, or the immortal-token loop reappears post-recovery.
+    rc = RingCompletion(node_id=0, peer_ids=[1])
+    rc.drop(C)
+    restored = RingCompletion(node_id=0, peer_ids=[1])
+    restored.restore_state(rc.snapshot_state())
+    assert restored.on_token(BarrierToken(C, origin=0, sent_by={0: {0: 1}})) == []
 
 
 def test_three_nodes_barrier_sums_per_shard_then_leader_closes():

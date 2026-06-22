@@ -1,12 +1,13 @@
 import logging
 from threading import Thread
 from typing import Callable, Sequence
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from common.comms.transport import Connection
 from common.comms.messages import (
     PREFIX_RANGE,
     TYPE_RANGE,
+    Abort,
     EOF,
     Hello,
     HelloAck,
@@ -27,12 +28,14 @@ class ClientStreamHandler:
         self,
         conn: Connection,
         register: "Callable[[ClientStreamHandler], None]",
+        unregister: "Callable[[UUID], None]",
         trans_tx_factory: Callable[[], Sequence[MOM]],
         accs_tx_factory: Callable[[], Sequence[MOM]],
     ):
         self.id = uuid4()
         self.conn = conn
         self._register = register
+        self._unregister = unregister
         self.trans_tx_factory = trans_tx_factory
         self.accs_tx_factory = accs_tx_factory
         self.handle: Thread
@@ -66,15 +69,20 @@ class ClientStreamHandler:
         accs_shards = [
             StampingMOM(tx, accs_base, accs_counter) for tx in self.accs_tx_factory()
         ]
-        self._forward_sharded(trans_shards, MessageType.TRANSACTIONS)
-        self._forward_sharded(accs_shards, MessageType.ACCOUNTS)
+        if not self._forward_sharded(trans_shards, MessageType.TRANSACTIONS) or \
+                not self._forward_sharded(accs_shards, MessageType.ACCOUNTS):
+            self._abort([*trans_shards, *accs_shards])
+            return
         logging.info("finished forwarding all client's data")
 
-    def _forward_sharded(self, shard_txs: Sequence[MOM], data_type: MessageType):
+    def _forward_sharded(self, shard_txs: Sequence[MOM], data_type: MessageType) -> bool:
         """Route each message to one shard by round-robin (even split, stable once
         landed since shard queues are durable), counting per shard. On EOF send each
         shard its own EOF carrying that shard's expected_count, so each downstream peer
-        knows when its input slice is complete. A single working queue is just N=1."""
+        knows when its input slice is complete. A single working queue is just N=1.
+
+        Returns True once the stream's EOF was forwarded, False if the client dropped
+        before sending it (so the caller can purge the partial data)."""
         n = len(shard_txs)
         counts = [0] * n
         rr = 0
@@ -82,19 +90,26 @@ class ClientStreamHandler:
             raw = self.conn.recv()
             if not raw:
                 logging.error("client connection closed before EOF")
-                return
+                return False
             t = peek_type(raw)
             if t == MessageType.EOF:
                 for i, tx in enumerate(shard_txs):
                     tx.send(EOF(self.id, expected_count=counts[i]).serialize())
-                return
+                return True
             elif t == data_type:
                 shard_txs[rr % n].send(self._stamp_id(raw))
                 counts[rr % n] += 1
                 rr += 1
             else:
                 logging.error("client handler got unexpected msg type %s", t)
-                return
+                return False
+
+    def _abort(self, shards: Sequence[MOM]):
+        """Tell the pipeline to drop this crashed client's partial data."""
+        logging.warning("client %s dropped before EOF; aborting its data", self.id)
+        for tx in shards:
+            tx.send(Abort(self.id).serialize())
+        self._unregister(self.id)
 
     def _stamp_id(self, raw: bytes) -> bytes:
         """Overwrite the 16-byte client_id prefix with the gateway-minted id,

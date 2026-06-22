@@ -34,3 +34,6 @@ class UC2Join(JoinFn):
         response = Response(client_id, body)
 
         return response
+
+    def discard(self, client_id: UUID):
+        self.bank_data.pop(client_id, None)

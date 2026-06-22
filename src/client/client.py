@@ -11,6 +11,7 @@ from parser import AccountParser, TransactionParser
 
 from common.comms.transport import Connection
 from common.comms.messages import EOF, Accounts, Hello, HelloAck, Response, Transactions
+from common.fault_injection import maybe_crash
 from common.graceful_shutdown import setup_graceful_shutdown
 
 NRESPONSES = int(os.getenv("NRESPONSES", "1"))
@@ -86,6 +87,7 @@ class Client:
         acc_count = self._send_accounts_batched()
         self.conn.send(EOF(self.client_id, expected_count=acc_count).serialize())
         logging.info("sent accounts eof to server (%d batches)", acc_count)
+        maybe_crash("client_after_eof")
 
         logging.info("waiting for server responses")
         self._receive_and_write_responses()
@@ -124,6 +126,7 @@ class Client:
             else:
                 self.conn.send(item)
                 count += 1
+                maybe_crash("client_mid_transactions")
 
         for p in procs:
             p.join()
@@ -142,9 +145,12 @@ class Client:
                     self.conn.send(Accounts(self.client_id, batch).serialize())
                     batch = []
                     count += 1
+                    maybe_crash("client_mid_accounts")
             if batch:
                 self.conn.send(Accounts(self.client_id, batch).serialize())
                 count += 1
+                # also fires when accounts fit in one sub-BATCH_SIZE batch (small datasets)
+                maybe_crash("client_mid_accounts")
         return count
 
     def _receive_and_write_responses(self):
