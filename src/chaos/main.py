@@ -10,7 +10,7 @@ _INFRA_PREFIXES = ("client",)
 def select_victims(candidates, exclude, kills, rng):
     """Pure target selection: drop excluded names and infra, then randomly sample
     up to `kills` victims. Kept separate from Docker so it is easy to test."""
-    pool = [c for c in candidates if c not in exclude and not c.startswith(_INFRA_PREFIXES)]
+    pool = sorted(c for c in candidates if c not in exclude and not c.startswith(_INFRA_PREFIXES))
     if not pool:
         return []
     return rng.sample(pool, min(kills, len(pool)))
