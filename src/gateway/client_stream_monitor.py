@@ -42,3 +42,13 @@ class ClientStreamMonitor:
                 )
 
             return self.clients.get(client_id)
+
+    def stop_all(self):
+        """Stop every client's writer and close its socket (on gateway shutdown)."""
+        with self.mtx:
+            clients = list(self.clients.values())
+            self.clients.clear()
+        for client in clients:
+            client.stop()
+        for client in clients:
+            client.join()

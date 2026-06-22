@@ -1,5 +1,7 @@
 import logging
-from threading import Thread
+import os
+from queue import Full, Queue
+from threading import Lock, Thread
 from typing import Callable, Sequence
 from uuid import UUID, uuid4
 
@@ -22,8 +24,17 @@ from common.comms.middleware import (
     derive_producer_id,
 )
 
+# Bound each client's in-memory outbound buffer. Responses are ~5 per client, so this
+# is never reached in practice; it just keeps a slow client from growing unbounded.
+OUTBOX_MAXSIZE = int(os.getenv("GATEWAY_CLIENT_OUTBOX_MAX", "1024"))
+
 
 class ClientStreamHandler:
+    """Owns one client connection. A reader thread forwards the client's uploaded data
+    to the pipeline; a writer thread drains an in-memory outbox to the client's socket.
+    The shared response router only enqueues (never touches the socket), so a slow or
+    dead client blocks only its own writer, never the delivery to other clients."""
+
     def __init__(
         self,
         conn: Connection,
@@ -39,20 +50,42 @@ class ClientStreamHandler:
         self.trans_tx_factory = trans_tx_factory
         self.accs_tx_factory = accs_tx_factory
         self.handle: Thread
+        self._writer: "Thread | None" = None
+        self._outbox: "Queue[Message | None]" = Queue(maxsize=OUTBOX_MAXSIZE)
+        self._close_lock = Lock()
+        self._closed = False
 
     def start(self):
-        """Start a thread forwarding this stream's transactions and accounts."""
+        """Start the reader thread; it spawns the writer once the handshake is done."""
         self.handle = Thread(target=self._run)
         self.handle.start()
 
     def send(self, msg: Message):
-        self.conn.send(msg.serialize())
+        """Enqueue a response for this client's writer thread. Never blocks the caller
+        (the shared response router): if the outbox is full the response is dropped."""
+        try:
+            self._outbox.put_nowait(msg)
+        except Full:
+            logging.warning("client %s outbox full; dropping response", self.id)
+
+    def stop(self):
+        """Close the socket and signal the writer to exit (idempotent, non-blocking).
+        Used on gateway shutdown; a blocked send is unblocked by closing the socket."""
+        self._close()
+        self._signal_writer_stop()
+
+    def join(self):
+        """Wait for the writer thread to finish (after `stop`)."""
+        if self._writer is not None:
+            self._writer.join()
 
     def _run(self):
         Hello.deserialize(self.conn.recv())
         self.id = uuid4()
         self._register(self)
         self.conn.send(HelloAck(self.id).serialize())
+        self._writer = Thread(target=self._drain_outbox)
+        self._writer.start()
 
         # Each stream is round-robined across its downstream ring's shards. A single
         # producer per stream with a monotonic seq dedups exactly under the affinity
@@ -69,11 +102,33 @@ class ClientStreamHandler:
         accs_shards = [
             StampingMOM(tx, accs_base, accs_counter) for tx in self.accs_tx_factory()
         ]
-        if not self._forward_sharded(trans_shards, MessageType.TRANSACTIONS) or \
-                not self._forward_sharded(accs_shards, MessageType.ACCOUNTS):
+        try:
+            done = self._forward_sharded(trans_shards, MessageType.TRANSACTIONS) and \
+                self._forward_sharded(accs_shards, MessageType.ACCOUNTS)
+        except OSError:
+            if not self._closed:
+                logging.exception("client %s reader failed", self.id)
+            return
+        if not done:
             self._abort([*trans_shards, *accs_shards])
             return
         logging.info("finished forwarding all client's data")
+
+    def _drain_outbox(self):
+        """Drain queued responses to this client's socket. On send failure the client
+        is treated as gone: stop routing to it and close its socket once."""
+        while True:
+            msg = self._outbox.get()
+            if msg is None:
+                return
+            try:
+                self.conn.send(msg.serialize())
+            except OSError as e:
+                logging.warning(
+                    "client %s unreachable; dropping responses (%s)", self.id, e
+                )
+                self._teardown()
+                return
 
     def _forward_sharded(self, shard_txs: Sequence[MOM], data_type: MessageType) -> bool:
         """Route each message to one shard by round-robin (even split, stable once
@@ -109,7 +164,32 @@ class ClientStreamHandler:
         logging.warning("client %s dropped before EOF; aborting its data", self.id)
         for tx in shards:
             tx.send(Abort(self.id).serialize())
+        self._teardown()
+
+    def _teardown(self):
+        """Unregister the client, stop its writer and close its socket once. Idempotent,
+        so the reader (abort) and writer (failed send) paths can both call it safely."""
         self._unregister(self.id)
+        self._signal_writer_stop()
+        self._close()
+
+    def _signal_writer_stop(self):
+        try:
+            self._outbox.put_nowait(None)
+        except Full:
+            # Outbox full means the writer is busy sending; closing the socket makes
+            # that send fail and the writer exit, so the sentinel isn't needed.
+            pass
+
+    def _close(self):
+        with self._close_lock:
+            if self._closed:
+                return
+            self._closed = True
+        try:
+            self.conn.close()
+        except OSError:
+            pass
 
     def _stamp_id(self, raw: bytes) -> bytes:
         """Overwrite the 16-byte client_id prefix with the gateway-minted id,
