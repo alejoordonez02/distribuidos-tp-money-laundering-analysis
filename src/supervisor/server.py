@@ -1,7 +1,9 @@
 import logging
 import threading
 import time
+from abc import ABC
 from socket import AF_INET, SO_REUSEADDR, SOCK_STREAM, SOL_SOCKET, socket
+from typing import Sequence
 
 from common.comms.supervisor import Heartbeat, Register, decode
 from common.comms.transport import Connection
@@ -9,44 +11,40 @@ from common.comms.transport import Connection
 from .registry import NodeRegistry
 
 
-class SupervisorServer:
-    """TCP server that accepts node connections and feeds their Register and
-    Heartbeat messages into the registry. Liveness is decided by the registry's
-    timeout sweep — never by Docker and never by the socket state."""
+class SupervisorRuntime(ABC): ...
 
+
+class LeaderRuntime(SupervisorRuntime):
     def __init__(
         self,
-        host: str,
-        port: int,
+        server_listener: socket,
+        replica_listener: socket,
         registry: NodeRegistry,
         sweep_interval: float = 0.5,
     ):
-        self._host = host
-        self._port = port
+        self._server_listener = server_listener
+        self._replica_listener = replica_listener
         self._registry = registry
         self._sweep_interval = sweep_interval
+
         self._stop = threading.Event()
-        self._skt = socket(AF_INET, SOCK_STREAM)
 
-        self._skt.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-        self._skt.bind((self._host, self._port))
-
-    def start(self) -> None:
-        self._skt.listen()
+    def start(self):
+        self._server_listener.listen()
         threading.Thread(target=self._sweep, name="sweeper", daemon=True).start()
         threading.Thread(target=self._accept_loop, name="accept", daemon=True).start()
 
-    def stop(self) -> None:
+    def stop(self):
         self._stop.set()
         try:
-            self._skt.close()
+            self._server_listener.close()
         except OSError:
             pass
 
-    def _accept_loop(self) -> None:
+    def _accept_loop(self):
         while not self._stop.is_set():
             try:
-                conn_skt, _ = self._skt.accept()
+                conn_skt, _ = self._server_listener.accept()
             except OSError:
                 break
             threading.Thread(target=self._handle, args=(conn_skt,), daemon=True).start()
@@ -78,3 +76,45 @@ class SupervisorServer:
         while not self._stop.is_set():
             self._registry.check_timeouts(time.monotonic())
             self._stop.wait(self._sweep_interval)
+
+
+class SupervisorNode:
+    def __init__(
+        self,
+        bind_host: str,
+        server_port: int,
+        internal_port: int,
+        leader_port: int,
+        peer_addrs: Sequence[tuple[str, int]],
+        registry: NodeRegistry,
+        sweep_interval: float = 0.5,
+    ):
+        def make_skt(addr: tuple[str, int]):
+            skt = socket(AF_INET, SOCK_STREAM)
+            skt.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+            skt.bind(addr)
+            return skt
+
+        addrs = [
+            (bind_host, server_port),
+            (bind_host, leader_port),
+            (bind_host, internal_port),
+        ]
+
+        self._server_listener, self._replica_listener, self._node_listener = [
+            make_skt(addr) for addr in addrs
+        ]
+        self._leader_port = leader_port
+        self._peer_addrs = peer_addrs
+        self._registry = registry
+        self._sweep_interval = sweep_interval
+
+        self._runtime = LeaderRuntime(
+            self._server_listener, self._replica_listener, registry, sweep_interval
+        )
+
+    def start(self):
+        self._runtime.start()
+
+    def stop(self):
+        self._runtime.stop()
