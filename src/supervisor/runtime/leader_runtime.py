@@ -20,7 +20,7 @@ class Replica:
 
     def pong_ping(self):
         try:
-            while not self._keep_running:
+            while self._keep_running:
                 ping = self._conn.recv()
                 if not ping:
                     raise ReplicaDownError()
@@ -58,7 +58,7 @@ class LeaderRuntime(SupervisorRuntime):
         self._stop = threading.Event()
 
     def start(self):
-        self._server_listener.listen()
+
         threading.Thread(target=self._sweep, name="sweeper", daemon=True).start()
         threading.Thread(
             target=self._handle_clients, name="accept", daemon=True
@@ -100,6 +100,7 @@ class LeaderRuntime(SupervisorRuntime):
                 except OSError:
                     pass
 
+        self._server_listener.listen()
         while not self._stop.is_set():
             try:
                 conn_skt, _ = self._server_listener.accept()
@@ -118,6 +119,7 @@ class LeaderRuntime(SupervisorRuntime):
             except ReplicaDownError as e:
                 logging.debug("lost connection with replica (%s)", e)
 
+        self._replica_listener.listen()
         while not self._stop.is_set():
             try:
                 conn_skt, _ = self._replica_listener.accept()

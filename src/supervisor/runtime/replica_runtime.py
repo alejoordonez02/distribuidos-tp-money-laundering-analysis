@@ -46,6 +46,7 @@ class Leader:
             time.sleep(RETRY_DELAY)
             try:
                 skt.connect(self._addr)
+                break
             except ConnectionRefusedError:
                 continue
 
@@ -57,7 +58,7 @@ class Leader:
         assert self._conn is not None  # pleasing linter
 
         try:
-            while not self._keep_running:
+            while self._keep_running:
                 self._conn.send(b"ping")
                 pong = self._conn.recv()
                 if not pong:
