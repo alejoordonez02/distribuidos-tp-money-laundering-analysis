@@ -17,6 +17,9 @@ class UC1Join(JoinFn):
     def restore_state(self, snapshot: dict[str, Any]):
         self._spill.restore_state(snapshot.get("spill", {}))  # type: ignore[attr-defined]
 
+    def clear_stale_spill(self):
+        self._spill.clear_all()  # type: ignore[attr-defined]
+
     def join(self, el: Transactions):  # type: ignore[reportIncompatibleMethodOverride]
         for t in el.transactions:
             origin = f"{t.from_bank}-{t.from_account}"

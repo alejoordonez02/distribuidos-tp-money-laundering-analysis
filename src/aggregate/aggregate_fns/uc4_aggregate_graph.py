@@ -70,7 +70,6 @@ class UC4AggregateGraphs(AggregateFn):
             for affinity, graph in affinities.items():
                 yield graph, affinity
 
-        self._spill.clear(client_id)
         self._preds.pop(client_id, None)
         self._succs.pop(client_id, None)
 
@@ -88,6 +87,9 @@ class UC4AggregateGraphs(AggregateFn):
         self._spill.restore_state(snapshot)
         self._preds = {}
         self._succs = {}
+
+    def clear_stale_spill(self):
+        self._spill.clear_all()
 
     def downstream(self, client_id):
         logging.info("writing in memory graphs in disk")

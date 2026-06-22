@@ -63,6 +63,16 @@ class MultiShardSpill:
             except OSError:
                 pass
 
+    def clear_all(self):
+        for handle in self._handles.values():
+            handle.close()
+        self._handles = {}
+        for path in glob.glob(os.path.join(self._dir, f"{self._tag}_*.spill")):
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+
     def snapshot_state(self) -> dict[str, Any]:
         # flush() pushes the buffer to the OS; no fsync — the fault model is a
         # process crash (RabbitMQ stable), and OS page cache survives that. fsync

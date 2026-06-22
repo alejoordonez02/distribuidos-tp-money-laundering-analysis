@@ -93,6 +93,35 @@ def test_restore_returns_false_when_no_checkpoint(tmp_path):
     assert cp.restore() is False
 
 
+class SpillFn(FakeFn):
+    def __init__(self):
+        super().__init__()
+        self.cleared = False
+
+    def clear_stale_spill(self):
+        self.cleared = True
+
+
+def test_restore_without_checkpoint_clears_stale_spill(tmp_path):
+    fn = SpillFn()
+    store = CheckpointStore(str(tmp_path / "node.ckpt"))
+    cp = Checkpointer(fn, store, Deduplicator(), 1)
+    assert cp.restore() is False
+    assert fn.cleared is True
+
+
+def test_restore_with_checkpoint_does_not_clear_spill(tmp_path):
+    fn = SpillFn()
+    store = CheckpointStore(str(tmp_path / "node.ckpt"))
+    cp = Checkpointer(fn, store, Deduplicator(), 1)
+    cp.handle_data(FakeMsg(P1, 1), lambda: fn.applied.append(1), lambda: None)
+
+    fn2 = SpillFn()
+    cp2 = Checkpointer(fn2, store, Deduplicator(), 1)
+    assert cp2.restore() is True
+    assert fn2.cleared is False
+
+
 def test_aborted_client_data_is_dropped_and_acked(tmp_path):
     fn, _, cp = _make(tmp_path, every=10)
     cid = uuid4()

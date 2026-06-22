@@ -1,3 +1,4 @@
+import glob
 import os
 from typing import IO, Any, Iterator
 from uuid import UUID
@@ -31,6 +32,25 @@ class PersistentSpill:
     def append(self, client_id: UUID, line: str):
         self._handle(client_id).write(line)
 
+    def iter_lines(self, client_id: UUID) -> Iterator[str]:
+        handle = self._handles.get(client_id)
+        if handle is not None:
+            handle.flush()
+        path = self._path(client_id)
+        if os.path.exists(path):
+            with open(path) as f:
+                yield from f
+
+    def iter_chunks(self, client_id: UUID, batch_lines: int) -> Iterator[str]:
+        batch: list[str] = []
+        for line in self.iter_lines(client_id):
+            batch.append(line)
+            if len(batch) >= batch_lines:
+                yield "".join(batch)
+                batch = []
+        if batch:
+            yield "".join(batch)
+
     def iter_lines_and_clear(self, client_id: UUID) -> Iterator[str]:
         handle = self._handles.pop(client_id, None)
         if handle is not None:
@@ -49,6 +69,16 @@ class PersistentSpill:
         path = self._path(client_id)
         if os.path.exists(path):
             os.unlink(path)
+
+    def clear_all(self):
+        for handle in self._handles.values():
+            handle.close()
+        self._handles = {}
+        for path in glob.glob(os.path.join(self._dir, f"{self._tag}_*.spill")):
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
 
     def iter_chunks_and_clear(
         self, client_id: UUID, batch_lines: int

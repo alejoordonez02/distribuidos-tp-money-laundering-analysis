@@ -56,6 +56,9 @@ class Checkpointer:
     def restore(self) -> bool:
         blob = self._store.load()
         if blob is None:
+            clear = getattr(self._fn, "clear_stale_spill", None)
+            if clear is not None:
+                clear()
             return False
         self._fn.restore_state(blob["state"])
         self._dedup.restore(blob["dedup"])

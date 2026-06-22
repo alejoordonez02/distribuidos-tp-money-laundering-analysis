@@ -86,7 +86,6 @@ class UC4CountPaths(AggregateFn):
             for affinity, path_counts in affinities.items():
                 yield path_counts, affinity
 
-        self._spill.clear(client_id)
         self._paths.pop(client_id, None)
 
     def discard(self, client_id: UUID):
@@ -103,6 +102,9 @@ class UC4CountPaths(AggregateFn):
     def restore_state(self, snapshot: dict[str, Any]):
         self._spill.restore_state(snapshot)
         self._paths = {}
+
+    def clear_stale_spill(self):
+        self._spill.clear_all()
 
     def _downstream(self, client_id: UUID):
         logging.info("spilling count_paths to disk")

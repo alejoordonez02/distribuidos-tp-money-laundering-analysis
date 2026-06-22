@@ -45,7 +45,7 @@ class UC4PruneMergeFn(MergeFn):
 
         batch: dict[Node, tuple[set[Node], set[Node]]] = {}
         batch_size = 0
-        for line in self._spill.iter_lines_and_clear(client_id):
+        for line in self._spill.iter_lines(client_id):
             node, preds, succs = _deserialize(line.rstrip("\n"))
             preds = preds & hi_out
             succs = succs & hi_in
@@ -86,6 +86,9 @@ class UC4PruneMergeFn(MergeFn):
             for c, lst in snapshot.get("hi_in", {}).items()
         }
         self._spill.restore_state(snapshot.get("spill", {}))
+
+    def clear_stale_spill(self):
+        self._spill.clear_all()
 
     def _salted_tiles(
         self, client_id: UUID, node: Node, preds: set[Node], succs: set[Node]

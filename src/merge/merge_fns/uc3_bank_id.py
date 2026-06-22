@@ -58,7 +58,7 @@ class UC3BankIdMergeFn(MergeFn):
         # each message independently — same data, same result as one big message.
         batch: list[Transaction] = []
         emitted = False
-        for line in self._spill.iter_lines_and_clear(client_id):
+        for line in self._spill.iter_lines(client_id):
             t = _deserialize(line.rstrip("\n"))
             if t.payment_format in averages:
                 batch.append(t)
@@ -91,3 +91,6 @@ class UC3BankIdMergeFn(MergeFn):
             UUID(c): dict(v) for c, v in snapshot.get("averages", {}).items()
         }
         self._spill.restore_state(snapshot.get("spill", {}))
+
+    def clear_stale_spill(self):
+        self._spill.clear_all()

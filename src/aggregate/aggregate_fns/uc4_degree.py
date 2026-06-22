@@ -66,8 +66,6 @@ class UC4Degree(AggregateFn):
                 _capped_update(out, node, o)
                 _capped_update(in_, node, i)
 
-        self._spill.clear(client_id)
-
         hi_out = {Node.from_str(n) for n, s in out.items() if len(s) >= MIN_DEGREE}
         hi_in = {Node.from_str(n) for n, s in in_.items() if len(s) >= MIN_DEGREE}
 
@@ -87,6 +85,9 @@ class UC4Degree(AggregateFn):
         self._spill.restore_state(snapshot)
         self._out = {}
         self._in = {}
+
+    def clear_stale_spill(self):
+        self._spill.clear_all()
 
     def _downstream(self, client_id: UUID):
         out = self._out.pop(client_id, {})
