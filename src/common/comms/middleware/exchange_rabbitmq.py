@@ -40,6 +40,7 @@ class ExchangeRabbitMQ(MOMExchange):
         self.conn = BlockingConnection(ConnectionParameters(host, heartbeat=0))
         self.chan = self.conn.channel()
         self.chan.exchange_declare(exchange=exchange_name)
+        self.chan.confirm_delivery()
 
     def start_consuming(
         self, on_message_callback: Callable[[bytes, Callable, Callable], None]

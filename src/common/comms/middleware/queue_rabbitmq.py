@@ -24,6 +24,7 @@ class QueueRabbitMQ(MOMQueue):
         self.chan = self.conn.channel()
         self.chan.queue_declare(queue=queue_name)
         self.chan.basic_qos(prefetch_count=prefetch_count)
+        self.chan.confirm_delivery()
 
     def start_consuming(
         self, on_message_callback: Callable[[bytes, Callable, Callable], None]
