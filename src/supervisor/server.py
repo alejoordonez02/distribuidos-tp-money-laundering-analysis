@@ -1,55 +1,15 @@
 import logging
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from enum import IntEnum
 from queue import Queue
 from socket import AF_INET, SO_REUSEADDR, SOCK_STREAM, SOL_SOCKET, socket
 from threading import Thread
-from typing import Self, Sequence
+from typing import Sequence
 
 from common.comms.transport import Connection
 
+from .event import EventType, LeaderDown, PeerConnection, SupervisorEvent
+from .peer import Peer
 from .registry import NodeRegistry
 from .runtime import LeaderDownError, LeaderRuntime, ReplicaRuntime, SupervisorRuntime
-
-
-@dataclass
-class Peer:
-    idx: int
-    host: str
-
-    def __gt__(self, other: Self | int) -> bool:
-        if self.idx is None or (isinstance(other, Peer) and other.idx is None):
-            raise RuntimeError("cannot compare peer without an assigned idx")
-        return self.idx > other.idx if isinstance(other, Peer) else self.idx > other  # type: ignore[reportOperatorIssue]
-
-    def __lt__(self, other: Self | int) -> bool:
-        if self.idx is None or (isinstance(other, Peer) and not other.idx):
-            raise RuntimeError("cannot compare peer without an assigned idx")
-        return self.idx < other.idx if isinstance(other, Peer) else self.idx < other  # type: ignore[reportOperatorIssue]
-
-
-class EventType(IntEnum):
-    LEADER_DOWN = 0
-    PEER_CONNECTION = 1
-
-
-class SupervisorEvent(ABC):
-    @abstractmethod
-    def type(self) -> EventType: ...
-
-
-class LeaderDown(SupervisorEvent):
-    def type(self) -> EventType:
-        return EventType.LEADER_DOWN
-
-
-@dataclass
-class PeerConnection(SupervisorEvent):
-    conn: Connection
-
-    def type(self) -> EventType:
-        return EventType.PEER_CONNECTION
 
 
 class SupervisorNode:
