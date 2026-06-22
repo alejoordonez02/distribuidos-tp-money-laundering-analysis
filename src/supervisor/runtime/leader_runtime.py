@@ -7,6 +7,7 @@ from common.comms.supervisor import Heartbeat, Register, decode
 from common.comms.transport import Connection
 
 from ..registry import NodeRegistry
+from ..tui import Dashboard
 from .supervisor_runtime import SupervisorRuntime
 
 
@@ -49,11 +50,13 @@ class LeaderRuntime(SupervisorRuntime):
         replica_listener: socket,
         registry: NodeRegistry,
         sweep_interval: float = 0.5,
+        dashboard: Dashboard | None = None,
     ):
         self._server_listener = server_listener
         self._replica_listener = replica_listener
         self._registry = registry
         self._sweep_interval = sweep_interval
+        self._dashboard = dashboard
 
         self._stop = threading.Event()
 
@@ -66,6 +69,13 @@ class LeaderRuntime(SupervisorRuntime):
         threading.Thread(
             target=self._handle_replicas, name="replicas", daemon=True
         ).start()
+        if self._dashboard:
+            threading.Thread(
+                target=self._dashboard.run,
+                args=(self._stop,),
+                name="dashboard",
+                daemon=True,
+            ).start()
         # TODO: mepa q está como el orto usar daemon, no tiene mucho sentido y
         #       aparte cuándo se joinean los threads? no importa en qué terminan?
 

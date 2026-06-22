@@ -24,15 +24,26 @@ def main() -> None:
     timeout = float(os.getenv("HEARTBEAT_TIMEOUT", "6"))
     expected = [n for n in os.getenv("EXPECTED_NODES", "").split(",") if n]
     # 0 disables revival (detection only); the reviver needs the docker socket.
+    sweep_interval = float(os.getenv("SWEEP_INTERVAL", "0.5"))
+    ping_delay = float(os.getenv("PING_DELAY", "0.5"))
     revive_interval = float(os.getenv("REVIVE_INTERVAL", "5"))
 
     peers = [Peer(i, f"{node_prefix}{i}") for i in range(nnodes) if i != idx]
 
     registry = NodeRegistry(timeout, expected=expected)
-    server = SupervisorNode(
-        idx, bind_host, server_port, internal_port, leader_port, peers, registry
-    )
     dashboard = Dashboard(registry)
+    server = SupervisorNode(
+        idx,
+        bind_host,
+        server_port,
+        internal_port,
+        leader_port,
+        peers,
+        registry,
+        sweep_interval,
+        ping_delay,
+        dashboard,
+    )
     reviver = (
         Reviver(registry, interval=revive_interval) if revive_interval > 0 else None
     )
@@ -49,7 +60,7 @@ def main() -> None:
         threading.Thread(
             target=reviver.run, args=(stop,), name="reviver", daemon=True
         ).start()
-    dashboard.run(stop)
+    stop.wait()
 
 
 if __name__ == "__main__":

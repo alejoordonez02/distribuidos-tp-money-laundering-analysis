@@ -19,6 +19,7 @@ from .event import EventType, LeaderDown, NewLeader, PeerConnection, SupervisorE
 from .peer import Peer
 from .registry import NodeRegistry
 from .runtime import LeaderDownError, LeaderRuntime, ReplicaRuntime, SupervisorRuntime
+from .tui import Dashboard
 
 
 class SupervisorNode:
@@ -33,6 +34,7 @@ class SupervisorNode:
         registry: NodeRegistry,
         sweep_interval: float = 0.5,
         ping_delay: float = 0.5,
+        dashboard: Dashboard | None = None,
     ):
         def make_skt(addr: tuple[str, int]):
             skt = socket(AF_INET, SOCK_STREAM)
@@ -57,6 +59,7 @@ class SupervisorNode:
         self._registry = registry
         self._sweep_interval = sweep_interval
         self._ping_delay = ping_delay
+        self._dashboard = dashboard
 
         # TODO: esto se elige dinámicamente pero ahora sólo quiero ping pong
         leader = max(peers) if len(peers) > 0 and idx < max(peers) else None
@@ -68,7 +71,11 @@ class SupervisorNode:
             ReplicaRuntime((leader.host, leader_port), ping_delay)
             if leader
             else LeaderRuntime(
-                self._server_listener, self._replica_listener, registry, sweep_interval
+                self._server_listener,
+                self._replica_listener,
+                registry,
+                sweep_interval,
+                self._dashboard,
             )
         )
         self._runtimes.put(runtime)
@@ -128,6 +135,7 @@ class SupervisorNode:
                     self._replica_listener,
                     self._registry,
                     self._sweep_interval,
+                    self._dashboard,
                 )
             )
             self._on_election = False
