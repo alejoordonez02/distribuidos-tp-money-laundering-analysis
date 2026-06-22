@@ -6,6 +6,9 @@ from common.comms.transport import Connection
 
 from .supervisor_runtime import SupervisorRuntime
 
+CONNECTION_RETRIES = 10
+RETRY_DELAY = 1
+
 
 class LeaderDownError(Exception): ...
 
@@ -39,7 +42,13 @@ class Leader:
 
     def _connect(self):
         skt = socket(AF_INET, SOCK_STREAM)
-        skt.connect(self._addr)
+        for _ in range(CONNECTION_RETRIES):
+            time.sleep(RETRY_DELAY)
+            try:
+                skt.connect(self._addr)
+            except ConnectionRefusedError:
+                continue
+
         self._conn = Connection(skt)
 
     def ping_pong(self):
