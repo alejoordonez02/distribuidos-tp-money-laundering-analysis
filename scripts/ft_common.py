@@ -126,10 +126,14 @@ def client_exit_codes():
 
 
 def verify():
-    """Run the per-UC oracle comparison, returning (ok, last_pytest_line)."""
+    """Run the per-UC oracle comparison, returning (ok, summary_with_failed_ucs)."""
     r = run("uv run pytest test/test_uc1.py test/test_uc2.py test/test_uc3.py "
-            "test/test_uc4.py test/test_uc5.py -q", capture=True)
-    tail = r.stdout.strip().splitlines()[-1] if r.stdout.strip() else ""
+            "test/test_uc4.py test/test_uc5.py -q -rf", capture=True)
+    lines = r.stdout.strip().splitlines() if r.stdout.strip() else []
+    failed = [l.strip() for l in lines if "FAILED" in l]
+    tail = lines[-1] if lines else ""
+    if failed:
+        tail = " | ".join(failed) + " || " + tail
     return r.returncode == 0, tail
 
 
