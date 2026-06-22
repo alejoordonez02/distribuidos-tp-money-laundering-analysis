@@ -43,12 +43,16 @@ class RingBroadcastFilter(StatelessRingNode):
     def _on_data(self, msg):
         shard = 0
         for tx, filter_fn in self.broadcast_routes:
-            tx.send(filter_fn.filter(msg).serialize())
+            tx.send_stamped(  # type: ignore[attr-defined]
+                filter_fn.filter(msg).serialize(), msg.producer_id, msg.seq
+            )
             self.sent.add(msg.client_id, shard)
             shard += 1
         for shards, filter_fn in self.sharded_routes:
             i = shard_of(msg, len(shards))
-            shards[i].send(filter_fn.filter(msg).serialize())
+            shards[i].send_stamped(  # type: ignore[attr-defined]
+                filter_fn.filter(msg).serialize(), msg.producer_id, msg.seq
+            )
             self.sent.add(msg.client_id, shard + i)
             shard += len(shards)
         self._run(self.rc.on_data(msg.client_id))
