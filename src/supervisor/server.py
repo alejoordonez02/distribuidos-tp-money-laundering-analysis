@@ -102,6 +102,7 @@ class SupervisorNode:
         )
         self._runtimes.put(runtime)
 
+        self._event_handle = Thread(target=self._event_worker)
         self._runtime_handle = Thread(target=self._runtime_worker)
         self._listener_handle = Thread(target=self._listener_worker)
 
@@ -113,7 +114,7 @@ class SupervisorNode:
 
         self._runtime_handle.start()
         self._listener_handle.start()
-        return self._event_worker()
+        self._event_handle.start()
 
     def _event_worker(self):
         while self._keep_running:
