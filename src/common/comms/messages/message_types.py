@@ -25,3 +25,4 @@ class MessageType(IntEnum):
     HELLO_ACK = 20
     RING_BARRIER = 21
     ABORT = 22
+    SUPERVISOR_ELECTION = 23
