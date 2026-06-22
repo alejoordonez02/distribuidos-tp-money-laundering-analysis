@@ -18,8 +18,9 @@ from common.comms.middleware import (
 )
 from common.graceful_shutdown import setup_graceful_shutdown
 
-# Cap how long a send to a client may block before we treat it as gone: long enough
-# for a slow-but-alive client, short enough to not wedge the shared response consumer.
+# Cap how long a send to a client may block before its per-client writer treats it as
+# gone: long enough for a slow-but-alive client, a safety net behind the per-client
+# writer threads that already isolate a stuck send from the shared response consumer.
 CLIENT_SEND_TIMEOUT_S = int(os.getenv("GATEWAY_CLIENT_SEND_TIMEOUT_S", "10"))
 
 
@@ -89,11 +90,6 @@ class Gateway:
             self.clients.get(response.client_id).send(response)  # type: ignore[reportAttributeAccessIssue]
         except ClientNotFoundError:
             pass
-        except OSError as e:
-            logging.warning(
-                "client %s unreachable; dropping response (%s)", response.client_id, e
-            )
-            self.clients.remove(response.client_id)
 
         ack()
 
@@ -117,5 +113,6 @@ class Gateway:
             )
             client.start()
 
+        self.clients.stop_all()
         self.server_handle.join()
         self.server_rx.close()
