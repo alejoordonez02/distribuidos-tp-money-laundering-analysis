@@ -109,7 +109,7 @@ class SupervisorNode:
                     logging.debug(f"could not send election message to {p.__dict__}")
                     pass
 
-            if acks > 1:
+            if acks > 0:
                 return
 
             for p in self._peers:
