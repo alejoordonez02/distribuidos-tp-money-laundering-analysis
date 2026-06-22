@@ -1,10 +1,10 @@
 import logging
 import threading
-from socket import AF_INET, SOCK_STREAM, socket
+from socket import AF_INET, SOCK_STREAM, create_connection, socket
 from typing import Optional
 
-from common.comms.transport import Connection
 from common.comms.supervisor import Heartbeat, Register, encode
+from common.comms.transport import Connection
 
 
 class HeartbeatClient:
@@ -29,9 +29,7 @@ class HeartbeatClient:
         self._reconnect_delay = reconnect_delay
         self._stop = threading.Event()
         self._conn: Optional[Connection] = None
-        self._thread = threading.Thread(
-            target=self._run, name="heartbeat", daemon=True
-        )
+        self._thread = threading.Thread(target=self._run, name="heartbeat", daemon=True)
 
     def start(self) -> None:
         self._thread.start()
@@ -59,7 +57,7 @@ class HeartbeatClient:
     def _serve(self) -> None:
         skt = socket(AF_INET, SOCK_STREAM)
         try:
-            skt.connect((self._host, self._port))
+            skt = create_connection((self._host, self._port))
             conn = Connection(skt)
             self._conn = conn
             conn.send(encode(Register(self._node_id, self._kind)))
