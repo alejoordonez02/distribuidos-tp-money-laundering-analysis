@@ -115,6 +115,18 @@ class StampingMOM(MOM):
         )
         self._inner.send(stamped)
 
+    def send_stamped(self, message: bytes, producer_id: bytes, seq: int):
+        if peek_type(message) in _UNSTAMPED_TYPES:
+            self._inner.send(message)
+            return
+        stamped = (
+            message[: PREFIX_RANGE.stop]
+            + producer_id
+            + seq.to_bytes(SEQ_BYTES, "big")
+            + message[SEQ_RANGE.stop :]
+        )
+        self._inner.send(stamped)
+
     def start_consuming(
         self, on_message_callback: Callable[[bytes, Callable, Callable], None]
     ):
