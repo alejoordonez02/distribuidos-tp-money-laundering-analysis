@@ -72,7 +72,7 @@ def load_raw():
 def load():
     clean = []
     for r in load_raw():
-        if str(r.get("completed")) != "True" or str(r.get("validated_5_5")) != "True":
+        if str(r.get("completed")) != "True":
             continue
         if _f(r.get("total_s")) is None:
             continue
