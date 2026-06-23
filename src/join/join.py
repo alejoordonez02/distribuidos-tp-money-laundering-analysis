@@ -5,7 +5,7 @@ from typing import Callable, Optional
 from join_fns import JoinFn
 from join_route_handler import JoinRouteHandler
 
-from common.comms.middleware import MOM, MOMQueue
+from common.comms.middleware import MOMExchange, MOMQueue
 from common.graceful_shutdown import setup_graceful_shutdown
 
 
@@ -13,7 +13,7 @@ class Join:
     def __init__(
         self,
         partial_res_handlers: list[tuple[Callable[[], MOMQueue], JoinFn, int]],
-        responses_tx_factory: Callable[[], MOM],
+        responses_tx_factory: Callable[[], MOMExchange],
         state_dir: Optional[str] = None,
         checkpoint_every: int = 5,
     ):
