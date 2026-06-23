@@ -102,11 +102,10 @@ class SupervisorNode:
                 skt.connect((p.host, self._internal_port))
                 conn = Connection(skt)
                 conn.send(msg.serialize())
-                SupervisorACK.deserialize(conn.recv())
                 acks += 1
                 conn.close()
 
-            except (ConnectionRefusedError, NameDoesNotResolveError):
+            except OSError:
                 logging.debug(
                     f"could not send {msg.__class__.__name__} message to {p.__dict__}"
                 )
@@ -161,7 +160,6 @@ class SupervisorNode:
                     leader_idx = msg.idx  # type:ignore [reportAttributeAccessIssue]
                     handle_new_leader(NewLeader(leader_idx))
 
-            conn.send(SupervisorACK().serialize())
             conn.close()
 
         while self._keep_running:
