@@ -97,7 +97,6 @@ def test_delivers_responses_in_order_and_acks_after_send():
         assert fake.acked == [f"r{i}".encode() for i in range(5)]
 
         handler.stop()
-        handler.join()
         assert fake.closed
     finally:
         a.close()
@@ -130,8 +129,7 @@ def test_dead_client_does_not_affect_other_clients():
         assert live.id not in unregistered
 
         live.stop()
-        live.join()
-        dead.join()
+        dead.stop()
         assert dead_fake.closed
     finally:
         for s in (dead_a, dead_b, live_a, live_b):
@@ -152,7 +150,7 @@ def test_response_is_not_acked_when_it_never_reaches_the_socket():
         assert _wait_until(lambda: handler.id in unregistered)
         assert fake.acked == []
         assert _wait_until(lambda: fake.closed)
-        handler.join()
+        handler.stop()
         assert handler._response_thread is not None
         assert not handler._response_thread.is_alive()
     finally:
@@ -167,7 +165,6 @@ def test_shutdown_stops_consumer_and_thread():
         handler = _make_handler(Connection(a), fake)
         assert handler._response_thread is not None and handler._response_thread.is_alive()
         handler.stop()
-        handler.join()
         assert not handler._response_thread.is_alive()
         assert fake.closed
     finally:
