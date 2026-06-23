@@ -27,7 +27,7 @@ class ClientStreamMonitor:
     def remove(self, client_id: UUID):
         """Drop a client's session (on crash) so its responses are no longer routed."""
         with self.mtx:
-            self.clients.pop(client_id, None)
+            client = self.clients.pop(client_id, None)
 
     def get(self, client_id: UUID):
         """
@@ -42,3 +42,15 @@ class ClientStreamMonitor:
                 )
 
             return self.clients.get(client_id)
+
+    def stop(self):
+        client_list_ids = self.all()
+        for cli_id in client_list_ids:
+            client = self.clients.get(cli_id, None)
+            if client != None:
+                client.stop()
+            
+    def all(self) -> list[UUID]:
+        with self.mtx:
+            return list(self.clients.keys())
+        
