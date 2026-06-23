@@ -58,31 +58,17 @@ class SupervisorNode:
         self._sweep_interval = sweep_interval
         self._ping_delay = ping_delay
         self._dashboard = dashboard
+        self._runtime: SupervisorRuntime | None = None
 
-        # TODO: esto se elige dinámicamente pero ahora sólo quiero ping pong
-        leader = max(peers) if len(peers) > 0 and idx < max(peers) else None
         self._runtimes: Queue[SupervisorRuntime] = Queue()
         self._events: Queue[SupervisorEvent] = Queue()
-
-        self._runtime: SupervisorRuntime
-        runtime = (
-            ReplicaRuntime((leader.host, leader_port), ping_delay)
-            if leader
-            else LeaderRuntime(
-                self._server_listener,
-                self._replica_listener,
-                registry,
-                sweep_interval,
-                self._dashboard,
-            )
-        )
-        self._runtimes.put(runtime)
+        self._events.put(LeaderDown())
 
         self._runtime_handle = Thread(target=self._runtime_worker)
         self._listener_handle = Thread(target=self._listener_worker)
 
         self._on_election = False
-        self._is_leader = leader is None
+        self._is_leader = False
         self._keep_running = False
 
     def start(self):
@@ -128,7 +114,8 @@ class SupervisorNode:
 
             self._broadcast_message(SupervisorLeader(self._idx), self._peers)
 
-            self._runtime.stop()
+            if self._runtime:
+                self._runtime.stop()
             self._runtimes.put(
                 LeaderRuntime(
                     self._server_listener,
@@ -146,7 +133,8 @@ class SupervisorNode:
             leader_host = next(p.host for p in self._peers if p.idx == leader_idx)
 
             self._is_leader = False
-            self._runtime.stop()
+            if self._runtime:
+                self._runtime.stop()
             self._runtimes.put(
                 ReplicaRuntime((leader_host, self._leader_port), self._ping_delay)
             )
@@ -195,4 +183,5 @@ class SupervisorNode:
 
     def stop(self):
         self._keep_running = False
-        self._runtime.stop()
+        if self._runtime:
+            self._runtime.stop()
