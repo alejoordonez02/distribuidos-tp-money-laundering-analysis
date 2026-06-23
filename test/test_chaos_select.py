@@ -4,10 +4,12 @@ from chaos.main import select_victims
 
 
 def test_excludes_excluded_and_infra():
-    cands = ["filter_0", "rabbitmq", "supervisor", "gateway", "client_0", "chaos", "join_0"]
+    # supervisor_0/_1 are the cluster's replica containers: a base name in the exclude
+    # set must protect them too, otherwise the chaos monkey kills the supervision.
+    cands = ["filter_0", "rabbitmq", "supervisor_0", "supervisor_1", "gateway", "client_0", "chaos", "join_0"]
     exclude = {"rabbitmq", "supervisor", "gateway", "chaos"}
     out = select_victims(cands, exclude, kills=10, rng=random.Random(0))
-    assert set(out) == {"filter_0", "join_0"}  # client_0 dropped by prefix
+    assert set(out) == {"filter_0", "join_0"}  # supervisor_N by base name, client_0 by prefix
 
 
 def test_respects_kill_count():
