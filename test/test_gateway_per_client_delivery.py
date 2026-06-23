@@ -1,10 +1,9 @@
 import os
+import queue
 import socket
 import sys
 import threading
 import time
-
-import pytest
 
 # The gateway package uses flat imports (it runs with src/gateway on PYTHONPATH inside
 # its container), so import the handler the same way instead of through the package.
@@ -14,92 +13,175 @@ from common.comms.transport.connection import Connection
 from client_stream_handler import ClientStreamHandler
 
 
-class _FakeResponse:
-    """Stand-in for a Response: the writer only needs `serialize()`."""
+class _FakeResponseQueue:
+    """In-memory stand-in for a client's own broker response queue (one ExchangeRabbitMQ
+    bound by client_id). It models the contract the handler relies on: FIFO delivery, a
+    blocking `start_consuming` that hands each message to the callback with manual
+    ack/nack, and `close` once the consumer stops. No real broker needed."""
 
-    def __init__(self, payload: bytes):
-        self._payload = payload
+    def __init__(self):
+        self._q: "queue.Queue[bytes]" = queue.Queue()
+        self._stop = threading.Event()
+        self.acked: list[bytes] = []
+        self.nacked: list[bytes] = []
+        self.closed = False
+        self.created_for = None
 
-    def serialize(self) -> bytes:
-        return self._payload
+    def deliver(self, body: bytes):
+        self._q.put(body)
+
+    def start_consuming(self, on_message):
+        while not self._stop.is_set():
+            try:
+                body = self._q.get(timeout=0.02)
+            except queue.Empty:
+                continue
+            on_message(
+                body,
+                lambda b=body: self.acked.append(b),
+                lambda b=body: self.nacked.append(b),
+            )
+
+    def stop_consuming(self):
+        self._stop.set()
+
+    def close(self):
+        self.closed = True
+
+    def send(self, message: bytes, routing_key=None):
+        pass
 
 
-def _make_handler(conn: Connection, unregistered: list) -> ClientStreamHandler:
+def _make_handler(conn: Connection, fake: _FakeResponseQueue, unregistered=None):
+    """Build a handler with an injected per-client response queue and bring its response
+    consumer up directly — the handshake half of `_run` is exercised separately."""
+
+    def factory(client_id):
+        fake.created_for = client_id
+        return fake
+
     handler = ClientStreamHandler(
         conn,
         register=lambda h: None,
-        unregister=lambda cid: unregistered.append(cid),
+        unregister=lambda cid: (unregistered.append(cid) if unregistered is not None else None),
+        responses_rx_factory=factory,
         trans_tx_factory=lambda: [],
         accs_tx_factory=lambda: [],
     )
-    # Drive the writer directly: the handshake half of `_run` is not under test here.
-    handler._writer = threading.Thread(target=handler._drain_outbox)
-    handler._writer.start()
+    handler._start_response_consumer()
     return handler
 
 
-def test_writer_delivers_responses_in_order():
+def _wait_until(predicate, timeout=5.0):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if predicate():
+            return True
+        time.sleep(0.02)
+    return predicate()
+
+
+def test_delivers_responses_in_order_and_acks_after_send():
+    """One client's queue is FIFO with a single consumer, so order holds, and each
+    response is acked only after it is on the socket."""
     a, b = socket.socketpair()
     try:
-        handler = _make_handler(Connection(a), [])
+        fake = _FakeResponseQueue()
+        handler = _make_handler(Connection(a), fake)
         receiver = Connection(b)
         for i in range(5):
-            handler.send(_FakeResponse(f"r{i}".encode()))
+            fake.deliver(f"r{i}".encode())
         for i in range(5):
             assert receiver.recv() == f"r{i}".encode()
+        assert _wait_until(lambda: len(fake.acked) == 5)
+        assert fake.acked == [f"r{i}".encode() for i in range(5)]
+
         handler.stop()
         handler.join()
+        assert fake.closed
     finally:
         a.close()
         b.close()
 
 
-def test_dead_client_does_not_block_other_clients():
-    # The whole point of #88: a dead client's writer must not stall delivery to a live
-    # one, and the shared router (`send`) must never block on a stuck client.
+def test_dead_client_does_not_affect_other_clients():
+    """#88: each client drains its own queue on its own thread, so a dead client only
+    stalls and tears down its own path, never another client's. dead_b never reads, so
+    dead_a's buffer fills and its response thread blocks until the send timeout fires."""
     dead_a, dead_b = socket.socketpair()
     live_a, live_b = socket.socketpair()
     try:
         unregistered: list = []
-        # dead_b never reads, so dead_a's send buffer fills and its writer stalls until
-        # the 1s send timeout fires; live_b reads normally.
-        dead = _make_handler(Connection(dead_a, send_timeout=1), unregistered)
-        live = _make_handler(Connection(live_a), unregistered)
+        dead_fake = _FakeResponseQueue()
+        live_fake = _FakeResponseQueue()
+        dead = _make_handler(Connection(dead_a, send_timeout=1), dead_fake, unregistered)
+        live = _make_handler(Connection(live_a), live_fake, unregistered)
         receiver = Connection(live_b)
 
-        start = time.monotonic()
-        for _ in range(2000):
-            dead.send(_FakeResponse(b"x" * 65536))
+        for _ in range(64):
+            dead_fake.deliver(b"x" * 65536)
         for i in range(5):
-            live.send(_FakeResponse(f"r{i}".encode()))
-        enqueue_elapsed = time.monotonic() - start
+            live_fake.deliver(f"r{i}".encode())
 
-        # Enqueuing never blocked on the dead client (bounded outbox + non-blocking put).
-        assert enqueue_elapsed < 1.0
-        # The live client gets every response, unaffected by the dead one.
         for i in range(5):
             assert receiver.recv() == f"r{i}".encode()
 
-        # The dead client's writer self-cleans: it stops being routed to.
-        deadline = time.monotonic() + 5
-        while dead.id not in unregistered and time.monotonic() < deadline:
-            time.sleep(0.05)
-        assert dead.id in unregistered
+        assert _wait_until(lambda: dead.id in unregistered)
+        assert live.id not in unregistered
 
         live.stop()
         live.join()
         dead.join()
+        assert dead_fake.closed
     finally:
         for s in (dead_a, dead_b, live_a, live_b):
             s.close()
 
 
-def test_handler_exits_cleanly_when_client_disconnects_before_handshake():
-    # A client that drops before sending Hello makes recv() return b""; the handler
-    # must exit quietly instead of crashing its thread with an IndexError (#92).
+def test_response_is_not_acked_when_it_never_reaches_the_socket():
+    """Nothing may be acked (and thus lost) without having been delivered: a send to a
+    gone client fails, so the message stays un-acked and the client is torn down."""
+    a, b = socket.socketpair()
+    b.close()
+    try:
+        unregistered: list = []
+        fake = _FakeResponseQueue()
+        handler = _make_handler(Connection(a), fake, unregistered)
+        fake.deliver(b"lost-if-acked")
+
+        assert _wait_until(lambda: handler.id in unregistered)
+        assert fake.acked == []
+        assert _wait_until(lambda: fake.closed)
+        handler.join()
+        assert handler._response_thread is not None
+        assert not handler._response_thread.is_alive()
+    finally:
+        a.close()
+
+
+def test_shutdown_stops_consumer_and_thread():
+    """Gateway shutdown cuts the consumer and joins its thread cleanly, leaving none."""
+    a, b = socket.socketpair()
+    try:
+        fake = _FakeResponseQueue()
+        handler = _make_handler(Connection(a), fake)
+        assert handler._response_thread is not None and handler._response_thread.is_alive()
+        handler.stop()
+        handler.join()
+        assert not handler._response_thread.is_alive()
+        assert fake.closed
+    finally:
+        a.close()
+        b.close()
+
+
+def test_no_broker_resources_when_client_disconnects_before_handshake():
+    """A client that drops before Hello must exit quietly (no IndexError, #92) and must
+    not open any per-client response queue: the factory only runs after a handshake."""
     a, b = socket.socketpair()
     b.close()
     registered: list = []
+    factory_calls: list = []
     errors: list = []
     old_hook = threading.excepthook
     threading.excepthook = lambda args: errors.append(args.exc_type)
@@ -108,6 +190,7 @@ def test_handler_exits_cleanly_when_client_disconnects_before_handshake():
             Connection(a),
             register=lambda h: registered.append(h),
             unregister=lambda cid: None,
+            responses_rx_factory=lambda cid: factory_calls.append(cid),
             trans_tx_factory=lambda: [],
             accs_tx_factory=lambda: [],
         )
@@ -119,24 +202,5 @@ def test_handler_exits_cleanly_when_client_disconnects_before_handshake():
     assert not handler.handle.is_alive()
     assert errors == []
     assert registered == []
-
-
-def test_send_never_blocks_when_outbox_is_full():
-    # With no writer draining and a full outbox, the router must still return at once,
-    # dropping the overflow rather than wedging the shared consumer.
-    a, b = socket.socketpair()
-    try:
-        handler = ClientStreamHandler(
-            Connection(a),
-            register=lambda h: None,
-            unregister=lambda cid: None,
-            trans_tx_factory=lambda: [],
-            accs_tx_factory=lambda: [],
-        )
-        start = time.monotonic()
-        for i in range(50000):
-            handler.send(_FakeResponse(b"x"))
-        assert time.monotonic() - start < 1.0
-    finally:
-        a.close()
-        b.close()
+    assert factory_calls == []
+    assert handler._response_thread is None

@@ -6,7 +6,7 @@ from join_fns import JoinFn
 
 from common.checkpoint import dispatch, make_checkpointer
 from common.comms.messages import Message, deserialize_message
-from common.comms.middleware import MOMQueue
+from common.comms.middleware import MOM, MOMQueue
 
 
 class _JoinCounts:
@@ -62,7 +62,7 @@ class JoinRouteHandler:
 
     def __init__(
         self,
-        responses_tx_factory: Callable[[], MOMQueue],
+        responses_tx_factory: Callable[[], MOM],
         mom_factory: Callable[[], MOMQueue],
         join_fn: JoinFn,
         uc_id: int,
@@ -73,14 +73,14 @@ class JoinRouteHandler:
         Create a new `JoinRouteHandler`.
 
         # Args
-        * reponses_tx_factory: a factory for the write half queue.
+        * reponses_tx_factory: a factory for the responses exchange publisher.
         * mom_factory: a factory for the read half queue.
         * join_fn: the join function to be used.
         * uc_id: stamped on every Response so the client can demultiplex chunks
-          of different UCs from the shared responses queue.
+          of different UCs arriving on its per-client response queue.
         """
         self.responses_tx_factory = responses_tx_factory
-        self.responses_tx: MOMQueue
+        self.responses_tx: MOM
         self.mom_factory = mom_factory
         self.join_fn = join_fn
         self._uc_id = uc_id
@@ -145,7 +145,7 @@ class JoinRouteHandler:
             return
         for response in self.join_fn.get_responses(client_id):
             response.uc_id = self._uc_id
-            self.responses_tx.send(response.serialize())
+            self.responses_tx.send(response.serialize(), routing_key=str(client_id))
         self._counts.mark_finalized(client_id)
         # persist the finalized marker before the EOF is acked so a redelivered EOF does not re-emit
         if self._checkpointer is not None:

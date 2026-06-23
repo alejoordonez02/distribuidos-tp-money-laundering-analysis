@@ -1,20 +1,18 @@
 import logging
 import os
 from socket import AF_INET, SOCK_STREAM, socket
+from uuid import UUID
 
 from pika import BlockingConnection, ConnectionParameters
 
-from common.comms.middleware import (
-    ExchangeRabbitMQ,
-    QueueRabbitMQ,
-)
+from common.comms.middleware import ExchangeRabbitMQ
 from common.heartbeat import run_with_heartbeat
 from gateway import Gateway
 
 GATEWAY_HOST = os.environ["GATEWAY_HOST"]
 GATEWAY_PORT = os.environ["GATEWAY_PORT"]
 MOM_HOST = os.environ["MOM_HOST"]
-SERVER_QUEUE_RX = os.environ["SERVER_QUEUE_RX"]
+RESPONSES_EXCHANGE = os.environ["SERVER_QUEUE_RX"]
 TRANSACTIONS_TX = os.environ["TRANSACTIONS_TX"]
 ACCOUNTS_TX = os.environ["ACCOUNTS_TX"]
 # downstream rings consume their input by affinity: the gateway routes each message
@@ -66,12 +64,25 @@ def main():
 
     listener = socket(AF_INET, SOCK_STREAM)
     addr = (GATEWAY_HOST, int(GATEWAY_PORT))
-    server_rx = QueueRabbitMQ(MOM_HOST, SERVER_QUEUE_RX)
+
+    def responses_rx_factory(client_id: UUID) -> ExchangeRabbitMQ:
+        """Build a client's own response consumer, bound by its client_id to the
+        responses exchange. The queue is exclusive so it auto-deletes when the client
+        disconnects, cleaning up its broker resources without any explicit teardown."""
+        return ExchangeRabbitMQ(
+            MOM_HOST,
+            RESPONSES_EXCHANGE,
+            routing_keys=[str(client_id)],
+            queue_name=f"{RESPONSES_EXCHANGE}.{client_id}",
+            exclusive=True,
+        )
 
     trans_tx_factory = _make_factory(TRANSACTIONS_TX, NDEFAULT_FILTERS)
     accs_tx_factory = _make_factory(ACCOUNTS_TX, NBANK_NAMES)
 
-    gateway = Gateway(listener, addr, server_rx, trans_tx_factory, accs_tx_factory)
+    gateway = Gateway(
+        listener, addr, responses_rx_factory, trans_tx_factory, accs_tx_factory
+    )
     run_with_heartbeat(gateway.start)
 
 

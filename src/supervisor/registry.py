@@ -88,6 +88,8 @@ class NodeRegistry:
     def _transition(self, node: NodeState, status: Status, reason: str) -> None:
         if node.status is not status:
             node.status = status
-            self._events.append(Event(time.time(), node.node_id, f"{reason} -> {status.value}"))
+            self._events.append(
+                Event(time.time(), node.node_id, f"{reason} -> {status.value}")
+            )
             if len(self._events) > self._max_events:
                 self._events.pop(0)
