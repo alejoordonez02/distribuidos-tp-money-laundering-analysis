@@ -10,7 +10,7 @@ class _CapturingMOM(MOM):
     def __init__(self):
         self.sent: list[bytes] = []
 
-    def send(self, message: bytes, routing_key: str | None = None):
+    def send(self, message: bytes):
         self.sent.append(message)
 
     def start_consuming(self, on_message_callback: Callable):  # pragma: no cover

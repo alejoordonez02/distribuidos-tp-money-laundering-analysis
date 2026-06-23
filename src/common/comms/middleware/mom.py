@@ -33,15 +33,12 @@ class MOM(ABC):
         pass
 
     @abstractmethod
-    def send(self, message: bytes, routing_key: str | None = None):
+    def send(self, message: bytes):
         """
         Send a message to the broker.
 
         # Args
         * `message` - the bytes of the serialized message to be sent.
-        * `routing_key` - overrides the destination for this single message when the
-          backend routes by key (e.g. an exchange fanning out per client_id). Ignored
-          by plain queue backends, which always route to their own queue.
 
         # Errors
         * `MOMDisconnectedError` if the connection with the broker is lost.
