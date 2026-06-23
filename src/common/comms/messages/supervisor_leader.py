@@ -17,5 +17,5 @@ class SupervisorLeader(Message):
 
     @classmethod
     def _from_fields(cls, fields: list[Any]) -> Self:
-        idx = fields[0]
+        idx = fields[1]
         return cls(idx)
