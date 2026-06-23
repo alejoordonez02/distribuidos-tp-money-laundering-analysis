@@ -1,85 +1,198 @@
 import logging
-import threading
-import time
+from queue import Queue
 from socket import AF_INET, SO_REUSEADDR, SOCK_STREAM, SOL_SOCKET, socket
-from typing import Optional
+from threading import Thread
+from typing import Sequence
 
+from common.comms.messages import (
+    Message,
+    SupervisorElection,
+    SupervisorLeader,
+    deserialize_message,
+)
+from common.comms.messages.message_types import MessageType
 from common.comms.transport import Connection
-from common.comms.supervisor import Heartbeat, Register, decode
 
+from .event import EventType, LeaderDown, NewLeader, PeerConnection, SupervisorEvent
+from .peer import Peer
 from .registry import NodeRegistry
+from .runtime import LeaderDownError, LeaderRuntime, ReplicaRuntime, SupervisorRuntime
+from .tui import Dashboard
 
 
-class SupervisorServer:
-    """TCP server that accepts node connections and feeds their Register and
-    Heartbeat messages into the registry. Liveness is decided by the registry's
-    timeout sweep — never by Docker and never by the socket state."""
-
+class SupervisorNode:
     def __init__(
         self,
-        host: str,
-        port: int,
+        idx: int,
+        bind_host: str,
+        server_port: int,
+        internal_port: int,
+        leader_port: int,
+        peers: Sequence[Peer],
         registry: NodeRegistry,
         sweep_interval: float = 0.5,
+        ping_delay: float = 0.5,
+        dashboard: Dashboard | None = None,
     ):
-        self._host = host
-        self._port = port
+        def make_skt(addr: tuple[str, int]):
+            skt = socket(AF_INET, SOCK_STREAM)
+            skt.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+            skt.bind(addr)
+            return skt
+
+        self._idx = idx
+
+        addrs = [
+            (bind_host, server_port),
+            (bind_host, leader_port),
+            (bind_host, internal_port),
+        ]
+
+        self._server_listener, self._replica_listener, self._node_listener = [
+            make_skt(addr) for addr in addrs
+        ]
+        self._internal_port = internal_port
+        self._leader_port = leader_port
+        self._peers = peers
         self._registry = registry
         self._sweep_interval = sweep_interval
-        self._stop = threading.Event()
-        self._srv: Optional[socket] = None
+        self._ping_delay = ping_delay
+        self._dashboard = dashboard
 
-    def start(self) -> None:
-        srv = socket(AF_INET, SOCK_STREAM)
-        srv.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-        srv.bind((self._host, self._port))
-        srv.listen()
-        self._srv = srv
-        threading.Thread(target=self._sweep, name="sweeper", daemon=True).start()
-        threading.Thread(target=self._accept_loop, name="accept", daemon=True).start()
+        # TODO: esto se elige dinámicamente pero ahora sólo quiero ping pong
+        leader = max(peers) if len(peers) > 0 and idx < max(peers) else None
+        self._runtimes: Queue[SupervisorRuntime] = Queue()
+        self._events: Queue[SupervisorEvent] = Queue()
 
-    def stop(self) -> None:
-        self._stop.set()
-        if self._srv is not None:
+        self._runtime: SupervisorRuntime
+        runtime = (
+            ReplicaRuntime((leader.host, leader_port), ping_delay)
+            if leader
+            else LeaderRuntime(
+                self._server_listener,
+                self._replica_listener,
+                registry,
+                sweep_interval,
+                self._dashboard,
+            )
+        )
+        self._runtimes.put(runtime)
+
+        self._runtime_handle = Thread(target=self._runtime_worker)
+        self._listener_handle = Thread(target=self._listener_worker)
+
+        self._on_election = False
+        self._is_leader = leader is None
+        self._keep_running = False
+
+    def start(self):
+        self._keep_running = True
+
+        self._runtime_handle.start()
+        self._listener_handle.start()
+        self._event_worker()
+
+    def _broadcast_message(self, msg: Message, peers: Sequence[Peer]) -> int:
+        acks = 0
+        for p in peers:
+            skt = socket(AF_INET, SOCK_STREAM)
+            skt.settimeout(0.5)
             try:
-                self._srv.close()
-            except OSError:
-                pass
-
-    def _accept_loop(self) -> None:
-        while not self._stop.is_set():
-            try:
-                conn_skt, _ = self._srv.accept()
-            except OSError:
-                break
-            threading.Thread(
-                target=self._handle, args=(conn_skt,), daemon=True
-            ).start()
-
-    def _handle(self, conn_skt: socket) -> None:
-        conn = Connection(conn_skt)
-        try:
-            while not self._stop.is_set():
-                data = conn.recv()
-                if not data:
-                    break
-                self._dispatch(decode(data))
-        except (OSError, ValueError) as e:
-            logging.debug("supervisor: connection dropped (%s)", e)
-        finally:
-            try:
+                skt.connect((p.host, self._internal_port))
+                skt.settimeout(None)
+                conn = Connection(skt)
+                conn.send(msg.serialize())
+                acks += 1
                 conn.close()
+
             except OSError:
-                pass
+                logging.debug(
+                    f"could not send {msg.__class__.__name__} message to {p.__dict__}"
+                )
+                continue
 
-    def _dispatch(self, msg) -> None:
-        now = time.monotonic()
-        if isinstance(msg, Register):
-            self._registry.register(msg.node_id, msg.kind, now)
-        elif isinstance(msg, Heartbeat):
-            self._registry.heartbeat(msg.node_id, now)
+        return acks
 
-    def _sweep(self) -> None:
-        while not self._stop.is_set():
-            self._registry.check_timeouts(time.monotonic())
-            self._stop.wait(self._sweep_interval)
+    def _event_worker(self):
+        def handle_leader_down(_: LeaderDown):
+            if self._on_election or self._is_leader:
+                return
+            self._on_election = True
+
+            greater_peers = [p for p in self._peers if p > self._idx]
+            acks = self._broadcast_message(SupervisorElection(), greater_peers)
+
+            if acks > 0:
+                self._on_election = False
+                return
+
+            self._broadcast_message(SupervisorLeader(self._idx), self._peers)
+
+            self._runtime.stop()
+            self._runtimes.put(
+                LeaderRuntime(
+                    self._server_listener,
+                    self._replica_listener,
+                    self._registry,
+                    self._sweep_interval,
+                    self._dashboard,
+                )
+            )
+            self._is_leader = True
+            self._on_election = False
+
+        def handle_new_leader(event: NewLeader):
+            leader_idx = event.idx
+            leader_host = next(p.host for p in self._peers if p.idx == leader_idx)
+
+            self._is_leader = False
+            self._runtime.stop()
+            self._runtimes.put(
+                ReplicaRuntime((leader_host, self._leader_port), self._ping_delay)
+            )
+            self._on_election = False
+
+        def handle_peer_connection(event: PeerConnection):
+            conn: Connection = event.conn  # type:ignore [reportAttributeAccessIssue]
+
+            msg = deserialize_message(conn.recv())
+            match msg.type():
+                case MessageType.SUPERVISOR_ELECTION:
+                    self._events.put(LeaderDown())
+                case MessageType.SUPERVISOR_LEADER:
+                    leader_idx = msg.idx  # type:ignore [reportAttributeAccessIssue]
+                    handle_new_leader(NewLeader(leader_idx))
+
+            conn.close()
+
+        while self._keep_running:
+            event = self._events.get()
+            match event.type():
+                case EventType.LEADER_DOWN:
+                    handle_leader_down(event)  # type:ignore [reportArgumentType]
+                case EventType.PEER_CONNECTION:
+                    handle_peer_connection(event)  # type:ignore [reportArgumentType]
+
+    def _runtime_worker(self):
+        while self._keep_running:
+            runtime = self._runtimes.get()
+            if not runtime:
+                break
+
+            logging.debug(f"running as {runtime.__class__.__name__}")
+            self._runtime = runtime
+            try:
+                self._runtime.start()
+            except LeaderDownError:
+                self._events.put(LeaderDown())
+
+    def _listener_worker(self):
+        self._node_listener.listen()
+        while self._keep_running:
+            skt, _ = self._node_listener.accept()
+            conn = Connection(skt)
+            self._events.put(PeerConnection(conn))
+
+    def stop(self):
+        self._keep_running = False
+        self._runtime.stop()

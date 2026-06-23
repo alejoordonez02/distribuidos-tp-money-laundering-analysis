@@ -6,7 +6,7 @@ from .gen_join import gen_join
 from .gen_merge import gen_merge
 from .gen_nodes import gen_nodes
 from .gen_rabbitmq import gen_rabbitmq
-from .gen_supervisor import gen_supervisor
+from .gen_supervisor import gen_supervisors
 from .gen_uc1 import gen_uc1
 from .gen_uc2 import gen_uc2
 from .gen_uc3 import gen_uc3

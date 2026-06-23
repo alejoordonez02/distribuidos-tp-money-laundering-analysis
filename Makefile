@@ -4,6 +4,7 @@ PYTHON_PM := /bin/uv
 COMPOSE_FILE := docker-compose.yaml
 COMPOSE := docker compose -f $(COMPOSE_FILE)
 RABBIT_CONTAINER := rabbitmq
+SUPERVISOR_PREFIX := supervisor_
 SCRIPTS_DIR := scripts
 
 .PHONY: help gen_input_output gen_compose up stop_server down logs test test_ft test_ft_client scalability_test report demo supervisor chaos chaos_stop
@@ -23,7 +24,6 @@ gen_compose:
 up: gen_compose
 	mkdir -p responses
 	$(COMPOSE) up --build --remove-orphans --detach
-	$(COMPOSE) logs --follow
 
 stop_server: gen_compose
 	NON_RABBIT=$$($(COMPOSE) ps -q | grep -v $$(docker ps -q -f "name=$(RABBIT_CONTAINER)")); \
@@ -36,7 +36,16 @@ down: gen_compose
 	$(COMPOSE) down
 
 logs: gen_compose
-	$(COMPOSE) logs
+	SERVICES=$$($(COMPOSE) config --services | grep -v '^$(SUPERVISOR_PREFIX)'); \
+	if [ -n "$$SERVICES" ]; then \
+		$(COMPOSE) logs -f $$SERVICES; \
+	fi
+
+supervisor: gen_compose
+	SERVICES=$$($(COMPOSE) config --services | grep '^$(SUPERVISOR_PREFIX)'); \
+	if [ -n "$$SERVICES" ]; then \
+		$(COMPOSE) logs -f $$SERVICES; \
+	fi
 
 test:
 	uv run pytest
@@ -58,10 +67,6 @@ test_ft_client:
 	mkdir -p responses tmp/ft_run
 	FT_ONLY_POINTS=client_mid_transactions,client_mid_accounts,client_after_eof \
 		PYTHONPATH=src uv run $(SCRIPTS_DIR)/ft_e2e.py
-
-# attach to the supervisor's live dashboard (detach with Ctrl-P Ctrl-Q)
-supervisor:
-	docker attach supervisor
 
 # arm the chaos monkey on a running cluster and stream what it kills
 # (Ctrl-C stops watching the logs; the chaos container keeps running)
