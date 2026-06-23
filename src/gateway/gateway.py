@@ -64,7 +64,6 @@ class Gateway:
         self._run()
 
     def stop(self):
-        logging.warning("ENTERS SIGTERM")
         self._keep_running = False
         try:
             self.listener.shutdown(SHUT_RDWR)
@@ -113,7 +112,7 @@ class Gateway:
                 skt, _ = self.listener.accept()
             except OSError as e:
                 # TODO: handle specific OSError cases (e.g. socket closed on shutdown vs real error)
-                # logging.error("!!! UNHANDLED OSError in gateway accept loop: %s", e, exc_info=True)
+                logging.error("!!! UNHANDLED OSError in gateway accept loop: %s", e, exc_info=True)
                 break
             conn = Connection(skt, send_timeout=CLIENT_SEND_TIMEOUT_S)
             client = ClientStreamHandler(
@@ -122,6 +121,5 @@ class Gateway:
             )
             client.start()
             
-        logging.warning("LLEGA AL FIN")
         self.server_handle.join()
         self.server_rx.close()

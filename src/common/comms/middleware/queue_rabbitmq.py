@@ -41,13 +41,12 @@ class QueueRabbitMQ(MOMQueue):
         except Exception as e:
             # TODO: distinguish OSError (socket closed mid-consume) from exceptions
             # raised inside on_message_callback — the latter would pass silently here
-            # logging.error(
-            #     "!!! UNHANDLED exception in start_consuming (queue=%s): %s",
-            #     self.queue_name,
-            #     e,
-            #     exc_info=True,
-            # )
-            pass
+            logging.error(
+                "!!! UNHANDLED exception in start_consuming (queue=%s): %s",
+                self.queue_name,
+                e,
+                exc_info=True,
+            )
 
     def stop_consuming(self) -> None:
         try:
@@ -78,13 +77,13 @@ class QueueRabbitMQ(MOMQueue):
             self.conn.close()
         except ConnectionWrongStateError as e:
             # TODO: handle specific close-on-wrong-state case
-            # logging.error(
-            #     "!!! UNHANDLED ConnectionWrongStateError in close (queue=%s): %s",
-            #     self.queue_name,
-            #     e,
-            #     exc_info=True,
-            # )
-            pass
+            logging.error(
+                "!!! UNHANDLED ConnectionWrongStateError in close (queue=%s): %s",
+                self.queue_name,
+                e,
+                exc_info=True,
+            )
+            
         except Exception as e:
             raise MOMMessageError(str(e)) from e
 

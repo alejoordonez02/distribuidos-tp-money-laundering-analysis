@@ -70,13 +70,12 @@ class ExchangeRabbitMQ(MOMExchange):
         except Exception as e:
             # TODO: distinguish OSError (socket closed mid-consume) from exceptions
             # raised inside on_message_callback — the latter would pass silently here
-            # logging.error(
-            #     "!!! UNHANDLED exception in start_consuming (exchange=%s): %s",
-            #     self.exchange_name,
-            #     e,
-            #     exc_info=True,
-            # )
-            pass
+            logging.error(
+                "!!! UNHANDLED exception in start_consuming (exchange=%s): %s",
+                self.exchange_name,
+                e,
+                exc_info=True,
+            )
 
     def stop_consuming(self) -> None:
         try:
@@ -85,13 +84,12 @@ class ExchangeRabbitMQ(MOMExchange):
             raise MOMDisconnectedError(str(e)) from e
         except Exception as e:
             # TODO: handle specific pika shutdown exceptions
-            # logging.error(
-            #     "!!! UNHANDLED exception in stop_consuming (exchange=%s): %s",
-            #     self.exchange_name,
-            #     e,
-            #     exc_info=True,
-            # )
-            pass
+            logging.error(
+                "!!! UNHANDLED exception in stop_consuming (exchange=%s): %s",
+                self.exchange_name,
+                e,
+                exc_info=True,
+            )
 
     def send(self, message: bytes) -> None:
         for k in self.routing_keys:
