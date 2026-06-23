@@ -22,6 +22,7 @@ class Join:
         self._state_dir = state_dir
         self._checkpoint_every = checkpoint_every
         self._route_handlers: list[JoinRouteHandler] = []
+        self.thread_handles: list[Thread] = []
 
     def _make_route_handler(self, mom_factory, join_fn, uc_id) -> JoinRouteHandler:
         return JoinRouteHandler(
@@ -35,13 +36,12 @@ class Join:
 
     def start(self):
         setup_graceful_shutdown(self.stop)
-        handles = []
         for mom_factory, join_fn, uc_id in self.partial_res_handlers[1:]:
             rh = self._make_route_handler(mom_factory, join_fn, uc_id)
             self._route_handlers.append(rh)
             t = Thread(target=rh.start, daemon=True)
             t.start()
-            handles.append(t)
+            self.thread_handles.append(t)
 
         mom_factory, join_fn, uc_id = self.partial_res_handlers[0]
         main_rh = self._make_route_handler(mom_factory, join_fn, uc_id)
@@ -51,12 +51,20 @@ class Join:
         except Exception as e:
             # TODO: handle specific exceptions from JoinRouteHandler
             logging.error("!!! UNHANDLED exception in join main route handler: %s", e, exc_info=True)
-        for t in handles:
-            t.join()
 
-        self.stop()
+        logging.warning("Start going towards stop")
+        # self.stop()
 
     def stop(self):
+        logging.warning("Enters sigterm")
         for rh in self._route_handlers:
             rh.stop()
             rh.close()
+        self._route_handlers.clear()
+        for t in self.thread_handles:
+            logging.warning("Prejoin")
+            t.join()
+            logging.warning("Postjoin")
+        self.thread_handles.clear()
+        logging.warning("Join Ended")
+        logging.warning("Stop finished")
