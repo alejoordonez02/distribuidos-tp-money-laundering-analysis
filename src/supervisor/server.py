@@ -68,7 +68,7 @@ class SupervisorNode:
         self._listener_handle = Thread(target=self._listener_worker)
 
         self._on_election = False
-        self._is_leader = False
+        self._leader: Peer | None = None
         self._keep_running = False
 
     def start(self):
@@ -77,6 +77,9 @@ class SupervisorNode:
         self._runtime_handle.start()
         self._listener_handle.start()
         self._event_worker()
+
+    def _is_leader(self):
+        return not self._leader and self._runtime
 
     def _broadcast_message(self, msg: Message, peers: Sequence[Peer]) -> int:
         acks = 0
@@ -101,8 +104,12 @@ class SupervisorNode:
 
     def _event_worker(self):
         def handle_leader_down(_: LeaderDown):
-            if self._on_election or self._is_leader:
+            if self._on_election:
                 return
+            if self._is_leader():
+                self._broadcast_message(SupervisorLeader(self._idx), self._peers)
+                return
+
             self._on_election = True
 
             greater_peers = [p for p in self._peers if p > self._idx]
@@ -125,14 +132,17 @@ class SupervisorNode:
                     self._dashboard,
                 )
             )
-            self._is_leader = True
+            self._leader = None
             self._on_election = False
 
         def handle_new_leader(event: NewLeader):
             leader_idx = event.idx
+            if self._leader and leader_idx == self._leader.idx:
+                return
+
             leader_host = next(p.host for p in self._peers if p.idx == leader_idx)
 
-            self._is_leader = False
+            self._leader = Peer(leader_idx, leader_host)
             if self._runtime:
                 self._runtime.stop()
             self._runtimes.put(
