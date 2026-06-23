@@ -1,8 +1,8 @@
 import logging
 from queue import Queue
-from socket import AF_INET, SO_REUSEADDR, SOCK_STREAM, SOL_SOCKET, socket
-from threading import Thread
-from typing import Sequence
+from socket import AF_INET, SOCK_STREAM, socket
+from threading import Condition, Thread
+from typing import Callable, Sequence
 
 from common.comms.messages import (
     Message,
@@ -14,8 +14,10 @@ from common.comms.messages.message_types import MessageType
 from common.comms.transport import Connection
 
 from .event import EventType, LeaderDown, NewLeader, PeerConnection, SupervisorEvent
+from .make_skt import _make_skt
 from .peer import Peer
 from .registry import NodeRegistry
+from .reviver import Reviver
 from .runtime import LeaderDownError, LeaderRuntime, ReplicaRuntime, SupervisorRuntime
 from .tui import Dashboard
 
@@ -29,60 +31,38 @@ class SupervisorNode:
         internal_port: int,
         leader_port: int,
         peers: Sequence[Peer],
-        registry: NodeRegistry,
+        registry_factory: Callable[[], NodeRegistry],
+        reviver_factory: Callable[[NodeRegistry], Reviver | None],
+        dashboard_factory: Callable[[NodeRegistry], Dashboard | None],
         sweep_interval: float = 0.5,
         ping_delay: float = 0.5,
-        dashboard: Dashboard | None = None,
     ):
-        def make_skt(addr: tuple[str, int]):
-            skt = socket(AF_INET, SOCK_STREAM)
-            skt.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-            skt.bind(addr)
-            return skt
 
         self._idx = idx
 
-        addrs = [
-            (bind_host, server_port),
-            (bind_host, leader_port),
-            (bind_host, internal_port),
-        ]
+        self._server_bind = (bind_host, server_port)
+        self._leader_bind = (bind_host, leader_port)
+        self._node_listener = _make_skt((bind_host, internal_port))
 
-        self._server_listener, self._replica_listener, self._node_listener = [
-            make_skt(addr) for addr in addrs
-        ]
         self._internal_port = internal_port
         self._leader_port = leader_port
         self._peers = peers
-        self._registry = registry
+        self._registry_factory = registry_factory
+        self._reviver_factory = reviver_factory
+        self._dashboard_factory = dashboard_factory
         self._sweep_interval = sweep_interval
         self._ping_delay = ping_delay
-        self._dashboard = dashboard
+        self._runtime: SupervisorRuntime | None = None
 
-        # TODO: esto se elige dinámicamente pero ahora sólo quiero ping pong
-        leader = max(peers) if len(peers) > 0 and idx < max(peers) else None
-        self._runtimes: Queue[SupervisorRuntime] = Queue()
+        self._new_runtime = Condition()
         self._events: Queue[SupervisorEvent] = Queue()
-
-        self._runtime: SupervisorRuntime
-        runtime = (
-            ReplicaRuntime((leader.host, leader_port), ping_delay)
-            if leader
-            else LeaderRuntime(
-                self._server_listener,
-                self._replica_listener,
-                registry,
-                sweep_interval,
-                self._dashboard,
-            )
-        )
-        self._runtimes.put(runtime)
+        self._events.put(LeaderDown())
 
         self._runtime_handle = Thread(target=self._runtime_worker)
         self._listener_handle = Thread(target=self._listener_worker)
 
         self._on_election = False
-        self._is_leader = leader is None
+        self._leader: Peer | None = None
         self._keep_running = False
 
     def start(self):
@@ -91,6 +71,9 @@ class SupervisorNode:
         self._runtime_handle.start()
         self._listener_handle.start()
         self._event_worker()
+
+    def _is_leader(self):
+        return not self._leader and self._runtime
 
     def _broadcast_message(self, msg: Message, peers: Sequence[Peer]) -> int:
         acks = 0
@@ -113,10 +96,40 @@ class SupervisorNode:
 
         return acks
 
+    def _change_runtime(self, runtime: SupervisorRuntime):
+        with self._new_runtime:
+            if self._runtime:
+                self._runtime.stop()
+            self._runtime = runtime
+            self._new_runtime.notify()
+
+    def _promote(self):
+        registry = self._registry_factory()
+        reviver = self._reviver_factory(registry)
+        dashboard = self._dashboard_factory(registry)
+
+        runtime = LeaderRuntime(
+            self._server_bind,
+            self._leader_bind,
+            registry,
+            reviver,
+            dashboard,
+            self._sweep_interval,
+        )
+        self._change_runtime(runtime)
+
+    def _downgrade(self, leader_host: str):
+        runtime = ReplicaRuntime((leader_host, self._leader_port), self._ping_delay)
+        self._change_runtime(runtime)
+
     def _event_worker(self):
         def handle_leader_down(_: LeaderDown):
-            if self._on_election or self._is_leader:
+            if self._on_election:
                 return
+            if self._is_leader():
+                self._broadcast_message(SupervisorLeader(self._idx), self._peers)
+                return
+
             self._on_election = True
 
             greater_peers = [p for p in self._peers if p > self._idx]
@@ -128,28 +141,19 @@ class SupervisorNode:
 
             self._broadcast_message(SupervisorLeader(self._idx), self._peers)
 
-            self._runtime.stop()
-            self._runtimes.put(
-                LeaderRuntime(
-                    self._server_listener,
-                    self._replica_listener,
-                    self._registry,
-                    self._sweep_interval,
-                    self._dashboard,
-                )
-            )
-            self._is_leader = True
+            self._promote()
+            self._leader = None
             self._on_election = False
 
         def handle_new_leader(event: NewLeader):
             leader_idx = event.idx
+            if self._leader and leader_idx == self._leader.idx:
+                return
+
             leader_host = next(p.host for p in self._peers if p.idx == leader_idx)
 
-            self._is_leader = False
-            self._runtime.stop()
-            self._runtimes.put(
-                ReplicaRuntime((leader_host, self._leader_port), self._ping_delay)
-            )
+            self._leader = Peer(leader_idx, leader_host)
+            self._downgrade(leader_host)
             self._on_election = False
 
         def handle_peer_connection(event: PeerConnection):
@@ -174,16 +178,27 @@ class SupervisorNode:
                     handle_peer_connection(event)  # type:ignore [reportArgumentType]
 
     def _runtime_worker(self):
+        started_runtime = None
         while self._keep_running:
-            runtime = self._runtimes.get()
-            if not runtime:
-                break
+            runtime = None
 
+            with self._new_runtime:
+                while self._keep_running and self._runtime == started_runtime:
+                    self._new_runtime.wait()
+
+                if not self._keep_running:
+                    break
+
+                runtime = self._runtime
+
+            assert runtime  # please linter
             logging.debug(f"running as {runtime.__class__.__name__}")
-            self._runtime = runtime
+            started_runtime = runtime
+
             try:
-                self._runtime.start()
+                runtime.start()
             except LeaderDownError:
+                runtime.stop()
                 self._events.put(LeaderDown())
 
     def _listener_worker(self):
@@ -195,4 +210,5 @@ class SupervisorNode:
 
     def stop(self):
         self._keep_running = False
-        self._runtime.stop()
+        if self._runtime:
+            self._runtime.stop()
