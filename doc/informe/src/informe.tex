@@ -1051,18 +1051,25 @@ en el rango observado.
 \subsubsection{El costo del checkpoint}
 La frecuencia de \textit{checkpoint} traza una curva en \textbf{U} con dos costos en tensión.
 \textit{Checkpointear} muy seguido está dominado por el costo de I/O; espaciar mucho abarata
-el caso normal pero encarece cada recuperación, porque hay más trabajo para reprocesar por
-caída. El óptimo resulta \textbf{amplio y plano} —una meseta, no un punto delicado de calibrar—.
-Lo que aportan los fallos es un sesgo claro: la curva \emph{con chaos} se despega de la \emph{sin
-chaos} sobre todo del lado espaciado, donde cada caída cuesta más reproceso. Conceptualmente,
-la cadencia de \textit{checkpoint} es un balance entre I/O y reproceso, y la presencia de
-fallos \textbf{corre ese balance hacia checkpoints más frecuentes}.
+ese I/O pero, en principio, encarece cada recuperación, porque hay más trabajo para reprocesar
+por caída. El óptimo resulta \textbf{amplio y plano} —una meseta, no un punto delicado de
+calibrar—.
+
+En el rango probado, sin embargo, la curva \emph{con chaos} se mantiene \textbf{casi superpuesta}
+a la \emph{sin chaos}: el sobrecosto de los fallos es pequeño y se concentra en el extremo
+\textbf{frecuente} (donde el I/O ya es alto), no en el espaciado. El efecto teórico de que
+``espaciar encarece la recuperación'' no llega a observarse aquí, porque reprocesar hasta unos
+miles de mensajes por caída sigue siendo barato frente al tiempo total de la corrida.
+Conceptualmente la cadencia es un balance entre I/O y reproceso, pero con la intensidad de
+fallos evaluada ese balance \textbf{no se desplaza de forma apreciable}: el óptimo puede
+calibrarse para el caso normal sin una penalización relevante bajo fallos.
 
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.85\textwidth]{../diagrams/v2/ft_perf_checkpoint.png}\\[0.5cm]
   \caption{Costo del \texttt{CHECKPOINT\_EVERY} (escala log): curva en U con óptimo amplio.
-  El chaos penaliza más al checkpoint espaciado, donde cada caída reprocesa más trabajo.}
+  Bajo el chaos probado la curva apenas se mueve; el sobrecosto se concentra en el extremo
+  frecuente (I/O), no en el espaciado.}
 \end{figure}
 
 \newpage

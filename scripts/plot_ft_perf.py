@@ -165,7 +165,7 @@ def plot_checkpoint(rows):
     ax.set_xscale("log")
     ax.set_xlabel("checkpoint_every (mensajes entre checkpoints, escala log)")
     ax.set_ylabel("Tiempo total (min)")
-    ax.set_title("Checkpoint: hay un óptimo, y los fallos lo corren a checkpoints más frecuentes",
+    ax.set_title("Checkpoint: hay un óptimo amplio; bajo chaos la curva apenas se mueve",
                  pad=10)
     ax.set_ylim(bottom=0)
     ax.legend(loc="best", frameon=True)
