@@ -97,9 +97,13 @@ def _chaos_pts(rows, sweep, tier):
 
 
 def plot_sweep_all(rows, sweep, title, fname):
-    """Every dataset on one relative-slowdown axis: how the stress axis degrades throughput."""
-    fig, ax = plt.subplots(figsize=(8.4, 4.2))
+    """Every dataset on one relative-slowdown axis: how the stress axis degrades throughput.
+    Each point is annotated with its slowdown vs base in %, colored by dataset, and a right
+    axis reads the same scale directly as a percentage."""
+    fig, ax = plt.subplots(figsize=(9.2, 4.6))
     drawn = False
+    # per-tier vertical nudge (in points) so overlapping labels in the flat zone don't pile up
+    label_dy = {"small": 11, "medium": 20, "large": -15}
     for tier in ("small", "medium", "large"):
         base = _base_secs(rows, sweep["phase"], tier)
         pts = _chaos_pts(rows, sweep, tier)
@@ -107,18 +111,30 @@ def plot_sweep_all(rows, sweep, title, fname):
             continue
         x = [_f(r[sweep["xkey"]]) for r in pts]
         y = [_f(r["total_s"]) / base for r in pts]
-        ax.plot(x, y, "o-", color=TIER_COLOR[tier], label=TIER_LABEL[tier])
+        ax.plot(x, y, "o-", color=TIER_COLOR[tier], label=TIER_LABEL[tier], zorder=3)
+        for xi, yi in zip(x, y):
+            ax.annotate(f"+{(yi - 1.0) * 100:.0f}%", (xi, yi),
+                        textcoords="offset points", xytext=(0, label_dy[tier]),
+                        ha="center", fontsize=7, fontweight="bold",
+                        color=TIER_COLOR[tier], zorder=4)
         drawn = True
     if not drawn:
         return
-    ax.axhline(1.0, ls="--", color="#555", lw=1.5, label="sin degradación")
+    ax.axhline(1.0, ls="--", color="#555", lw=1.5, label="sin degradación (0%)")
     if sweep["invert_x"]:
         ax.invert_xaxis()
     ax.set_ylim(bottom=0.9)
+    ax.set_ylim(top=ax.get_ylim()[1] * 1.09)  # headroom for the top "+X%" label
     ax.set_xlabel(sweep["xlabel"])
     ax.set_ylabel("Ralentización relativa (tiempo / base)")
     ax.set_title(title, pad=10)
     ax.legend(loc="upper left", frameon=True)
+    # right axis: the same scale read directly as "% de sobrecosto vs la corrida base"
+    ax2 = ax.twinx()
+    lo, hi = ax.get_ylim()
+    ax2.set_ylim((lo - 1.0) * 100, (hi - 1.0) * 100)
+    ax2.set_ylabel("Sobrecosto vs base (%)")
+    ax2.grid(False)
     _save(fig, fname)
 
 

@@ -5,54 +5,64 @@
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
 
-        
-        <mxCell id="lsup" value="Supervisor" style="shape=umlLifeline;perimeter=lifelinePerimeter;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;size=40;" vertex="1" parent="1">
-          <mxGeometry x="20.00" y="20.00" width="140" height="490" as="geometry" />
+        <mxCell id="llead" value="Supervisor líder" style="shape=umlLifeline;perimeter=lifelinePerimeter;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;size=40;" vertex="1" parent="1">
+          <mxGeometry x="20.00" y="20.00" width="160" height="500" as="geometry" />
         </mxCell>
-        <mxCell id="ldc" value="Docker Compose" style="shape=umlLifeline;perimeter=lifelinePerimeter;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;size=40;" vertex="1" parent="1">
-          <mxGeometry x="280.00" y="20.00" width="140" height="490" as="geometry" />
+        <mxCell id="lrep" value="Supervisor réplica" style="shape=umlLifeline;perimeter=lifelinePerimeter;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;size=40;" vertex="1" parent="1">
+          <mxGeometry x="300.00" y="20.00" width="160" height="500" as="geometry" />
         </mxCell>
         <mxCell id="lnodes" value="Nodos" style="shape=umlLifeline;perimeter=lifelinePerimeter;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;size=40;" vertex="1" parent="1">
-          <mxGeometry x="540.00" y="20.00" width="140" height="490" as="geometry" />
+          <mxGeometry x="600.00" y="20.00" width="140" height="500" as="geometry" />
         </mxCell>
 
-        
+        <mxCell id="mping1" value="ping" style="html=1;endArrow=block;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="380.00" y="90.00" as="sourcePoint" />
+            <mxPoint x="100.00" y="90.00" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="mpong1" value="pong" style="html=1;endArrow=block;fontSize=11;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="100.00" y="120.00" as="sourcePoint" />
+            <mxPoint x="380.00" y="120.00" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
         <mxCell id="crash" value="" style="shape=cross;html=1;strokeColor=#b85450;strokeWidth=4;fillColor=#b85450;" vertex="1" parent="1">
-          <mxGeometry x="76.00" y="78.00" width="28" height="28" as="geometry" />
+          <mxGeometry x="86.00" y="150.00" width="28" height="28" as="geometry" />
         </mxCell>
-        <mxCell id="crashlbl" value="cae" style="text;html=1;fontSize=11;fontColor=#b85450;fontStyle=2;align=left;" vertex="1" parent="1">
-          <mxGeometry x="115.00" y="111.00" width="80" height="20" as="geometry" />
+        <mxCell id="crashlbl" value="el líder cae" style="text;html=1;fontSize=11;fontColor=#b85450;fontStyle=2;align=left;" vertex="1" parent="1">
+          <mxGeometry x="124.00" y="153.00" width="120" height="20" as="geometry" />
         </mxCell>
 
-        
-        <mxCell id="m1" value="restart: on-failure" style="html=1;endArrow=block;fontSize=11;" edge="1" parent="1">
+        <mxCell id="mping2" value="ping (sin pong)" style="html=1;endArrow=block;fontSize=11;strokeColor=#b85450;dashed=1;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
-            <mxPoint x="350.00" y="165.00" as="sourcePoint" />
-            <mxPoint x="90.00" y="165.00" as="targetPoint" />
+            <mxPoint x="380.00" y="210.00" as="sourcePoint" />
+            <mxPoint x="115.00" y="210.00" as="targetPoint" />
           </mxGeometry>
         </mxCell>
 
-        
-        <mxCell id="note1" value="siguen procesando&#10;sin interrupción" style="shape=note;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=center;" vertex="1" parent="1">
-          <mxGeometry x="532.00" y="180.00" width="160" height="50" as="geometry" />
+        <mxCell id="note1" value="detecta al líder caído&#10;→ inicia elección de líder (bully)" style="shape=note;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="300.00" y="235.00" width="200" height="50" as="geometry" />
         </mxCell>
 
-        
-        <mxCell id="note2" value="si un nodo cae en esta ventana, su caída no se detecta hasta que el Supervisor vuelve" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;" vertex="1" parent="1">
-          <mxGeometry x="20.00" y="256.00" width="500" height="50" as="geometry" />
+        <mxCell id="note2" value="una réplica asume el liderazgo&#10;(mensaje coordinator)" style="shape=note;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="300.00" y="300.00" width="200" height="50" as="geometry" />
         </mxCell>
 
-        
-        <mxCell id="m2" value="re-registro (heartbeat reconecta)" style="html=1;endArrow=block;fontSize=11;" edge="1" parent="1">
+        <mxCell id="mhb" value="heartbeats (la detección continúa)" style="html=1;endArrow=block;fontSize=11;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
-            <mxPoint x="610.00" y="340.00" as="sourcePoint" />
-            <mxPoint x="90.00" y="340.00" as="targetPoint" />
+            <mxPoint x="670.00" y="385.00" as="sourcePoint" />
+            <mxPoint x="380.00" y="385.00" as="targetPoint" />
           </mxGeometry>
         </mxCell>
 
-        
-        <mxCell id="note3" value="El Supervisor se reinicia solo si cae (restart: on-failure en Compose). Mientras no vuelve, los nodos siguen procesando con normalidad,&#10;pero su caída no es detectada. En cuanto vuelve, los nodos se re-registran vía heartbeat y la detección se reanuda." style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;" vertex="1" parent="1">
-          <mxGeometry x="20.00" y="405.00" width="680" height="60" as="geometry" />
+        <mxCell id="notenodes" value="siguen procesando&#10;sin interrupción" style="shape=note;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="592.00" y="190.00" width="150" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="note3" value="La supervisión es un clúster tolerante a fallos de N réplicas. Si cae el líder, una réplica lo detecta por la ausencia de pongs e inicia una elección de líder (bully);&#10;otra réplica asume la supervisión y la detección de caídas continúa sin interrupción. Los nodos del pipeline siguen procesando con normalidad." style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="20.00" y="430.00" width="720" height="70" as="geometry" />
         </mxCell>
 
       </root>

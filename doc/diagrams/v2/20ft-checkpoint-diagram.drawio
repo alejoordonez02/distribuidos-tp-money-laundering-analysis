@@ -49,7 +49,7 @@
         </mxCell>
 
         
-        <mxCell id="note1" value="lote de 1000" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=center;" vertex="1" parent="1">
+        <mxCell id="note1" value="batch de CHECKPOINT_EVERY" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=center;" vertex="1" parent="1">
           <mxGeometry x="452.00" y="192.00" width="110" height="40" as="geometry" />
         </mxCell>
 
@@ -62,7 +62,7 @@
         </mxCell>
 
         
-        <mxCell id="m5" value="ack ×1000 (recién ahora)" style="html=1;endArrow=block;fontSize=11;" edge="1" parent="1">
+        <mxCell id="m5" value="ack ×CHECKPOINT_EVERY (recién ahora)" style="html=1;endArrow=block;fontSize=11;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="350.00" y="400.00" as="sourcePoint" />
             <mxPoint x="90.00" y="400.00" as="targetPoint" />

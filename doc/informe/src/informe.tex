@@ -176,16 +176,13 @@ detección no puede hacerse registro a registro.
   \caption{Diagrama DAG UC4}
 \end{figure}
 
-Después del filtro inicial (currency USD y período A), un único
-\textbf{GroupBy Compute graph} construye (una sola vez) la representación
-del grafo de transacciones: para cada nodo, el conjunto de predecesores y
-sucesores observados \texttt{(node, predecessors, successors)}. Esta etapa
-shardea por \texttt{node}, de modo que todas las aristas de un mismo nodo se
-acumulan en la misma partición. En una versión anterior el stream se
-bifurcaba en dos sub-pipelines que construían \textit{dos veces} la misma
-representación del grafo; esa duplicación se unificó en un solo constructor
-que abre su salida (\textit{fan-out}) hacia las dos ramas siguientes, evitando
-recalcular el grafo y manteniendo una única fuente de verdad.
+Después del filtro inicial (currency USD y período A), el
+\textbf{GroupBy Compute graph} construye la representación del grafo de
+transacciones: para cada nodo, el conjunto de predecesores y sucesores
+observados \texttt{(node, predecessors, successors)}. Esta etapa shardea por
+\texttt{node}, de modo que todas las aristas de un mismo nodo se acumulan en
+la misma partición, y abre su salida (\textit{fan-out}) hacia las dos ramas
+siguientes.
 
 A partir de ese grafo, el constructor emite el mismo resultado hacia dos
 agregadores distintos:
@@ -251,26 +248,18 @@ competitivos: cada cola tiene exactamente un consumidor. Las únicas colas
 de trabajo simples son las de entrada del Join y la de Responses, también
 con un único consumidor cada una.
 
-La razón principal de evitar working queues competitivas es de
-\textbf{tolerancia a fallos}. Con sharding determinístico, cada dato
-pertenece siempre a una réplica específica: si un nodo cae, RabbitMQ
-reentrega los mensajes no confirmados y, por la \textit{routing key} estable,
-esos mensajes vuelven a la misma partición del mismo nodo lógico. Esto
-simplifica razonar sobre \textit{checkpointing}, deduplicación y
-recuperación, porque el estado local de cada réplica depende únicamente de
-su propia partición. En una working queue competitiva, en cambio, un
-mensaje reentregado podría ser consumido por otra réplica, lo que complica
-la consistencia del estado local, la deduplicación y la recuperación
-(especialmente cuando el procesamiento deja de ser puramente
-\textit{stateless}).
+El uso de colas por afinidad/shard en lugar de \textit{working queues}
+competitivas hace que cada instancia sea dueña de una partición y facilita el
+razonamiento de recuperación ante fallos; su justificación se desarrolla en la
+sección de tolerancia a fallos.
 
-El \textit{trade-off} es conocido: la ventaja de una working queue es que,
-si una réplica se atrasa, otras pueden compensar consumiendo más mensajes.
-En este sistema ese beneficio era despreciable, porque las etapas que
-podían funcionar como working queue eran \textit{stateless}, muy rápidas y
-no volcaban estado a disco. Se comprobó empíricamente que la performance no
-se degradó de forma relevante en ninguno de los datasets evaluados al pasar
-a sharding determinístico.
+Dos componentes quedan fuera del modelo de caídas internas. RabbitMQ se asume
+\textbf{fuera del modelo de fallas}: el sistema confía en que el \textit{broker}
+y sus colas durables sobreviven. El \textbf{Gateway} también se excluye de las
+caídas internas y del \textit{chaos monkey} porque es el único punto de
+comunicación entre el cliente y el sistema: no es una réplica interna más del
+pipeline, y su caída se trata aparte, como caso límite, en la sección de
+tolerancia a fallos.
 
 La clave de \textit{shard} depende de la etapa, y responde a uno de dos
 criterios:
@@ -387,10 +376,7 @@ Tras el \texttt{default\_filter} (USD y período A), un único \texttt{GroupBy
 Compute graph} construye la representación del grafo (ruteando por
 \texttt{node}) y abre su salida (\textit{fan-out}) hacia dos Aggregate
 distintos. Esta etapa corre con varias instancias
-(\texttt{UC4\_COMPUTE\_GRAPHS}); antes el
-stream se duplicaba en dos sub-pipelines que construían el grafo dos veces,
-pero ambos ejecutaban exactamente el mismo cómputo, de modo que se
-unificaron en un solo constructor que alimenta a las dos ramas.
+(\texttt{UC4\_COMPUTE\_GRAPHS}).
 
 El primer Aggregate, \texttt{Aggregate degree} (\texttt{UC4\_DEGREE\_AGGREGATES}),
 selecciona los nodos de alto grado (al menos 5 predecesores y 5 sucesores)
@@ -424,7 +410,7 @@ permitir este escalamiento para más libertad en el despliegue del
 sistema, pero la operación que se realiza en esta instancia es
 puramente I/O intensive, y por tanto no requiere mayor poder de
 cómputo. Se emite una sola request al servicio externo de conversión
-por batch, amortizando la latencia de red sobre el conjunto del lote.
+por batch, amortizando la latencia de red sobre el conjunto del batch.
 Tras la conversión, un segundo Filter aplica el umbral de \$1 USD y el
 \texttt{GroupBy * Count} produce un conteo parcial por instancia. Esos
 conteos parciales se depositan en la cola de entrada del Join, que los
@@ -731,10 +717,10 @@ responder.
 
 El cliente de \textit{heartbeat} corre como \textit{daemon} que nunca bloquea
 el trabajo del nodo y se reconecta solo si el Supervisor está caído o se
-reinicia. El propio Supervisor se despliega con \texttt{restart: on-failure},
-de modo que Docker Compose lo levanta de nuevo si cae; durante su caída los
-nodos siguen procesando con normalidad. No hay elección de líder: la
-liveness del Supervisor está desacoplada de la correctitud del pipeline.
+reinicia. La liveness del Supervisor está desacoplada de la correctitud del
+pipeline: durante una caída del Supervisor los nodos siguen procesando con
+normalidad. Para que la supervisión sobreviva a la caída del propio Supervisor,
+éste se despliega como un clúster tolerante a fallos, descrito a continuación.
 
 La \textbf{recuperación} de un nodo caído (reiniciar su proceso para que
 restaure su \textit{checkpoint}, se reconecte a RabbitMQ y reanude el
@@ -743,6 +729,61 @@ consumo) depende del entorno de ejecución. En la simulación con Docker un
 configuración y la línea de tiempo de recuperación se describen en Testing.
 En un sistema verdaderamente distribuido el reinicio lo haría el orquestador
 del entorno, no un \texttt{docker start} local.
+
+\subsection{Cluster de supervisores}
+El supervisor es entonces el encargado de levantar nodos cuando se caen,
+proveyendo así \textit{crash recovery}; pero ¿qué pasa si se cae el supervisor?
+Para resolver esto se agregaron réplicas del nodo supervisor, de manera tal que
+este último pasa de ser un único nodo a un \textit{servicio tolerante a fallos}.
+En el clúster de supervisores, el \textit{líder} es el encargado de llevar la
+cuenta del estado de los nodos del pipeline y de levantarlos en caso de caídas.
+Por otro lado, para controlar el estado del líder, las réplicas del clúster le
+mandan \textit{pings} con un delay configurable, a los cuales el líder contesta
+con \textit{pongs} para certificar que sigue vivo. Cuando una réplica detecta que
+el líder se cayó, entonces se inicia una \textit{elección de líder}. En
+particular, se implementó la \textit{bully leader election} por ser más simple de
+programar.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.72\textwidth]{../diagrams/17supervisor-workers-setup.png}
+  \caption{Clúster de supervisores y nodos del pipeline}
+\end{figure}
+
+La implementación de los supervisores consta principalmente de tres módulos:
+\begin{itemize}
+  \item \textbf{Event loop.} Lee de la cola de eventos y handlea acordemente.
+  \item \textbf{Runtime.} Lleva a cabo la funcionalidad del \textit{rol} actual del
+    supervisor (líder o réplica), implementado con un \textit{strategy pattern}.
+    Cuando se cae el líder, se pushea el evento \textit{LeaderDown} en la cola de
+    eventos.
+  \item \textbf{Internal/node listener.} Acepta conexiones de otros nodos del
+    clúster y las pushea en la cola de eventos.
+\end{itemize}
+
+Los eventos están implementados con una \textit{multiple producer single consumer
+queue}: los productores son el runtime y el listener; y el consumidor es el event
+loop. El listener está basado en el \textit{modelo de actores}, escucha mensajes y
+delega el manejo y la correspondiente contestación de los mismos al event loop.
+
+Se optó por mantener conexiones TCP entre los nodos, para evitar casos borde de
+pérdida de mensajes en el clúster. Algo a notar de la implementación, es que busca
+minimizar la cantidad de conexiones activas entre nodos. Normalmente, cuando el
+líder está vivo, sólo existen $N-1$ conexiones, con $N$ la cantidad de nodos: las
+réplicas conectadas al líder para hacer el ping pong. Cuando se cae el líder, se
+inicializan sólo las conexiones necesarias para llevar a cabo la bully leader
+election: la réplica que detecta la caída instancia conexiones con aquellos otros
+nodos con un ID mayor al suyo, manda mensaje de elección, espera el ACK, y corta la
+conexión; y así sucesivamente hasta que la cantidad de acks recibidos para el
+mensaje \textit{election} es cero, en cuyo caso el nodo sabe que es aquel con el
+mayor id del clúster y broadcastea entonces el mensaje \textit{coordinator}, para
+volver a las $N-1$ conexiones de la normalidad.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{../diagrams/18supervisor-bully-leader-election.png}
+  \caption{Bully leader election en el clúster de supervisores}
+\end{figure}
 
 \subsection{Fin de stream y barrera de anillo}
 El fin de un stream se señaliza con un mensaje especial de \textit{EOF}.
@@ -792,7 +833,7 @@ válido: si el nodo cae mientras escribe el temporal, el checkpoint anterior
 queda intacto y es el que se restaura.
 
 La pieza clave es el \textbf{orden entre el checkpoint y los acks}. Los
-mensajes se procesan en lote (de tamaño \texttt{CHECKPOINT\_EVERY}) y sus \textit{acks} se
+mensajes se procesan en batch (de tamaño \texttt{CHECKPOINT\_EVERY}) y sus \textit{acks} se
 retienen: recién se
 confirman a RabbitMQ \textbf{después} de que el \textit{checkpoint} quedó
 escrito en disco. Así, todo lo confirmado tiene su estado ya persistido;
@@ -831,7 +872,7 @@ ciclo, algo que no escalaría.
 \subsection{Apagado graceful}
 Ante una señal \texttt{SIGTERM} (o \texttt{SIGINT}), cada nodo corta el
 consumo, cierra su conexión con RabbitMQ y libera sus publicadores. Los
-\textit{acks} del lote en curso no se confirman: al cerrarse la conexión,
+\textit{acks} del batch en curso no se confirman: al cerrarse la conexión,
 RabbitMQ reencola esos mensajes y el próximo arranque los reprocesa
 sobre el último \textit{checkpoint}. El apagado es, por tanto, equivalente
 en correctitud a una caída: el sistema cumple el \textit{graceful quit}
@@ -843,8 +884,8 @@ retenidos y barrera idempotente cubre los distintos momentos en que un
 nodo puede caer. A continuación se enumeran los puntos protegidos y cómo
 se preserva la correctitud en cada uno.
 
-\subsubsection{Caída a mitad de lote}
-Un nodo procesa parte de un lote (aplicando estado y registrando
+\subsubsection{Caída a mitad de batch}
+Un nodo procesa parte de un batch (aplicando estado y registrando
 deduplicación en memoria) y cae antes de \textit{checkpointear}. Como esos
 mensajes no se confirmaron, RabbitMQ los reenvía; el estado y la
 deduplicación se restauran del último \textit{checkpoint} y los mensajes se
@@ -853,12 +894,12 @@ reprocesan limpiamente sobre él.
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.85\textwidth]{../diagrams/v2/21ft-failure-midbatch.png}\\[1cm]
-  \caption{Caída a mitad de lote}
+  \caption{Caída a mitad de batch}
 \end{figure}
 
 \subsubsection{Caída tras el checkpoint y antes de los acks}
-El nodo escribe el \textit{checkpoint} del lote y cae antes de confirmar los
-\textit{acks}. RabbitMQ reenvía el lote completo, pero al restaurar, la tabla
+El nodo escribe el \textit{checkpoint} del batch y cae antes de confirmar los
+\textit{acks}. RabbitMQ reenvía el batch completo, pero al restaurar, la tabla
 de deduplicación ya contiene esas secuencias: cada mensaje reenviado se
 detecta como duplicado, se confirma y se descarta sin volver a aplicarse.
 El estado queda correcto, tomado del \textit{checkpoint}.
@@ -883,13 +924,38 @@ archivos de \textit{spill} se truncan a su \textit{offset} confirmado.
   \caption{Caída de un nodo con estado acumulado}
 \end{figure}
 
+\subsubsection{Caída del cliente}
+El cliente también puede caerse, y se distinguen dos casos según el momento.
+
+Si el cliente cae \textbf{mientras envía datos}, el Gateway lo detecta porque la
+lectura del socket de ese cliente devuelve un cierre o error de conexión antes de
+recibir el \textit{EOF} del stream. En ese caso el Gateway emite un mensaje
+\texttt{Abort} por cada \textit{shard}, estampado con el \texttt{client\_id} de esa
+sesión, que viaja por el pipeline igual que los datos. Cada etapa que lo recibe
+\textbf{descarta} el estado parcial de ese cliente: en el Join, el \texttt{Abort}
+dispara el \texttt{discard} del estado de negocio del cliente, el borrado de sus
+contadores de recepción y el marcado del cliente como abortado en el
+\textit{checkpoint}. Así no quedan sesiones huérfanas ni etapas esperando
+indefinidamente un EOF que nunca va a llegar.
+
+Si el cliente cae \textbf{cuando el sistema ya está procesando}, el pipeline puede
+seguir avanzando o limpiar su estado según el mecanismo de \texttt{Abort}, pero el
+cliente ya no va a recibir las respuestas: su conexión dejó de existir. La solución
+no es ``recuperar'' al cliente, sino \textbf{abortar/cancelar la sesión}, liberar los
+recursos asociados a ese \texttt{client\_id} y evitar que el Join o el Gateway queden
+esperando o acumulando resultados para una conexión inexistente.
+
 \subsubsection{Caída del Gateway}
-Es el límite de diseño conocido. El Gateway asigna un \texttt{client\_id}
-nuevo en cada conexión, por lo que si cae mientras un cliente transmitía,
-los datos parciales ya publicados quedan huérfanos: ningún EOF llegará
-para ese \texttt{client\_id} y el Join nunca finaliza esa sesión. El cliente
-debe reconectarse y reenviar el trabajo desde cero. Es el único escenario
-en el que la correctitud depende del reintento del cliente.
+El Gateway es la \textbf{frontera entre el cliente y el sistema}, no un nodo interno
+más del pipeline; por eso se trata como caso aparte y queda fuera del modelo de
+caídas internas. Si cae, rompe la conexión TCP activa y deja sin sentido la sesión
+desde el punto de vista del cliente. Además, como asigna un \texttt{client\_id} nuevo
+en cada conexión, los datos parciales ya publicados de un cliente en curso quedan
+huérfanos: al caer, el propio Gateway no alcanza a emitir el \texttt{Abort} de esa
+sesión, ningún EOF llegará para ese \texttt{client\_id} y el Join nunca finaliza esa
+sesión. El sistema no implementa un reintento transparente: el cliente debe
+reconectarse y reenviar el trabajo desde cero. Es el único escenario en el que la
+correctitud depende del reintento del cliente.
 
 \begin{figure}[H]
   \centering
@@ -898,11 +964,12 @@ en el que la correctitud depende del reintento del cliente.
 \end{figure}
 
 \subsubsection{Caída del Supervisor}
-El Supervisor se reinicia solo si cae (\texttt{restart: on-failure}). Los
-nodos siguen procesando sin interrupción; si alguno cae durante la ventana
-de caída del Supervisor, su caída no se detecta hasta que éste vuelve y los
-nodos se re-registran. No hay falla en cascada: la liveness del Supervisor
-está desacoplada de la correctitud del pipeline.
+La supervisión es un clúster tolerante a fallos (ver \textit{Cluster de
+supervisores}): si cae el líder, una réplica lo detecta por la ausencia de
+\textit{pongs} e inicia una elección de líder, de modo que otra réplica asume la
+supervisión y la detección de caídas continúa. En cualquier caso, los nodos del
+pipeline siguen procesando sin interrupción y no hay falla en cascada: la liveness
+del Supervisor está desacoplada de la correctitud del pipeline.
 
 \begin{figure}[H]
   \centering
@@ -916,10 +983,17 @@ La tolerancia a fallos no es gratis: cada nodo manda latidos, \textit{checkpoint
 \textbf{publica cada mensaje con confirmación del broker} —para que una caída no pierda
 un envío en vuelo— y, ante una caída, reprocesa desde el último \textit{checkpoint}.
 Para medir ese costo
-se corrió un \textit{benchmark} con la topología escalada a \texttt{min2} (sin nodos
-únicos, de modo que matar una réplica no detiene una etapa) sometida al \textit{chaos
-monkey}, que se \textbf{siembra con una semilla fija} para que dos corridas maten la
-misma secuencia de nodos y el experimento sea reproducible.
+se corrió un \textit{benchmark} con una topología escalada (al menos dos instancias
+por anillo/etapa relevante, de modo que matar una réplica no detiene una etapa)
+sometida al \textit{chaos monkey}, que se \textbf{siembra con una semilla fija} para
+que las corridas sean reproducibles por configuración.
+
+Estos resultados deben leerse como \textbf{tendencias y conclusiones conceptuales},
+no como valores absolutos. Aunque las corridas sean reproducibles por
+configuración/semilla, el \textit{chaos monkey} introduce caídas sobre nodos y
+combinaciones que pueden variar entre ejecuciones, por lo que los valores exactos
+pueden cambiar. Por eso el análisis se enfoca en conclusiones estables sobre el
+comportamiento del sistema bajo fallos y no en números puntuales.
 
 El estrés del \textit{chaos} no es un solo número: el \textbf{kill-rate} es el producto de
 \emph{cuántos} nodos se matan por oleada y \emph{cada cuánto} se mata una oleada. Por eso el
@@ -958,14 +1032,14 @@ procesamiento. Aun en el extremo, lo medido \textbf{siempre completa}: el sistem
 
 \subsubsection{Ráfaga: matar más de golpe}
 Con un intervalo holgado el supervisor tiene tiempo de sobra entre oleadas, así que lo que se
-mide es cuánta pérdida \emph{instantánea} absorbe la redundancia \texttt{min2}. El
+mide es cuánta pérdida \emph{instantánea} absorbe la redundancia de la topología escalada. El
 comportamiento es \textbf{cualitativamente distinto al de frecuencia}: la degradación crece de
-forma \textbf{gradual y sostenida} en todo el rango, sin rodilla ni salto abrupto. Mientras una
-oleada no se lleve \emph{las dos} réplicas de una misma etapa a la vez, siempre queda quién
-avance y el supervisor repone antes de la siguiente oleada. La conclusión que se desprende de
-combinar los dos cortes es la idea central de esta sección: \textbf{el eje peligroso es la
-frecuencia} —la acumulación en el tiempo—, \textbf{no la ráfaga puntual}, que la redundancia
-absorbe.
+forma \textbf{gradual y sostenida} en todo el rango, sin rodilla ni salto abrupto. En el rango
+probado, la ráfaga degradó el tiempo pero no produjo colapso: eso muestra \textbf{robustez
+empírica bajo esas condiciones}, no una garantía universal para cualquier combinación de
+caídas. De combinar los dos cortes se desprende, conceptualmente, que el eje que más penaliza
+es la \textbf{acumulación de fallos en el tiempo} más que la simultaneidad puntual, al menos
+en el rango observado.
 
 \begin{figure}[H]
   \centering
@@ -987,7 +1061,7 @@ fallos \textbf{corre ese balance hacia checkpoints más frecuentes}.
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.85\textwidth]{../diagrams/v2/ft_perf_checkpoint.png}\\[0.5cm]
-  \caption{Costo del \texttt{checkpoint\_every} (escala log): curva en U con óptimo amplio.
+  \caption{Costo del \texttt{CHECKPOINT\_EVERY} (escala log): curva en U con óptimo amplio.
   El chaos penaliza más al checkpoint espaciado, donde cada caída reprocesa más trabajo.}
 \end{figure}
 
@@ -1026,7 +1100,7 @@ Hay dos modos de probar la tolerancia a fallos.
 
 \subsubsection{Pruebas determinísticas}
 Se levanta el sistema con Docker y se inyectan caídas \textbf{controladas} en
-puntos críticos del pipeline (\textit{crash points}): tras aplicar un lote pero
+puntos críticos del pipeline (\textit{crash points}): tras aplicar un batch pero
 antes de checkpointear, durante la escritura del checkpoint, antes de
 confirmar los \textit{acks}, al propagar el EOF del anillo, al restaurar en el
 arranque, etc. Para cada nodo y cada punto de falla relevante se mata y se
@@ -1081,23 +1155,40 @@ La línea de tiempo de recuperación de un nodo es, así, la suma de tres
 términos: el tiempo hasta perder el primer latido, el \textit{timeout} de
 detección, y la espera hasta la siguiente pasada del reviver.
 
+\subsection{Testing de performance bajo tolerancia a fallos}
+Para cuantificar el costo de la tolerancia a fallos se agregó un \textit{benchmark}
+dedicado (\texttt{make performance\_vs\_ft}, sobre \texttt{scripts/ft\_perf\_bench.py};
+las figuras se regeneran con \texttt{make perf\_plots}). Compara una \textbf{corrida
+base sin chaos} contra \textbf{corridas con el Chaos Monkey activo} sobre una topología
+escalada (al menos dos instancias por etapa relevante), midiendo la ralentización
+relativa respecto de la corrida base.
+
+El experimento barre tres ejes: la \textbf{frecuencia} de las oleadas
+(\texttt{CHAOS\_INTERVAL}), la \textbf{cantidad de nodos matados por oleada}
+(\texttt{CHAOS\_KILLS\_MIN}/\texttt{CHAOS\_KILLS\_MAX}) y la \textbf{cadencia de
+checkpoint} (\texttt{CHECKPOINT\_EVERY}). Cada eje se corre sobre los datasets
+\textit{small}, \textit{medium} y \textit{large}. Los resultados se vuelcan a
+\texttt{tmp/ft\_perf/results.csv} y son la fuente de los gráficos de la sección
+``Rendimiento bajo tolerancia a fallos''.
+
+En estos tests los \textbf{Supervisores se excluyen del Chaos Monkey} (vía
+\texttt{CHAOS\_EXCLUDE}, junto con el Gateway y RabbitMQ): no son nodos de
+procesamiento del pipeline, de modo que matarlos no aporta a medir el comportamiento
+del pipeline bajo fallas de sus nodos de cómputo.
+
 \subsection{Testing de escalabilidad}
 Más allá de la correctitud con un cliente, se agregó una prueba e2e dedicada
 (\texttt{make scalability\_test}, hermana de \texttt{make test\_ft}) que verifica que
 los anillos de afinidad siguen produciendo el resultado correcto a medida que cada etapa
-se escala de un nodo a un anillo de 2 o 3. Para cada topología (\texttt{current};
-\texttt{min2}, con todas las etapas en $\geq 2$; \texttt{bottleneck3}, que escala el
-camino caliente de UC4; y variantes por etapa) reescribe los tamaños de los anillos,
+se escala de un nodo a un anillo de 2 o 3. Para cada configuración de escalado
+(desde la topología base hasta topologías con todas las etapas en $\geq 2$ instancias,
+o que escalan el camino caliente de UC4) reescribe los tamaños de los anillos,
 levanta el cluster y corre un cliente por cada dataset (perfect / small / medium /
-large), comparando el resultado contra el oráculo cacheado. Como el \textit{deadlock}
-que cubre dependía del \textit{timing}, cada combinación puede repetirse varias veces.
+large), comparando el resultado contra el oráculo cacheado. Cada combinación puede
+repetirse varias veces para cubrir la variabilidad de \textit{timing}.
 Ante una falla vuelca las colas trabadas, los códigos de salida de los nodos caídos y
 los \textit{logs} alrededor, y al terminar verifica que el cluster, el estado en disco
-y las colas queden limpios. Esta prueba fue la que detectó —y luego validó el
-\textit{fix} de— un \textit{deadlock} en la barrera de fin de \textit{stream} que se
-disparaba al convertir una etapa en anillo: el EOF del \textit{upstream} podía llegar
-antes que su última data, y como la completitud sólo se chequeaba al recibir el EOF, el
-nodo nunca emitía y la barrera no cerraba.
+y las colas queden limpios.
 
 \newpage
 \section{Desarrollo}

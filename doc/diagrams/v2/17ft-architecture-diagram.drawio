@@ -42,7 +42,7 @@
         <mxCell id="edata" value="publish / consume" style="endArrow=classic;startArrow=classic;html=1;strokeColor=#d79b00;fontSize=10;" edge="1" parent="1" source="pipe" target="rabbit"><mxGeometry relative="1" as="geometry" /></mxCell>
 
         
-        <mxCell id="sup" value="Supervisor&#10;&#10;(detección por heartbeat)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;verticalAlign=top;spacingTop=6" vertex="1" parent="1">
+        <mxCell id="sup" value="Clúster de supervisores&#10;(N réplicas, 1 líder)&#10;&#10;(detección por heartbeat)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;verticalAlign=top;spacingTop=6" vertex="1" parent="1">
           <mxGeometry x="620.00" y="60.00" width="230" height="90" as="geometry" />
         </mxCell>
 

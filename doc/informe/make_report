@@ -1,2 +1,3 @@
 #!/usr/bin/env zsh
-pdflatex ./src/informe.tex --o informe.pdf
+pdflatex -shell-escape -interaction=nonstopmode ./src/informe.tex
+pdflatex -shell-escape -interaction=nonstopmode ./src/informe.tex

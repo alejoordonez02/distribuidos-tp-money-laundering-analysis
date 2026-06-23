@@ -9,7 +9,7 @@
         <mxCell id="ln" value="Nodo" style="shape=umlLifeline;perimeter=lifelinePerimeter;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;size=40;" vertex="1" parent="1">
           <mxGeometry x="50.00" y="20.00" width="140" height="450" as="geometry" />
         </mxCell>
-        <mxCell id="ls" value="Supervisor" style="shape=umlLifeline;perimeter=lifelinePerimeter;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;size=40;" vertex="1" parent="1">
+        <mxCell id="ls" value="Supervisor líder&#10;(del clúster)" style="shape=umlLifeline;perimeter=lifelinePerimeter;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;size=40;" vertex="1" parent="1">
           <mxGeometry x="310.00" y="20.00" width="140" height="450" as="geometry" />
         </mxCell>
 

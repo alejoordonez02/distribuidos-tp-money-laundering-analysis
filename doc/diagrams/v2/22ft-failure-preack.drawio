@@ -17,7 +17,7 @@
         </mxCell>
 
         
-        <mxCell id="m1" value="checkpoint del lote (1000)" style="html=1;endArrow=block;fontSize=11;" edge="1" parent="1">
+        <mxCell id="m1" value="checkpoint del batch (CHECKPOINT_EVERY)" style="html=1;endArrow=block;fontSize=11;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="350.00" y="95.00" as="sourcePoint" />
             <mxPoint x="610.00" y="95.00" as="targetPoint" />
@@ -46,7 +46,7 @@
         </mxCell>
 
         
-        <mxCell id="m3" value="redelivery del lote" style="html=1;endArrow=block;fontSize=11;" edge="1" parent="1">
+        <mxCell id="m3" value="redelivery del batch" style="html=1;endArrow=block;fontSize=11;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="90.00" y="310.00" as="sourcePoint" />
             <mxPoint x="350.00" y="310.00" as="targetPoint" />
@@ -66,7 +66,7 @@
         </mxCell>
 
         
-        <mxCell id="note" value="El checkpoint incluye el estado de dedup: al reprocesar el lote ya guardado, los duplicados son detectados y descartados sin re-emitir." style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;" vertex="1" parent="1">
+        <mxCell id="note" value="El checkpoint incluye el estado de dedup: al reprocesar el batch ya guardado, los duplicados son detectados y descartados sin re-emitir." style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;" vertex="1" parent="1">
           <mxGeometry x="20.00" y="450.00" width="680" height="46" as="geometry" />
         </mxCell>
 
