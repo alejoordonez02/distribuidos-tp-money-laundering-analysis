@@ -61,7 +61,6 @@ class LeaderRuntime(SupervisorRuntime):
         self._stop = threading.Event()
 
     def start(self):
-
         threading.Thread(target=self._sweep, name="sweeper", daemon=True).start()
         threading.Thread(
             target=self._handle_clients, name="accept", daemon=True

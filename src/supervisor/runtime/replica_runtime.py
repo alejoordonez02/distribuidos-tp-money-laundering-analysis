@@ -46,11 +46,11 @@ class Leader:
             time.sleep(RETRY_DELAY)
             try:
                 skt.connect(self._addr)
-                break
-            except ConnectionRefusedError:
+                self._conn = Connection(skt)
+                return
+            except OSError:
                 continue
-
-        self._conn = Connection(skt)
+        raise LeaderDownError(f"could not connect to leader {self._addr}")
 
     def ping_pong(self):
         if not self._conn:
@@ -67,11 +67,7 @@ class Leader:
             logging.debug("lost connection with leader (%s)", e)
             raise LeaderDownError(e)
         finally:
-            if self._conn:
-                try:
-                    self._conn.close()
-                except OSError:
-                    pass
+            self.close()
 
     def close(self):
         if not self._conn:
@@ -80,3 +76,4 @@ class Leader:
             self._conn.close()
         except OSError:
             pass
+        self._conn = None
