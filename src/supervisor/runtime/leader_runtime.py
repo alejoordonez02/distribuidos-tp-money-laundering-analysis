@@ -103,6 +103,7 @@ class LeaderRuntime(SupervisorRuntime):
         self._stop.set()
         try:
             self._server_listener.close()
+            self._replica_listener.close()
         except OSError:
             pass
 
