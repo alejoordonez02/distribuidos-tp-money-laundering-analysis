@@ -921,115 +921,74 @@ se corrió un \textit{benchmark} con la topología escalada a \texttt{min2} (sin
 monkey}, que se \textbf{siembra con una semilla fija} para que dos corridas maten la
 misma secuencia de nodos y el experimento sea reproducible.
 
-El estrés del \textit{chaos} no es un solo número: el \textbf{kill-rate} (nodos derribados
-por minuto) es el producto de \emph{cuántos} se matan por oleada ($K$) y \emph{cada cuánto}
-se mata una oleada. Por eso el plano de estrés se recorre con \textbf{dos cortes
-ortogonales}, y cada uno expone una falla distinta:
+El estrés del \textit{chaos} no es un solo número: el \textbf{kill-rate} es el producto de
+\emph{cuántos} nodos se matan por oleada y \emph{cada cuánto} se mata una oleada. Por eso el
+plano de estrés se recorre con \textbf{dos cortes ortogonales}, y cada uno expone una falla
+distinta:
 \begin{itemize}
-  \item \textbf{Sweep de frecuencia} — se fija la ráfaga en $K = 4$ y se \emph{acorta el
-  intervalo} entre oleadas. Estresa la falla \textbf{acumulativa}: el supervisor se va
-  quedando atrás con el correr del tiempo. Eje X: el intervalo en \textbf{segundos}.
-  \item \textbf{Sweep de ráfaga} — se fija un intervalo generoso ($20$\,s) y se \emph{agranda
-  la oleada} $K$. Estresa la falla por \textbf{simultaneidad}: una sola oleada se lleva una
-  masa crítica de nodos antes de que el supervisor reaccione. Eje X: nodos por oleada.
+  \item \textbf{Frecuencia} — se fija el tamaño de la oleada y se \emph{acorta el intervalo}
+  entre oleadas. Estresa la falla \textbf{acumulativa}: el supervisor se va quedando atrás a
+  medida que pasa el tiempo.
+  \item \textbf{Ráfaga} — se fija un intervalo generoso y se \emph{agranda la oleada}. Estresa
+  la falla por \textbf{simultaneidad}: una sola oleada se lleva muchos nodos de golpe, antes
+  de que el supervisor alcance a reaccionar.
 \end{itemize}
-Ambos cortes se corren sobre los tres datasets (small, medium y large, este último con menos
-puntos por su mayor costo), con \texttt{checkpoint\_every} fijo en \texttt{1000}, comparando
-siempre una corrida \textbf{sin chaos} (referencia) contra la rampa \textbf{con chaos}.
+Ambos cortes se corren sobre los tres datasets. Como sus tamaños difieren en un orden de
+magnitud, los tiempos absolutos no comparten un mismo eje (el dataset chico quedaría aplastado
+contra el piso). Por eso las dos curvas se muestran en \textbf{ralentización relativa}: el
+tiempo de cada corrida dividido por el de su propia corrida \emph{sin chaos}. Así los tres
+datasets se leen juntos, y la línea de referencia en $\times 1$ marca el ``sin degradación''.
+
+\subsubsection{Frecuencia: matar más seguido}
+A intervalos más cortos hay más caídas que recuperar mientras la corrida avanza. La curva
+muestra que en casi todo el rango el costo es \textbf{marginal}: las tres líneas viajan
+pegadas a la referencia. El sobrecosto recién se dispara en el \textbf{régimen más agresivo},
+y lo hace de forma marcadamente \textbf{super-lineal} —una rampa que se empina al final—. La
+lectura conceptual es que la frecuencia de fallos es un eje \emph{barato} hasta cruzar un
+umbral, y a partir de ahí el trabajo de reposición empieza a competir en serio con el de
+procesamiento. Aun en el extremo, lo medido \textbf{siempre completa}: el sistema se
+\emph{ralentiza}, no se traba.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.66\textwidth]{../diagrams/v2/ft_perf_overhead_summary.png}\\[0.4cm]
-  \caption{Overhead de la tolerancia a fallos: tiempo total sin chaos vs.\ con chaos
-  sostenido suave, para cada dataset.}
+  \includegraphics[width=0.85\textwidth]{../diagrams/v2/ft_perf_frequency.png}\\[0.4cm]
+  \caption{Frecuencia, ralentización relativa por dataset: la degradación es despreciable en
+  casi todo el rango y sólo se empina en el régimen más agresivo.}
 \end{figure}
 
-Bajo \textit{chaos} suave (matar $K=4$ nodos cada $40$\,s), el costo de recuperarse es
-\textbf{modesto y decrece con la escala}: \texttt{+9\%} en small ($157 \to 171$\,s),
-\texttt{+8\%} en medium ($602 \to 651$\,s) y \texttt{+5\%} en large ($1883 \to 1972$\,s).
-La razón es que el trabajo de reposición (revivir y reprocesar desde el \textit{checkpoint})
-es aproximadamente fijo por caída, así que sobre una corrida más larga se \textbf{amortiza}
-contra un total mayor. La conclusión es directa: a la escala de producción, sostener la
-tolerancia a fallos cuesta un dígito porcentual.
-
-\subsubsection{Sweep de frecuencia: matar más seguido}
-A intervalos más cortos hay más caídas que recuperar durante el run. Mientras la tasa de
-recuperación le gana a la de muerte, la degradación crece de forma suave: en medium, acortar
-el intervalo de $40$\,s a $5$\,s lleva el costo de \texttt{+8\%} a \texttt{+89\%}
-($602 \to 1136$\,s) sin dejar de completar y validar. En cuanto se mata más rápido de lo que
-el supervisor revive, los nodos muertos se acumulan sin techo y el sistema \textbf{colapsa}:
-a $\le 2$\,s ($\ge 120$ nodos/min) la corrida ya no termina dentro del tope. Esa acumulación
-es matemáticamente imparable y aparece como un \textit{cliff} en la curva. Es un límite de
-\emph{throughput} legítimo, no una falla de correctitud: al detener el \textit{chaos}, el
-\textit{cluster} se recupera y la corrida termina —el supervisor simplemente no daba abasto
-mientras la presión de muerte se mantenía.
+\subsubsection{Ráfaga: matar más de golpe}
+Con un intervalo holgado el supervisor tiene tiempo de sobra entre oleadas, así que lo que se
+mide es cuánta pérdida \emph{instantánea} absorbe la redundancia \texttt{min2}. El
+comportamiento es \textbf{cualitativamente distinto al de frecuencia}: la degradación crece de
+forma \textbf{gradual y sostenida} en todo el rango, sin rodilla ni salto abrupto. Mientras una
+oleada no se lleve \emph{las dos} réplicas de una misma etapa a la vez, siempre queda quién
+avance y el supervisor repone antes de la siguiente oleada. La conclusión que se desprende de
+combinar los dos cortes es la idea central de esta sección: \textbf{el eje peligroso es la
+frecuencia} —la acumulación en el tiempo—, \textbf{no la ráfaga puntual}, que la redundancia
+absorbe.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.82\textwidth]{../diagrams/v2/ft_perf_freq_medium.png}\\[0.4cm]
-  \caption{Frecuencia (medium): tiempo total a medida que se acorta el intervalo. La
-  degradación sube hasta el punto de quiebre, donde el chaos supera al supervisor.}
+  \includegraphics[width=0.85\textwidth]{../diagrams/v2/ft_perf_burst.png}\\[0.4cm]
+  \caption{Ráfaga, ralentización relativa por dataset: degradación gradual y sostenida al
+  crecer la oleada, sin colapso en ningún dataset.}
 \end{figure}
 
-\subsubsection{Sweep de ráfaga: matar más de golpe}
-Con un intervalo fijo y generoso, el supervisor tiene tiempo de sobra entre oleadas, así que
-la frecuencia deja de ser el cuello y lo que se mide es la \textbf{simultaneidad}: cuánta
-pérdida \emph{instantánea} absorbe la redundancia \texttt{min2}. El resultado es contundente:
-en todo el rango probado —hasta $K = 24$ nodos derribados de una sola oleada, más de la mitad
-del \textit{cluster}— el sistema \textbf{no colapsa}; sólo se degrada de forma sostenida
-(small: \texttt{+64\%} a $K=24$, sin dejar de completar). Mientras una oleada no se lleve
-\emph{las dos} réplicas de una misma etapa a la vez, siempre queda quién avance y el
-supervisor repone antes de la siguiente. La lectura combinada de los dos cortes es clara: el
-límite que ata al sistema es la \textbf{frecuencia} (la acumulación en el tiempo), no la
-ráfaga puntual.
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.82\textwidth]{../diagrams/v2/ft_perf_burst_medium.png}\\[0.4cm]
-  \caption{Ráfaga (medium): tiempo total a medida que crece la oleada $K$ con el intervalo
-  fijo en $20$\,s. La redundancia \texttt{min2} absorbe la oleada sin colapsar en todo el
-  rango probado; sólo hay degradación sostenida.}
-\end{figure}
-
-\subsubsection{El punto de quiebre depende de la exposición}
-Superpuestos los tres datasets en ralentización relativa, el quiebre de frecuencia \textbf{no}
-cae en el mismo punto para todos. A igual estrés, una corrida más larga acumula más oleadas y,
-por probabilidad, tarde o temprano una etapa pierde sus dos réplicas en el momento justo y se
-traba; una corrida corta con la misma intensidad todavía completa: medium colapsa ya a $2$\,s
-mientras small, más breve, sostiene ese ritmo y recién cede a $1$\,s. El quiebre es entonces
-\textbf{probabilístico y dependiente de la exposición}, no un kill-rate absoluto. El corte de
-ráfaga (abajo) confirma lo complementario: en ningún dataset se alcanzó el colapso al crecer
-$K$. En conjunto, la redundancia de \texttt{min2} sostiene al sistema mientras el supervisor
-revive, y el único modo de quiebre observado es la \textbf{acumulación en el tiempo} cuando se
-mata más rápido de lo que se repone.
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.72\textwidth]{../diagrams/v2/ft_perf_freq_all.png}\\[0.2cm]
-  \includegraphics[width=0.72\textwidth]{../diagrams/v2/ft_perf_burst_all.png}\\[0.4cm]
-  \caption{Ralentización relativa por dataset, en frecuencia (arriba) y ráfaga (abajo): el
-  umbral de quiebre por frecuencia depende de la exposición (no es un kill-rate absoluto),
-  mientras que la ráfaga no provoca colapso en ningún dataset.}
-\end{figure}
-
-\subsubsection{El costo del checkpoint y los fallos}
+\subsubsection{El costo del checkpoint}
 La frecuencia de \textit{checkpoint} traza una curva en \textbf{U} con dos costos en tensión.
-\textit{Checkpointear} muy seguido (\texttt{every}=$10$) está dominado por el costo de I/O:
-casi duplica el tiempo ($\approx 1225$\,s) y los fallos casi no cambian nada, porque el
-reproceso por caída ya es mínimo. En el otro extremo, espaciar mucho (\texttt{every}=$4000$)
-implica reprocesar más trabajo en cada caída: \textbf{sin} chaos cuesta poco ($688$\,s, apenas
-peor que el óptimo) pero \textbf{con} chaos se encarece notablemente ($761$\,s). El óptimo es
-\textbf{amplio} y estable —entre \texttt{every}$=200$ y $1000$ ($\approx 610$--$640$\,s en
-ambos escenarios)—; lo que cambia con los fallos no es \emph{dónde} está el óptimo sino que
-el \textit{chaos} \textbf{penaliza más al checkpoint espaciado}, ensanchando la brecha hacia
-la derecha de la curva.
+\textit{Checkpointear} muy seguido está dominado por el costo de I/O; espaciar mucho abarata
+el caso normal pero encarece cada recuperación, porque hay más trabajo para reprocesar por
+caída. El óptimo resulta \textbf{amplio y plano} —una meseta, no un punto delicado de calibrar—.
+Lo que aportan los fallos es un sesgo claro: la curva \emph{con chaos} se despega de la \emph{sin
+chaos} sobre todo del lado espaciado, donde cada caída cuesta más reproceso. Conceptualmente,
+la cadencia de \textit{checkpoint} es un balance entre I/O y reproceso, y la presencia de
+fallos \textbf{corre ese balance hacia checkpoints más frecuentes}.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.7\textwidth]{../diagrams/v2/ft_perf_checkpoint_dualcurve.png}\\[0.5cm]
-  \caption{Costo del \texttt{checkpoint\_every} (medium), escala log: curva en U con óptimo
-  amplio en $200$--$1000$. El chaos penaliza más al checkpoint espaciado (derecha), donde
-  cada caída obliga a reprocesar más trabajo.}
+  \includegraphics[width=0.85\textwidth]{../diagrams/v2/ft_perf_checkpoint.png}\\[0.5cm]
+  \caption{Costo del \texttt{checkpoint\_every} (escala log): curva en U con óptimo amplio.
+  El chaos penaliza más al checkpoint espaciado, donde cada caída reprocesa más trabajo.}
 \end{figure}
 
 \newpage
