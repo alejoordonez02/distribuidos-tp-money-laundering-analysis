@@ -4,13 +4,12 @@ from uuid import UUID
 from client_stream_handler import ClientStreamHandler
 
 
-class ClientNotFoundError(Exception):
-    pass
-
-
 class ClientStreamMonitor:
-    """
-    A thread-safe wrapper for the clients dict.
+    """A thread-safe registry of live client handlers.
+
+    Responses no longer flow through here (each handler owns its own broker queue), so
+    this is purely a lifecycle set: it tracks who is connected and tears every handler
+    down on shutdown. No central lookup-by-id is needed any more.
     """
 
     def __init__(self):
@@ -25,23 +24,9 @@ class ClientStreamMonitor:
             self.clients[client.id] = client
 
     def remove(self, client_id: UUID):
-        """Drop a client's session (on crash) so its responses are no longer routed."""
+        """Drop a client's session (on crash) so it is no longer tracked or stopped."""
         with self.mtx:
             self.clients.pop(client_id, None)
-
-    def get(self, client_id: UUID):
-        """
-        Get a client from the list.
-
-        This method will not remove the client from the list.
-        """
-        with self.mtx:
-            if client_id not in self.clients:
-                raise ClientNotFoundError(
-                    f"client {client_id} not found, current client list is {[c for c in self.clients.keys()]}"
-                )
-
-            return self.clients.get(client_id)
 
     def stop_all(self):
         """Stop every client's writer and close its socket (on gateway shutdown)."""

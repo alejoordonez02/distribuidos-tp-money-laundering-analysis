@@ -1,6 +1,6 @@
+from __future__ import annotations
+
 import logging
-import os
-from queue import Full, Queue
 from threading import Lock, Thread
 from typing import Callable, Sequence
 from uuid import UUID, uuid4
@@ -13,7 +13,6 @@ from common.comms.messages import (
     EOF,
     Hello,
     HelloAck,
-    Message,
     MessageType,
     peek_type,
 )
@@ -24,22 +23,26 @@ from common.comms.middleware import (
     derive_producer_id,
 )
 
-# Bound each client's in-memory outbound buffer. Responses are ~5 per client, so this
-# is never reached in practice; it just keeps a slow client from growing unbounded.
-OUTBOX_MAXSIZE = int(os.getenv("GATEWAY_CLIENT_OUTBOX_MAX", "1024"))
-
 
 class ClientStreamHandler:
-    """Owns one client connection. A reader thread forwards the client's uploaded data
-    to the pipeline; a writer thread drains an in-memory outbox to the client's socket.
-    The shared response router only enqueues (never touches the socket), so a slow or
-    dead client blocks only its own writer, never the delivery to other clients."""
+    """Owns one client connection end to end.
+
+    A reader thread forwards the client's uploaded data into the pipeline. A response
+    thread consumes this client's *own* broker queue (bound by `client_id` to the
+    responses exchange) and writes each response straight to the client's socket,
+    acking only once the bytes are on the wire.
+
+    Because each client has a dedicated queue, consumer thread and broker connection,
+    a slow or dead client only ever backs up (or tears down) its own path: there is no
+    shared response router that another client could stall.
+    """
 
     def __init__(
         self,
         conn: Connection,
-        register: "Callable[[ClientStreamHandler], None]",
-        unregister: "Callable[[UUID], None]",
+        register: Callable[[ClientStreamHandler], None],
+        unregister: Callable[[UUID], None],
+        responses_rx_factory: Callable[[UUID], MOM],
         trans_tx_factory: Callable[[], Sequence[MOM]],
         accs_tx_factory: Callable[[], Sequence[MOM]],
     ):
@@ -47,37 +50,34 @@ class ClientStreamHandler:
         self.conn = conn
         self._register = register
         self._unregister = unregister
+        self._responses_rx_factory = responses_rx_factory
         self.trans_tx_factory = trans_tx_factory
         self.accs_tx_factory = accs_tx_factory
         self.handle: Thread
-        self._writer: "Thread | None" = None
-        self._outbox: "Queue[Message | None]" = Queue(maxsize=OUTBOX_MAXSIZE)
+        self._responses_rx: MOM | None = None
+        self._response_thread: Thread | None = None
         self._close_lock = Lock()
         self._closed = False
 
     def start(self):
-        """Start the reader thread; it spawns the writer once the handshake is done."""
+        """Start the reader thread; it brings up the response consumer once the
+        handshake is done (so no broker resources are opened for a client that drops
+        before saying Hello)."""
         self.handle = Thread(target=self._run)
         self.handle.start()
 
-    def send(self, msg: Message):
-        """Enqueue a response for this client's writer thread. Never blocks the caller
-        (the shared response router): if the outbox is full the response is dropped."""
-        try:
-            self._outbox.put_nowait(msg)
-        except Full:
-            logging.warning("client %s outbox full; dropping response", self.id)
-
     def stop(self):
-        """Close the socket and signal the writer to exit (idempotent, non-blocking).
-        Used on gateway shutdown; a blocked send is unblocked by closing the socket."""
+        """Close the socket and stop this client's response consumer (idempotent,
+        non-blocking). Used on gateway shutdown; closing the socket also unblocks a
+        response thread stuck mid-send to a slow client."""
         self._close()
-        self._signal_writer_stop()
+        if self._responses_rx is not None:
+            self._responses_rx.stop_consuming()
 
     def join(self):
-        """Wait for the writer thread to finish (after `stop`)."""
-        if self._writer is not None:
-            self._writer.join()
+        """Wait for the response thread to finish (after `stop`)."""
+        if self._response_thread is not None:
+            self._response_thread.join()
 
     def _run(self):
         raw = self.conn.recv()
@@ -86,11 +86,9 @@ class ClientStreamHandler:
             self._close()
             return
         Hello.deserialize(raw)
-        self.id = uuid4()
         self._register(self)
         self.conn.send(HelloAck(self.id).serialize())
-        self._writer = Thread(target=self._drain_outbox)
-        self._writer.start()
+        self._start_response_consumer()
 
         # Each stream is round-robined across its downstream ring's shards. A single
         # producer per stream with a monotonic seq dedups exactly under the affinity
@@ -119,21 +117,34 @@ class ClientStreamHandler:
             return
         logging.info("finished forwarding all client's data")
 
-    def _drain_outbox(self):
-        """Drain queued responses to this client's socket. On send failure the client
-        is treated as gone: stop routing to it and close its socket once."""
-        while True:
-            msg = self._outbox.get()
-            if msg is None:
-                return
-            try:
-                self.conn.send(msg.serialize())
-            except OSError as e:
-                logging.warning(
-                    "client %s unreachable; dropping responses (%s)", self.id, e
-                )
-                self._teardown()
-                return
+    def _start_response_consumer(self):
+        """Bind this client's own response queue and start draining it to the socket.
+        The queue exists from here on — well before any response is produced (the
+        pipeline only emits once the client's full upload has been processed)."""
+        self._responses_rx = self._responses_rx_factory(self.id)
+        self._response_thread = Thread(target=self._consume_responses)
+        self._response_thread.start()
+
+    def _consume_responses(self):
+        """Drain this client's response queue to its socket until the queue is stopped
+        or the client becomes unreachable. Owns the broker connection's lifecycle:
+        closes it on exit, which auto-deletes the exclusive per-client queue."""
+        try:
+            self._responses_rx.start_consuming(self._deliver_response)  # type: ignore[union-attr]
+        finally:
+            self._responses_rx.close()  # type: ignore[union-attr]
+
+    def _deliver_response(self, raw: bytes, ack: Callable, nack: Callable):
+        """Write one response to the client and ack only after it is on the wire. If
+        the send fails the message stays un-acked and the client is torn down; nothing
+        is ever acked (and thus dropped) without having reached the socket."""
+        try:
+            self.conn.send(raw)
+        except OSError as e:
+            logging.warning("client %s unreachable; tearing down (%s)", self.id, e)
+            self._teardown()
+            return
+        ack()
 
     def _forward_sharded(self, shard_txs: Sequence[MOM], data_type: MessageType) -> bool:
         """Route each message to one shard by round-robin (even split, stable once
@@ -172,19 +183,13 @@ class ClientStreamHandler:
         self._teardown()
 
     def _teardown(self):
-        """Unregister the client, stop its writer and close its socket once. Idempotent,
-        so the reader (abort) and writer (failed send) paths can both call it safely."""
+        """Unregister the client, stop its response consumer and close its socket once.
+        Idempotent, so the reader (abort) and response (failed send) paths can both call
+        it safely."""
         self._unregister(self.id)
-        self._signal_writer_stop()
+        if self._responses_rx is not None:
+            self._responses_rx.stop_consuming()
         self._close()
-
-    def _signal_writer_stop(self):
-        try:
-            self._outbox.put_nowait(None)
-        except Full:
-            # Outbox full means the writer is busy sending; closing the socket makes
-            # that send fail and the writer exit, so the sentinel isn't needed.
-            pass
 
     def _close(self):
         with self._close_lock:
