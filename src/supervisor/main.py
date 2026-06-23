@@ -30,8 +30,17 @@ def main() -> None:
 
     peers = [Peer(i, f"{node_prefix}{i}") for i in range(nnodes) if i != idx]
 
-    registry = NodeRegistry(timeout, expected=expected)
-    dashboard = Dashboard(registry)
+    def registry_factory():
+        return NodeRegistry(timeout, expected=expected)
+
+    def reviver_factory(registry: NodeRegistry):
+        return (
+            Reviver(registry, interval=revive_interval) if revive_interval > 0 else None
+        )
+
+    def dashboard_factory(registry: NodeRegistry):
+        return Dashboard(registry)
+
     server = SupervisorNode(
         idx,
         bind_host,
@@ -39,13 +48,11 @@ def main() -> None:
         internal_port,
         leader_port,
         peers,
-        registry,
+        registry_factory,
+        reviver_factory,
+        dashboard_factory,
         sweep_interval,
         ping_delay,
-        dashboard,
-    )
-    reviver = (
-        Reviver(registry, interval=revive_interval) if revive_interval > 0 else None
     )
 
     stop = threading.Event()
@@ -56,10 +63,6 @@ def main() -> None:
 
     setup_graceful_shutdown(shutdown)
     server.start()
-    if reviver is not None:
-        threading.Thread(
-            target=reviver.run, args=(stop,), name="reviver", daemon=True
-        ).start()
     stop.wait()
 
 

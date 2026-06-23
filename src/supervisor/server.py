@@ -2,7 +2,7 @@ import logging
 from queue import Queue
 from socket import AF_INET, SO_REUSEADDR, SOCK_STREAM, SOL_SOCKET, socket
 from threading import Thread
-from typing import Sequence
+from typing import Callable, Sequence
 
 from common.comms.messages import (
     Message,
@@ -16,8 +16,16 @@ from common.comms.transport import Connection
 from .event import EventType, LeaderDown, NewLeader, PeerConnection, SupervisorEvent
 from .peer import Peer
 from .registry import NodeRegistry
+from .reviver import Reviver
 from .runtime import LeaderDownError, LeaderRuntime, ReplicaRuntime, SupervisorRuntime
 from .tui import Dashboard
+
+
+def _make_skt(addr: tuple[str, int]):
+    skt = socket(AF_INET, SOCK_STREAM)
+    skt.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+    skt.bind(addr)
+    return skt
 
 
 class SupervisorNode:
@@ -29,35 +37,27 @@ class SupervisorNode:
         internal_port: int,
         leader_port: int,
         peers: Sequence[Peer],
-        registry: NodeRegistry,
+        registry_factory: Callable[[], NodeRegistry],
+        reviver_factory: Callable[[NodeRegistry], Reviver | None],
+        dashboard_factory: Callable[[NodeRegistry], Dashboard | None],
         sweep_interval: float = 0.5,
         ping_delay: float = 0.5,
-        dashboard: Dashboard | None = None,
     ):
-        def make_skt(addr: tuple[str, int]):
-            skt = socket(AF_INET, SOCK_STREAM)
-            skt.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-            skt.bind(addr)
-            return skt
 
         self._idx = idx
 
-        addrs = [
-            (bind_host, server_port),
-            (bind_host, leader_port),
-            (bind_host, internal_port),
-        ]
+        self._server_bind = (bind_host, server_port)
+        self._leader_bind = (bind_host, leader_port)
+        self._node_listener = _make_skt((bind_host, internal_port))
 
-        self._server_listener, self._replica_listener, self._node_listener = [
-            make_skt(addr) for addr in addrs
-        ]
         self._internal_port = internal_port
         self._leader_port = leader_port
         self._peers = peers
-        self._registry = registry
+        self._registry_factory = registry_factory
+        self._reviver_factory = reviver_factory
+        self._dashboard_factory = dashboard_factory
         self._sweep_interval = sweep_interval
         self._ping_delay = ping_delay
-        self._dashboard = dashboard
         self._runtime: SupervisorRuntime | None = None
 
         self._runtimes: Queue[SupervisorRuntime] = Queue()
@@ -102,6 +102,24 @@ class SupervisorNode:
 
         return acks
 
+    def _make_leader(self) -> LeaderRuntime:
+        server_listener = _make_skt(self._server_bind)
+        replica_listener = _make_skt(self._leader_bind)
+        registry = self._registry_factory()
+        reviver = self._reviver_factory(registry)
+        dashboard = self._dashboard_factory(registry)
+        return LeaderRuntime(
+            server_listener,
+            replica_listener,
+            registry,
+            reviver,
+            dashboard,
+            self._sweep_interval,
+        )
+
+    def _make_replica(self, leader_host: str) -> ReplicaRuntime:
+        return ReplicaRuntime((leader_host, self._leader_port), self._ping_delay)
+
     def _event_worker(self):
         def handle_leader_down(_: LeaderDown):
             if self._on_election:
@@ -123,15 +141,7 @@ class SupervisorNode:
 
             if self._runtime:
                 self._runtime.stop()
-            self._runtimes.put(
-                LeaderRuntime(
-                    self._server_listener,
-                    self._replica_listener,
-                    self._registry,
-                    self._sweep_interval,
-                    self._dashboard,
-                )
-            )
+            self._runtimes.put(self._make_leader())
             self._leader = None
             self._on_election = False
 
@@ -145,9 +155,7 @@ class SupervisorNode:
             self._leader = Peer(leader_idx, leader_host)
             if self._runtime:
                 self._runtime.stop()
-            self._runtimes.put(
-                ReplicaRuntime((leader_host, self._leader_port), self._ping_delay)
-            )
+            self._runtimes.put(self._make_replica(leader_host))
             self._on_election = False
 
         def handle_peer_connection(event: PeerConnection):

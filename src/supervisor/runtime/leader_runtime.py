@@ -7,6 +7,7 @@ from common.comms.supervisor import Heartbeat, Register, decode, encode
 from common.comms.transport import Connection
 
 from ..registry import NodeRegistry
+from ..reviver import Reviver
 from ..tui import Dashboard
 from .supervisor_runtime import SupervisorRuntime
 
@@ -49,34 +50,54 @@ class LeaderRuntime(SupervisorRuntime):
         server_listener: socket,
         replica_listener: socket,
         registry: NodeRegistry,
-        sweep_interval: float = 0.5,
+        reviver: Reviver | None,
         dashboard: Dashboard | None = None,
+        sweep_interval: float = 0.5,
     ):
         self._server_listener = server_listener
         self._replica_listener = replica_listener
         self._registry = registry
-        self._sweep_interval = sweep_interval
+        self._reviver = reviver
         self._dashboard = dashboard
+        self._sweep_interval = sweep_interval
 
         self._stop = threading.Event()
 
-    def start(self):
-        threading.Thread(target=self._sweep, name="sweeper", daemon=True).start()
-        threading.Thread(
+        self._sweeper_handle = threading.Thread(
+            target=self._sweep, name="sweeper", daemon=True
+        )
+        self._reviver_handle = (
+            threading.Thread(target=self._reviver.run, args=(self._stop,))
+            if self._reviver
+            else None
+        )
+        self._accept_handle = threading.Thread(
             target=self._handle_clients, name="accept", daemon=True
-        ).start()
-        threading.Thread(
+        )
+        self._replicas_handle = threading.Thread(
             target=self._handle_replicas, name="replicas", daemon=True
-        ).start()
-        if self._dashboard:
+        )
+        self._dashboard_handle = (
             threading.Thread(
                 target=self._dashboard.run,
                 args=(self._stop,),
                 name="dashboard",
                 daemon=True,
-            ).start()
+            )
+            if self._dashboard
+            else None
+        )
         # TODO: mepa q está como el orto usar daemon, no tiene mucho sentido y
         #       aparte cuándo se joinean los threads? no importa en qué terminan?
+
+    def start(self):
+        self._sweeper_handle.start()
+        self._accept_handle.start()
+        self._replicas_handle.start()
+        if self._reviver_handle:
+            self._reviver_handle.start()
+        if self._dashboard_handle:
+            self._dashboard_handle.start()
 
     def stop(self):
         self._stop.set()
