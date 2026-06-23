@@ -57,19 +57,18 @@ class Leader:
     def ping_pong(self):
         if not self._conn:
             self._connect()
-        assert self._conn is not None  # pleasing linter
+        conn = self._conn
+        assert conn is not None  # pleasing linter
 
         try:
-            while self._keep_running:
-                self._conn.send(b"ping")
-                pong = self._conn.recv()
-                if not pong:
-                    raise LeaderDownError()
+            conn.send(b"ping")
+            pong = conn.recv()
+            if not pong:
+                raise LeaderDownError("received an empty pong from leader")
         except OSError as e:
             logging.debug("lost connection with leader (%s)", e)
-            raise LeaderDownError(e)
-        finally:
             self.close()
+            raise LeaderDownError(e)
 
     def close(self):
         if not self._conn:
