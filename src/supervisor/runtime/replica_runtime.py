@@ -41,11 +41,13 @@ class Leader:
         self._keep_running = True
 
     def _connect(self):
-        skt = socket(AF_INET, SOCK_STREAM)
         for _ in range(CONNECTION_RETRIES):
             time.sleep(RETRY_DELAY)
+            skt = socket(AF_INET, SOCK_STREAM)
+            skt.settimeout(0.5)
             try:
                 skt.connect(self._addr)
+                skt.settimeout(None)
                 self._conn = Connection(skt)
                 return
             except OSError:

@@ -99,8 +99,10 @@ class SupervisorNode:
         acks = 0
         for p in peers:
             skt = socket(AF_INET, SOCK_STREAM)
+            skt.settimeout(0.5)
             try:
                 skt.connect((p.host, self._internal_port))
+                skt.settimeout(None)
                 conn = Connection(skt)
                 conn.send(msg.serialize())
                 acks += 1
@@ -124,6 +126,7 @@ class SupervisorNode:
             acks = self._broadcast_message(SupervisorElection(), greater_peers)
 
             if acks > 0:
+                self._on_election = False
                 return
 
             self._broadcast_message(SupervisorLeader(self._idx), self._peers)
@@ -145,11 +148,11 @@ class SupervisorNode:
             leader_idx = event.idx
             leader_host = next(p.host for p in self._peers if p.idx == leader_idx)
 
+            self._is_leader = False
             self._runtime.stop()
             self._runtimes.put(
                 ReplicaRuntime((leader_host, self._leader_port), self._ping_delay)
             )
-            self._is_leader = False
             self._on_election = False
 
         def handle_peer_connection(event: PeerConnection):
