@@ -1,9 +1,8 @@
 import logging
 import threading
-from socket import AF_INET, SOCK_STREAM, create_connection, socket
-from typing import Optional
+from socket import create_connection
 
-from common.comms.supervisor import Heartbeat, Register, encode
+from common.comms.supervisor import Heartbeat, Register, decode, encode
 from common.comms.transport import Connection
 
 
@@ -28,11 +27,51 @@ class HeartbeatClient:
         self._interval = interval
         self._reconnect_delay = reconnect_delay
         self._stop = threading.Event()
-        self._conn: Optional[Connection] = None
+        self._conn: Connection | None = None
         self._thread = threading.Thread(target=self._run, name="heartbeat", daemon=True)
 
     def start(self) -> None:
         self._thread.start()
+
+    def _connect_to_server(self):
+        while not self._stop.is_set():
+            self._stop.wait(self._reconnect_delay)
+
+            try:
+                skt = create_connection(
+                    (self._host, self._port), timeout=self._interval
+                )
+                conn = Connection(skt)
+                conn.send(encode(Register(self._node_id, self._kind)))
+
+                self._conn = conn
+                return
+            except OSError as e:
+                logging.warning("supervisor unreachable, reconnecting (%s)", e)
+
+    def _run(self) -> None:
+        self._connect_to_server()
+
+        while not self._stop.is_set():
+            try:
+                self._heartbeat()
+            except OSError as e:
+                if self._stop.is_set():
+                    break
+
+                logging.warning("supervisor unreachable, reconnecting (%s)", e)
+                self._connect_to_server()
+
+    def _heartbeat(self) -> None:
+        if not self._conn:
+            raise RuntimeError("cannot hearbeat without a initialized conneciton")
+        self._conn.send(encode(Heartbeat(self._node_id)))
+        msg = decode(self._conn.recv())
+
+        if not isinstance(msg, Heartbeat):
+            raise OSError("lost connection with supervisor")
+
+        self._stop.wait(self._interval)
 
     def stop(self) -> None:
         self._stop.set()
@@ -43,30 +82,3 @@ class HeartbeatClient:
             except OSError:
                 pass
         self._thread.join(timeout=self._interval + 1)
-
-    def _run(self) -> None:
-        while not self._stop.is_set():
-            try:
-                self._serve()
-            except OSError as e:
-                if not self._stop.is_set():
-                    logging.warning("heartbeat: supervisor unreachable (%s)", e)
-            if not self._stop.is_set():
-                self._stop.wait(self._reconnect_delay)
-
-    def _serve(self) -> None:
-        skt = socket(AF_INET, SOCK_STREAM)
-        try:
-            skt = create_connection((self._host, self._port))
-            conn = Connection(skt)
-            self._conn = conn
-            conn.send(encode(Register(self._node_id, self._kind)))
-            while not self._stop.is_set():
-                conn.send(encode(Heartbeat(self._node_id)))
-                self._stop.wait(self._interval)
-        finally:
-            self._conn = None
-            try:
-                skt.close()
-            except OSError:
-                pass

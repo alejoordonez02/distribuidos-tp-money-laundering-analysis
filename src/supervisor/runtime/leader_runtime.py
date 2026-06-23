@@ -3,7 +3,7 @@ import threading
 import time
 from socket import socket
 
-from common.comms.supervisor import Heartbeat, Register, decode
+from common.comms.supervisor import Heartbeat, Register, decode, encode
 from common.comms.transport import Connection
 
 from ..registry import NodeRegistry
@@ -100,6 +100,7 @@ class LeaderRuntime(SupervisorRuntime):
                         self._registry.register(msg.node_id, msg.kind, now)
                     elif isinstance(msg, Heartbeat):
                         self._registry.heartbeat(msg.node_id, now)
+                    conn.send(encode(Heartbeat("supervisor")))
 
             except (OSError, ValueError) as e:
                 logging.debug("supervisor: connection dropped (%s)", e)
