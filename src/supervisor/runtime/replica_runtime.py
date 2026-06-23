@@ -6,8 +6,9 @@ from common.comms.transport import Connection
 
 from .supervisor_runtime import SupervisorRuntime
 
-CONNECTION_RETRIES = 10
-RETRY_DELAY = 1
+# TODO: esto mejor pasarlo por envs pero posta ALTA pj
+CONNECTION_RETRIES = 5
+RETRY_DELAY = 0.1
 
 
 class LeaderDownError(Exception): ...
