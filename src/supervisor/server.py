@@ -1,13 +1,11 @@
 import logging
 from queue import Queue
 from socket import AF_INET, SO_REUSEADDR, SOCK_STREAM, SOL_SOCKET, socket
-from socket import gaierror as NameDoesNotResolveError
 from threading import Thread
 from typing import Sequence
 
 from common.comms.messages import (
     Message,
-    SupervisorACK,
     SupervisorElection,
     SupervisorLeader,
     deserialize_message,
@@ -80,7 +78,6 @@ class SupervisorNode:
         )
         self._runtimes.put(runtime)
 
-        self._event_handle = Thread(target=self._event_worker)
         self._runtime_handle = Thread(target=self._runtime_worker)
         self._listener_handle = Thread(target=self._listener_worker)
 
@@ -93,7 +90,7 @@ class SupervisorNode:
 
         self._runtime_handle.start()
         self._listener_handle.start()
-        self._event_handle.start()
+        self._event_worker()
 
     def _broadcast_message(self, msg: Message, peers: Sequence[Peer]) -> int:
         acks = 0
