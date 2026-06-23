@@ -119,34 +119,46 @@ class RingNode:
         """Release a client's business state on abort. No-op by default (stateless
         nodes hold none); stateful nodes override to drop their accumulation."""
 
+    def _free(self, client_id):
+        """Release a resolved client's resources once its result was durably emitted (a
+        redelivered EOF or token will not re-emit). No-op by default; stateful nodes
+        override to delete the client's spilled files."""
+
     def _emit(self, client_id):
         raise NotImplementedError
 
     def _on_eof(self, eof: Message):
-        self._run(self.rc.on_upstream_eof(eof.client_id, eof.expected_count))  # type: ignore[attr-defined]
+        emitted = self._run(self.rc.on_upstream_eof(eof.client_id, eof.expected_count))  # type: ignore[attr-defined]
         if self.checkpointer:
             self.checkpointer.flush(force=True)
+        for client_id in emitted:
+            self._free(client_id)
 
     def _on_ring_msg(self, body: bytes, ack: Callable, nack: Callable):
         msg: RingBarrier = deserialize_message(body)  # type: ignore[assignment]
         try:
-            self._run(self.rc.on_token(BarrierToken(msg.client_id, msg.origin, msg.sent_by)))
+            emitted = self._run(self.rc.on_token(BarrierToken(msg.client_id, msg.origin, msg.sent_by)))
             if self.checkpointer:
                 self.checkpointer.flush(force=True)
         except Exception:
             logging.error("ring token processing failed; requeuing for retry", exc_info=True)
             nack()
             return
+        for client_id in emitted:
+            self._free(client_id)
         ack()
 
-    def _run(self, actions):
+    def _run(self, actions) -> list:
+        emitted = []
         for action in actions:
             if isinstance(action, Emit):
                 self._emit(action.client_id)
+                emitted.append(action.client_id)
             elif isinstance(action, Forward):
                 self._forward(action.token)
             elif isinstance(action, DownstreamEOF):
                 self._downstream_eof(action)
+        return emitted
 
     def _forward(self, token: BarrierToken):
         if token.origin == self.node_id and len(token.sent_by) < self.rc.n_nodes:
