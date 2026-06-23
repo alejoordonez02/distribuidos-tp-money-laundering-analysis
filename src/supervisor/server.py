@@ -85,6 +85,7 @@ class SupervisorNode:
         self._listener_handle = Thread(target=self._listener_worker)
 
         self._on_election = False
+        self._is_leader = leader is None
         self._keep_running = False
 
     def start(self):
@@ -115,7 +116,7 @@ class SupervisorNode:
 
     def _event_worker(self):
         def handle_leader_down(_: LeaderDown):
-            if self._on_election:
+            if self._on_election or self._is_leader:
                 return
             self._on_election = True
 
@@ -137,6 +138,7 @@ class SupervisorNode:
                     self._dashboard,
                 )
             )
+            self._is_leader = True
             self._on_election = False
 
         def handle_new_leader(event: NewLeader):
@@ -147,6 +149,7 @@ class SupervisorNode:
             self._runtimes.put(
                 ReplicaRuntime((leader_host, self._leader_port), self._ping_delay)
             )
+            self._is_leader = False
             self._on_election = False
 
         def handle_peer_connection(event: PeerConnection):
