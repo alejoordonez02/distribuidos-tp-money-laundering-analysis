@@ -45,6 +45,10 @@ class RingAggregate(RingNode):
     def _discard(self, client_id):
         self.fn.discard(client_id)
 
+    def _free(self, client_id):
+        """Drop the in-memory accumulation and delete this client's spilled shards."""
+        self.fn.discard(client_id)
+
     def _emit(self, client_id):
         sent: dict[int, int] = {}
         for aggregated, affinity in self.fn.get_result(client_id):

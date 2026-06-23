@@ -117,16 +117,24 @@ class RingMerge(RingNode):
         self.fn.discard(client_id)
         self.counts.drop(client_id)
 
+    def _free(self, client_id):
+        """Delete this client's spilled graph file and drop its counts."""
+        self.fn.discard(client_id)
+        self.counts.drop(client_id)
+
     def _on_right_eof(self, eof: Message):
         self.counts.right[eof.client_id] = eof.expected_count  # type: ignore[attr-defined]
         self._maybe_complete(eof.client_id)
 
     def _maybe_complete(self, client_id: UUID):
+        emitted = []
         if client_id in self.counts.left and client_id in self.counts.right:
             combined = self.counts.left[client_id] + self.counts.right[client_id]
-            self._run(self.rc.on_upstream_eof(client_id, combined))
+            emitted = self._run(self.rc.on_upstream_eof(client_id, combined))
         if self.checkpointer:
             self.checkpointer.flush(force=True)
+        for cid in emitted:
+            self._free(cid)
 
     def _emit(self, client_id: UUID):
         sent: dict[int, int] = {}

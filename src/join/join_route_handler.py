@@ -150,3 +150,4 @@ class JoinRouteHandler:
         # persist the finalized marker before the EOF is acked so a redelivered EOF does not re-emit
         if self._checkpointer is not None:
             self._checkpointer.flush(force=True)
+        self.join_fn.discard(client_id)
