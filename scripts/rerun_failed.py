@@ -1,13 +1,20 @@
-"""Re-run, in isolation, the two chaos configs that validated 4/5 in the full bench
-(F1 small i2 freq, and F2 medium k24 burst), each until it COMPLETES, then run the full
-5/5 oracle verify. Prints one RESULT line per config so the CSV can be updated.
+"""Re-run, in isolation, the chaos configs that ended validated_5_5=False in the full
+ft-perf bench, to tell flaky from a real edge. Each config gets a fresh cluster + clean
+state and the SAME chaos seed (1234) the bench used. One measured attempt:
 
-    PYTHONPATH=src uv run scripts/rerun_failed.py
+  * completes + 5/5  -> flaky under extreme chaos, mark correct;
+  * completes + !5/5 -> dump a VERBOSE per-UC pytest diff to diagnose;
+  * never completes  -> a cliff (note it).
 
-Reuses the already-built image (no rebuild). Leaves the cluster torn down at the end.
+Does NOT touch results.csv (it is edited by hand afterwards). Reuses the built images.
+
+    PYTHONPATH=src uv run scripts/rerun_failed.py [name,name,...]
+
+Names: small-k24 medium-i20 medium-i1 large-k16 large-k24 (default: all).
 """
 
 import os
+import sys
 import time
 
 from ft_common import (
@@ -29,13 +36,20 @@ from ft_common import (
 MIN2 = {k: max(2, CURRENT[k]) for k in TOPOLOGY_KEYS}
 SEED = 1234
 EXCLUDE = "rabbitmq,supervisor,gateway,chaos"
-MAX_ATTEMPTS = 4
 
-# (label, run_id, tier, interval, kills, cap_s)
-CONFIGS = [
-    ("F1 small i2 freq", "F1-small-min2-c1000-chaos-i2-k4", "small", 2, 4, 700),
-    ("F2 medium k24 burst", "F2-medium-min2-c1000-chaos-i20-k24", "medium", 20, 24, 3600),
-]
+# name -> (tier, interval, kills, cap_s)   [checkpoint_every=1000, topology min2]
+CONFIGS = {
+    "small-k24":  ("small",  20, 24, 900),    # orig UC3
+    "medium-i20": ("medium", 20, 4,  1800),   # orig UC3
+    "medium-i1":  ("medium", 1,  4,  3600),   # orig UC3
+    "large-k16":  ("large",  20, 16, 5400),   # orig UC1
+    "large-k24":  ("large",  20, 24, 5400),   # orig UC1
+}
+
+
+def clean_state():
+    run(f'docker run --rm -v "{os.getcwd()}/state:/state" alpine '
+        "find /state -mindepth 1 -delete", capture=True)
 
 
 def arm_chaos(enabled, interval, kills):
@@ -47,8 +61,29 @@ def arm_chaos(enabled, interval, kills):
     run(f"{env} docker compose -f {COMPOSE} up -d --force-recreate --no-deps chaos", capture=True)
 
 
-def run_until_complete(interval, kills, cap):
-    for attempt in range(1, MAX_ATTEMPTS + 1):
+def verbose_verify():
+    r = run(
+        "uv run pytest test/test_uc1.py test/test_uc2.py test/test_uc3.py "
+        "test/test_uc4.py test/test_uc5.py -v --no-header -rN",
+        capture=True,
+    )
+    return r.stdout or ""
+
+
+def main():
+    which = sys.argv[1].split(",") if len(sys.argv) > 1 else list(CONFIGS)
+    summary = []
+    first = True
+    for name in which:
+        tier, interval, kills, cap = CONFIGS[name]
+        print(f"\n===== RE-RUN {name}  (tier={tier} i{interval} k{kills} seed={SEED} cap={cap}s) =====", flush=True)
+        teardown()
+        clean_state()
+        setup_tier(tier)
+        write_topology(MIN2)
+        bring_up_cluster(do_build=first, checkpoint_every=1000)
+        first = False
+
         clear_responses()
         arm_chaos(True, interval, kills)
         start = time.time()
@@ -61,37 +96,26 @@ def run_until_complete(interval, kills, cap):
                 break
         total = int(time.time() - start)
         arm_chaos(False, interval, kills)
-        if completed:
-            return attempt, total
-        print(f"    attempt {attempt}: did not finish in {cap}s (cliff) — retrying", flush=True)
+
+        if not completed:
+            print(f"RESULT {name}: completed=False (cliff at cap {cap}s)", flush=True)
+            summary.append((name, "CLIFF", f"{total}s"))
+            wait_drain(180)
+            continue
+
+        ok, tail = verify()
+        verdict = "PASS 5/5 (flaky -> correct)" if ok else f"FAIL: {tail}"
+        print(f"RESULT {name}: completed=True validated={ok} total_s={total} -> {verdict}", flush=True)
+        summary.append((name, "PASS" if ok else "FAIL", f"{total}s"))
+        if not ok:
+            print(f"--- VERBOSE DIAGNOSIS {name} ---", flush=True)
+            print(verbose_verify()[-4000:], flush=True)
         wait_drain(180)
-    return None, None
 
-
-def main():
-    rounds = int(os.getenv("ROUNDS", "3"))
-    first = True
-    summary = {}
-    for r in range(1, rounds + 1):
-        for label, run_id, tier, interval, kills, cap in CONFIGS:
-            print(f"\n=== round {r}/{rounds}  {label}  ({run_id}) ===", flush=True)
-            setup_tier(tier)
-            write_topology(MIN2)
-            bring_up_cluster(do_build=first, checkpoint_every=1000)
-            first = False
-            attempt, total = run_until_complete(interval, kills, cap)
-            if total is None:
-                print(f"RESULT round={r} run_id={run_id} completed=False validated=False detail=cliff", flush=True)
-                summary.setdefault(run_id, []).append("cliff")
-                continue
-            ok, tail = verify()
-            print(f"RESULT round={r} run_id={run_id} completed=True validated={ok} total_s={total} detail={tail!r}", flush=True)
-            summary.setdefault(run_id, []).append(f"PASS:{total}" if ok else "FAIL")
-    print("\n=== SUMMARY ===", flush=True)
-    for rid, outcomes in summary.items():
-        print(f"{rid}: {outcomes}", flush=True)
     teardown()
-    teardown()
+    print("\n========== RE-RUN SUMMARY ==========", flush=True)
+    for name, st, info in summary:
+        print(f"  {name:<12} {st:<6} {info}", flush=True)
 
 
 if __name__ == "__main__":
