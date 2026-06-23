@@ -120,8 +120,6 @@ class ClientStreamHandler:
 
 
     def stop(self):
-        logging.warning("LLEGA AL FLAG DE HANDLER")
         self.keep_running = False
         self.handle.join()
-        logging.warning("POST JOIN")
         self.conn.close()
