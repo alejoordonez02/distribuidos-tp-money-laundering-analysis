@@ -29,11 +29,10 @@ class ClientStreamMonitor:
             self.clients.pop(client_id, None)
 
     def stop_all(self):
-        """Stop every client's writer and close its socket (on gateway shutdown)."""
+        """Stop every client's session and close its socket (on gateway shutdown).
+        `stop` already waits for the handler's own thread, so no separate join here."""
         with self.mtx:
             clients = list(self.clients.values())
             self.clients.clear()
         for client in clients:
             client.stop()
-        for client in clients:
-            client.join()
