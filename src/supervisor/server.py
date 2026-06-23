@@ -60,7 +60,7 @@ class SupervisorNode:
         self._ping_delay = ping_delay
         self._runtime: SupervisorRuntime | None = None
 
-        self._runtimes: Queue[SupervisorRuntime] = Queue()
+        self._runtimes: Queue[SupervisorRuntime] = Queue(1)
         self._events: Queue[SupervisorEvent] = Queue()
         self._events.put(LeaderDown())
 
@@ -102,13 +102,22 @@ class SupervisorNode:
 
         return acks
 
-    def _make_leader(self) -> LeaderRuntime:
+    def _clear_runtimes(self):
+        while not self._runtimes.empty():
+            self._runtimes.get().stop()
+        if self._runtime:
+            self._runtime.stop()
+
+    def _promote(self):
+        self._clear_runtimes()
+
         server_listener = _make_skt(self._server_bind)
         replica_listener = _make_skt(self._leader_bind)
         registry = self._registry_factory()
         reviver = self._reviver_factory(registry)
         dashboard = self._dashboard_factory(registry)
-        return LeaderRuntime(
+
+        runtime = LeaderRuntime(
             server_listener,
             replica_listener,
             registry,
@@ -116,9 +125,13 @@ class SupervisorNode:
             dashboard,
             self._sweep_interval,
         )
+        self._runtimes.put(runtime)
 
-    def _make_replica(self, leader_host: str) -> ReplicaRuntime:
-        return ReplicaRuntime((leader_host, self._leader_port), self._ping_delay)
+    def _downgrade(self, leader_host: str):
+        self._clear_runtimes()
+
+        runtime = ReplicaRuntime((leader_host, self._leader_port), self._ping_delay)
+        self._runtimes.put(runtime)
 
     def _event_worker(self):
         def handle_leader_down(_: LeaderDown):
@@ -139,9 +152,7 @@ class SupervisorNode:
 
             self._broadcast_message(SupervisorLeader(self._idx), self._peers)
 
-            if self._runtime:
-                self._runtime.stop()
-            self._runtimes.put(self._make_leader())
+            self._promote()
             self._leader = None
             self._on_election = False
 
@@ -153,9 +164,7 @@ class SupervisorNode:
             leader_host = next(p.host for p in self._peers if p.idx == leader_idx)
 
             self._leader = Peer(leader_idx, leader_host)
-            if self._runtime:
-                self._runtime.stop()
-            self._runtimes.put(self._make_replica(leader_host))
+            self._downgrade(leader_host)
             self._on_election = False
 
         def handle_peer_connection(event: PeerConnection):
