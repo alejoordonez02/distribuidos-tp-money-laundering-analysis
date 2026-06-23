@@ -102,9 +102,9 @@ class StampingMOM(MOM):
         # seq and stay deduplicable downstream.
         self._counter.restore(value)
 
-    def send(self, message: bytes):
+    def send(self, message: bytes, routing_key: str | None = None):
         if peek_type(message) in _UNSTAMPED_TYPES:
-            self._inner.send(message)
+            self._inner.send(message, routing_key)
             return
         seq = self._counter.next()
         stamped = (
@@ -113,7 +113,7 @@ class StampingMOM(MOM):
             + seq.to_bytes(SEQ_BYTES, "big")
             + message[SEQ_RANGE.stop :]
         )
-        self._inner.send(stamped)
+        self._inner.send(stamped, routing_key)
 
     def start_consuming(
         self, on_message_callback: Callable[[bytes, Callable, Callable], None]

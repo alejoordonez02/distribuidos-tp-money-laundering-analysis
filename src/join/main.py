@@ -4,7 +4,7 @@ import os
 from join_fns import UC1Join, UC2Join, UC3Join, UC4Join, UC5Join
 
 from common.checkpoint import PersistentSpill
-from common.comms.middleware import QueueRabbitMQ
+from common.comms.middleware import ExchangeRabbitMQ, QueueRabbitMQ
 from common.heartbeat import run_with_heartbeat
 from join import Join
 
@@ -47,7 +47,11 @@ def main():
     partial_res_handlers = [h for h in all_handlers if h[2] in JOIN_UCS]
 
     def responses_tx_factory():
-        return QueueRabbitMQ(MOM_HOST, RESPONSES_TX)
+        """Producer-only handle on the responses exchange; each Response is published
+        with routing_key=client_id, so it never binds a queue of its own."""
+        return ExchangeRabbitMQ(
+            MOM_HOST, RESPONSES_TX, routing_keys=[], queue_name=""
+        )
 
     join = Join(
         partial_res_handlers, responses_tx_factory, STATE_DIR, CHECKPOINT_EVERY

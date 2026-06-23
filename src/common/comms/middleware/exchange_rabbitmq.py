@@ -91,8 +91,9 @@ class ExchangeRabbitMQ(MOMExchange):
                 exc_info=True,
             )
 
-    def send(self, message: bytes) -> None:
-        for k in self.routing_keys:
+    def send(self, message: bytes, routing_key: str | None = None) -> None:
+        keys = [routing_key] if routing_key is not None else self.routing_keys
+        for k in keys:
             try:
                 self.chan.basic_publish(
                     exchange=self.exchange_name, routing_key=k, body=message

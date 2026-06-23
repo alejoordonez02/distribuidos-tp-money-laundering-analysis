@@ -7,7 +7,7 @@ from .src import (
     gen_gateway,
     gen_join,
     gen_rabbitmq,
-    gen_supervisor,
+    gen_supervisors,
     gen_uc1,
     gen_uc2,
     gen_uc3,
@@ -26,7 +26,7 @@ def main():
 
     compose = "services:"
     compose += gen_rabbitmq()
-    compose += gen_supervisor()
+    compose += gen_supervisors()
     compose += gen_gateway()
     compose += gen_default_filters()
     compose += gen_uc1()
