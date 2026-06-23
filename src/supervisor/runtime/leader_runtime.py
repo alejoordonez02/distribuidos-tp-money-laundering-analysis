@@ -1,11 +1,12 @@
 import logging
-import threading
 import time
-from socket import socket
+from socket import SHUT_RDWR, socket
+from threading import Event, Thread
 
 from common.comms.supervisor import Heartbeat, Register, decode, encode
 from common.comms.transport import Connection
 
+from ..make_skt import _make_skt
 from ..registry import NodeRegistry
 from ..reviver import Reviver
 from ..tui import Dashboard
@@ -13,6 +14,17 @@ from .supervisor_runtime import SupervisorRuntime
 
 
 class ReplicaDownError(Exception): ...
+
+
+def _shutdown_skt(skt: socket):
+    try:
+        skt.shutdown(SHUT_RDWR)
+    except OSError:
+        pass
+    try:
+        skt.close()
+    except OSError:
+        pass
 
 
 class Replica:
@@ -47,38 +59,40 @@ class Replica:
 class LeaderRuntime(SupervisorRuntime):
     def __init__(
         self,
-        server_listener: socket,
-        replica_listener: socket,
+        server_bind: tuple[str, int],
+        leader_bind: tuple[str, int],
         registry: NodeRegistry,
         reviver: Reviver | None,
         dashboard: Dashboard | None = None,
         sweep_interval: float = 0.5,
     ):
-        self._server_listener = server_listener
-        self._replica_listener = replica_listener
+        self._server_bind = server_bind
+        self._leader_bind = leader_bind
+
+        self._server_listener: socket | None = None
+        self._replica_listener: socket | None = None
+
         self._registry = registry
         self._reviver = reviver
         self._dashboard = dashboard
         self._sweep_interval = sweep_interval
 
-        self._stop = threading.Event()
+        self._stop = Event()
 
-        self._sweeper_handle = threading.Thread(
-            target=self._sweep, name="sweeper", daemon=True
-        )
+        self._sweeper_handle = Thread(target=self._sweep, name="sweeper", daemon=True)
         self._reviver_handle = (
-            threading.Thread(target=self._reviver.run, args=(self._stop,))
+            Thread(target=self._reviver.run, args=(self._stop,))
             if self._reviver
             else None
         )
-        self._accept_handle = threading.Thread(
+        self._accept_handle = Thread(
             target=self._handle_clients, name="accept", daemon=True
         )
-        self._replicas_handle = threading.Thread(
+        self._replicas_handle = Thread(
             target=self._handle_replicas, name="replicas", daemon=True
         )
         self._dashboard_handle = (
-            threading.Thread(
+            Thread(
                 target=self._dashboard.run,
                 args=(self._stop,),
                 name="dashboard",
@@ -91,6 +105,12 @@ class LeaderRuntime(SupervisorRuntime):
         #       aparte cuándo se joinean los threads? no importa en qué terminan?
 
     def start(self):
+        if self._stop.is_set() or self._server_listener or self._replica_listener:
+            return
+
+        self._server_listener = _make_skt(self._server_bind)
+        self._replica_listener = _make_skt(self._leader_bind)
+
         self._sweeper_handle.start()
         self._accept_handle.start()
         self._replicas_handle.start()
@@ -101,11 +121,18 @@ class LeaderRuntime(SupervisorRuntime):
 
     def stop(self):
         self._stop.set()
-        try:
-            self._server_listener.close()
-            self._replica_listener.close()
-        except OSError:
-            pass
+        if self._server_listener:
+            _shutdown_skt(self._server_listener)
+        if self._replica_listener:
+            _shutdown_skt(self._replica_listener)
+
+        self._sweeper_handle.join()
+        self._accept_handle.join()
+        self._replicas_handle.join()
+        if self._reviver_handle:
+            self._reviver_handle.join()
+        if self._dashboard_handle:
+            self._dashboard_handle.join()
 
     def _handle_clients(self):
         def handle_client(conn_skt: socket):
@@ -132,15 +159,14 @@ class LeaderRuntime(SupervisorRuntime):
                 except OSError:
                     pass
 
+        assert self._server_listener  # pleasing linter
         self._server_listener.listen()
         while not self._stop.is_set():
             try:
                 conn_skt, _ = self._server_listener.accept()
             except OSError:
                 break
-            threading.Thread(
-                target=handle_client, args=(conn_skt,), daemon=True
-            ).start()
+            Thread(target=handle_client, args=(conn_skt,), daemon=True).start()
 
     def _handle_replicas(self):
         def handle_replica(conn_skt):
@@ -151,15 +177,14 @@ class LeaderRuntime(SupervisorRuntime):
             except ReplicaDownError as e:
                 logging.debug("lost connection with replica (%s)", e)
 
+        assert self._replica_listener  # pleasing linter
         self._replica_listener.listen()
         while not self._stop.is_set():
             try:
                 conn_skt, _ = self._replica_listener.accept()
             except OSError:
                 break
-            threading.Thread(
-                target=handle_replica, args=(conn_skt,), daemon=True
-            ).start()
+            Thread(target=handle_replica, args=(conn_skt,), daemon=True).start()
 
     def _sweep(self) -> None:
         while not self._stop.is_set():

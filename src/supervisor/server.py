@@ -1,7 +1,7 @@
 import logging
 from queue import Queue
-from socket import AF_INET, SO_REUSEADDR, SOCK_STREAM, SOL_SOCKET, socket
-from threading import Thread
+from socket import AF_INET, SOCK_STREAM, socket
+from threading import Condition, Thread
 from typing import Callable, Sequence
 
 from common.comms.messages import (
@@ -14,18 +14,12 @@ from common.comms.messages.message_types import MessageType
 from common.comms.transport import Connection
 
 from .event import EventType, LeaderDown, NewLeader, PeerConnection, SupervisorEvent
+from .make_skt import _make_skt
 from .peer import Peer
 from .registry import NodeRegistry
 from .reviver import Reviver
 from .runtime import LeaderDownError, LeaderRuntime, ReplicaRuntime, SupervisorRuntime
 from .tui import Dashboard
-
-
-def _make_skt(addr: tuple[str, int]):
-    skt = socket(AF_INET, SOCK_STREAM)
-    skt.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-    skt.bind(addr)
-    return skt
 
 
 class SupervisorNode:
@@ -60,7 +54,7 @@ class SupervisorNode:
         self._ping_delay = ping_delay
         self._runtime: SupervisorRuntime | None = None
 
-        self._runtimes: Queue[SupervisorRuntime] = Queue(1)
+        self._new_runtime = Condition()
         self._events: Queue[SupervisorEvent] = Queue()
         self._events.put(LeaderDown())
 
@@ -102,36 +96,31 @@ class SupervisorNode:
 
         return acks
 
-    def _clear_runtimes(self):
-        while not self._runtimes.empty():
-            self._runtimes.get().stop()
-        if self._runtime:
-            self._runtime.stop()
+    def _change_runtime(self, runtime: SupervisorRuntime):
+        with self._new_runtime:
+            if self._runtime:
+                self._runtime.stop()
+            self._runtime = runtime
+            self._new_runtime.notify()
 
     def _promote(self):
-        self._clear_runtimes()
-
-        server_listener = _make_skt(self._server_bind)
-        replica_listener = _make_skt(self._leader_bind)
         registry = self._registry_factory()
         reviver = self._reviver_factory(registry)
         dashboard = self._dashboard_factory(registry)
 
         runtime = LeaderRuntime(
-            server_listener,
-            replica_listener,
+            self._server_bind,
+            self._leader_bind,
             registry,
             reviver,
             dashboard,
             self._sweep_interval,
         )
-        self._runtimes.put(runtime)
+        self._change_runtime(runtime)
 
     def _downgrade(self, leader_host: str):
-        self._clear_runtimes()
-
         runtime = ReplicaRuntime((leader_host, self._leader_port), self._ping_delay)
-        self._runtimes.put(runtime)
+        self._change_runtime(runtime)
 
     def _event_worker(self):
         def handle_leader_down(_: LeaderDown):
@@ -189,16 +178,27 @@ class SupervisorNode:
                     handle_peer_connection(event)  # type:ignore [reportArgumentType]
 
     def _runtime_worker(self):
+        started_runtime = None
         while self._keep_running:
-            runtime = self._runtimes.get()
-            if not runtime:
-                break
+            runtime = None
 
+            with self._new_runtime:
+                while self._keep_running and self._runtime == started_runtime:
+                    self._new_runtime.wait()
+
+                if not self._keep_running:
+                    break
+
+                runtime = self._runtime
+
+            assert runtime  # please linter
             logging.debug(f"running as {runtime.__class__.__name__}")
-            self._runtime = runtime
+            started_runtime = runtime
+
             try:
-                self._runtime.start()
+                runtime.start()
             except LeaderDownError:
+                runtime.stop()
                 self._events.put(LeaderDown())
 
     def _listener_worker(self):
