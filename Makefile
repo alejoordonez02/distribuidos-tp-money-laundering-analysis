@@ -47,6 +47,12 @@ supervisor: gen_compose
 		$(COMPOSE) logs -f $$SERVICES; \
 	fi
 
+revive_supervisors:
+	SERVICES=$$($(COMPOSE) config --services | grep '$(SUPERVISOR_PREFIX)'); \
+	if [ -n "$$SERVICES" ]; then \
+		$(COMPOSE) start $$SERVICES; \
+	fi
+
 test:
 	uv run pytest
 
