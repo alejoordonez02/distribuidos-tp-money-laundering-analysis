@@ -65,11 +65,13 @@ class Leader:
                     raise LeaderDownError()
         except OSError as e:
             logging.debug("lost connection with leader (%s)", e)
+            raise LeaderDownError(e)
         finally:
-            try:
-                self._conn.close()
-            except OSError:
-                pass
+            if self._conn:
+                try:
+                    self._conn.close()
+                except OSError:
+                    pass
 
     def close(self):
         if not self._conn:
