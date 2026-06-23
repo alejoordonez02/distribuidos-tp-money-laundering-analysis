@@ -65,38 +65,6 @@ class Gateway:
         except OSError as e:
             # TODO: handle specific OSError cases (e.g. already closed)
             logging.error("!!! UNHANDLED OSError in gateway stop: %s", e, exc_info=True)
-<<<<<<< HEAD
-        
-        self.clients.stop()
-        self.server_rx.stop_consuming()
-        
-            
-
-    def _handle_server_response(self, bytes2: bytes, ack: Callable, nack: Callable):
-        try:
-            response = Response.deserialize(bytes2)
-        except UnexpectedMessageError as e:
-            logging.error("received unexpected from server: %s", e)
-            nack()
-            return
-        except UnknownMessageError as e:
-            logging.error("received unknown from server: %s", e)
-            nack()
-            return
-
-        try:
-            self.clients.get(response.client_id).send(response)  # type: ignore[reportAttributeAccessIssue]
-        except ClientNotFoundError:
-            pass
-        except OSError as e:
-            logging.warning(
-                "client %s unreachable; dropping response (%s)", response.client_id, e
-            )
-            self.clients.remove(response.client_id)
-
-        ack()
-=======
->>>>>>> a3d3652c08c9a01c1a37b10d3589f26c1eaf1dcb
 
     def _run(self):
         while self._keep_running:
@@ -113,11 +81,5 @@ class Gateway:
                 self.trans_tx_factory, self.accs_tx_factory,
             )
             client.start()
-<<<<<<< HEAD
-            
-        self.server_handle.join()
-        self.server_rx.close()
-=======
 
         self.clients.stop_all()
->>>>>>> a3d3652c08c9a01c1a37b10d3589f26c1eaf1dcb
