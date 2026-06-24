@@ -76,6 +76,8 @@ class ClientStreamHandler:
 
     def join(self):
         """Wait for the response thread to finish (after `stop`)."""
+        if self.handle is not None:
+            self.handle.join()
         if self._response_thread is not None:
             self._response_thread.join()
 
@@ -157,7 +159,7 @@ class ClientStreamHandler:
         n = len(shard_txs)
         counts = [0] * n
         rr = 0
-        while self.keep_running:
+        while True:
             raw = self.conn.recv()
             if not raw:
                 logging.error("client connection closed before EOF")
@@ -174,7 +176,6 @@ class ClientStreamHandler:
             else:
                 logging.error("client handler got unexpected msg type %s", t)
                 return False
-        return False
 
     def _abort(self, shards: Sequence[MOM]):
         """Tell the pipeline to drop this crashed client's partial data."""
@@ -206,9 +207,3 @@ class ClientStreamHandler:
         """Overwrite the 16-byte client_id prefix with the gateway-minted id,
         preserving everything after it (producer_id, seq, payload)."""
         return raw[TYPE_RANGE] + self.id.bytes + raw[PREFIX_RANGE.stop :]
-
-
-    def stop(self):
-        self.keep_running = False
-        self.handle.join()
-        self.conn.close()
