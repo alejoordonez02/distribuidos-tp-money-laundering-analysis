@@ -3,7 +3,7 @@ import os
 import shutil
 import tempfile
 import time
-from multiprocessing import Process, Queue
+from multiprocessing import Event, Process, Queue
 from typing import TextIO
 from uuid import UUID
 
@@ -18,11 +18,12 @@ NRESPONSES = int(os.getenv("NRESPONSES", "1"))
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "2000"))
 N_WORKERS = int(os.getenv("CLIENT_WORKERS", "4"))
 _QUEUE_MAXSIZE = 256
+_QUEUE_TIMEOUT = 10
 _DONE = b""
 
 
 def _transactions_worker(
-    path: str, start: int, end: int, client_id: UUID, queue: "Queue"
+    path: str, start: int, end: int, client_id: UUID, queue: "Queue", shutdown
 ) -> None:
     """Parse the byte range [start, end) of the transactions CSV and push each
     serialized ``Transactions`` batch onto the queue. Owns every line whose START
@@ -34,6 +35,9 @@ def _transactions_worker(
         f.seek(start)
         f.readline()
         while f.tell() < end:
+            if shutdown.is_set():
+                queue.cancel_join_thread()
+                return
             line = f.readline()
             if not line:
                 break
@@ -41,6 +45,9 @@ def _transactions_worker(
             if len(batch) >= BATCH_SIZE:
                 queue.put(Transactions(client_id, batch).serialize())
                 batch = []
+    if shutdown.is_set():
+        queue.cancel_join_thread()
+        return
     if batch:
         queue.put(Transactions(client_id, batch).serialize())
     queue.put(_DONE)
@@ -61,6 +68,11 @@ class Client:
         self.accounts_path = accounts_path
         self.responses_path = responses_path
         self.n_workers = max(1, n_workers)
+        self.shutdown_processes = Event()
+        self.shutdown_main = Event()
+        self.queue = None # type: ignore
+        self.procs = []
+
 
     def start(self):
         setup_graceful_shutdown(self.stop)
@@ -69,29 +81,58 @@ class Client:
         self._run()
 
     def stop(self):
-        try:
+        self.shutdown_processes.set()
+        for p in self.procs:
+            p.join()
+            logging.info("Process joined")
+        
+        self.shutdown_main.set()
+        
+        if self.conn is not None:
             self.conn.close()
-        except OSError as e:
-            logging.error("!!! UNHANDLED OSError in client stop: %s", e, exc_info=True)
+            logging.info("Socked closed")
+        
 
+        if self.queue is not None:
+            self.queue.close()
+            logging.info("Queue is closed")
+        
     def _run(self):
-        self.conn.send(Hello().serialize())
-        HelloAck.deserialize(self.conn.recv())
+        try:
+            self.conn.send(Hello().serialize())
+            HelloAck.deserialize(self.conn.recv())
+        except:
+            logging.info("Connection ended")
+            return
         # placeholder id; the gateway stamps the real one onto every forwarded message
         self.client_id = UUID(int=0)
 
         count = self._send_transactions_parallel()
-        self.conn.send(EOF(self.client_id, expected_count=count).serialize())
-        logging.info("sent transactions eof to server (%d batches)", count)
+        if self.shutdown_main.is_set():
+            return
+        try:
+            self.conn.send(EOF(self.client_id, expected_count=count).serialize())
+            logging.info("sent transactions eof to server (%d batches)", count)
+        except:
+            logging.info("Connection ended")
+            return
 
         acc_count = self._send_accounts_batched()
-        self.conn.send(EOF(self.client_id, expected_count=acc_count).serialize())
-        logging.info("sent accounts eof to server (%d batches)", acc_count)
+        if self.shutdown_main.is_set():
+            return
+        try:
+            self.conn.send(EOF(self.client_id, expected_count=acc_count).serialize())
+            logging.warning("sent accounts eof to server (%d batches)", acc_count)
+        except:
+            logging.info("Connection ended")
+            return
         maybe_crash("client_after_eof")
 
-        logging.info("waiting for server responses")
+        logging.warning("waiting for server responses")
         self._receive_and_write_responses()
-        logging.info("received server responses. Bye")
+        if self.shutdown_main.is_set():
+            return
+        logging.warning("received server responses. Bye")
 
         self.conn.close()
 
@@ -105,31 +146,40 @@ class Client:
         n = self.n_workers
         bounds = [(i * size // n, (i + 1) * size // n) for i in range(n)]
 
-        queue: "Queue" = Queue(maxsize=_QUEUE_MAXSIZE)
-        procs = [
+        self.queue: "Queue" = Queue(maxsize=_QUEUE_MAXSIZE)
+        self.procs = [
             Process(
                 target=_transactions_worker,
-                args=(self.transactions_path, s, e, self.client_id, queue),
+                args=(self.transactions_path, s, e, self.client_id, self.queue, self.shutdown_processes),
                 daemon=True,
             )
             for s, e in bounds
         ]
-        for p in procs:
+        for p in self.procs:
             p.start()
 
         count = 0
         finished = 0
-        while finished < n:
-            item = queue.get()
+        while finished < n and not self.shutdown_processes.is_set():    #DONT KNOW WHAT TO DO WITH THIS ONE
+            try:
+                item = self.queue.get(block=True, timeout=_QUEUE_TIMEOUT)
+            except:
+                logging.warning("Leaving Queue, timeout reached")
+                return count
             if item == _DONE:
                 finished += 1
             else:
-                self.conn.send(item)
+                try:
+                    self.conn.send(item)
+                except:
+                    logging.info("Connection ended")
+                    return count                        ## Maybe raise error
                 count += 1
                 maybe_crash("client_mid_transactions")
 
-        for p in procs:
-            p.join()
+        if not self.shutdown_processes.is_set():                        #DONT KNOW WHAT TO DO WITH THIS ONE
+            for p in self.procs:
+                p.join()
         return count
 
     def _send_accounts_batched(self) -> int:
@@ -142,12 +192,20 @@ class Client:
             while line := f.readline():
                 batch.append(parser.parse(line))
                 if len(batch) >= BATCH_SIZE:
-                    self.conn.send(Accounts(self.client_id, batch).serialize())
+                    try:
+                        self.conn.send(Accounts(self.client_id, batch).serialize())
+                    except:
+                        logging.info("Connection ended")
+                        return count                                        ## Maybe raise error
                     batch = []
                     count += 1
                     maybe_crash("client_mid_accounts")
             if batch:
-                self.conn.send(Accounts(self.client_id, batch).serialize())
+                try:
+                    self.conn.send(Accounts(self.client_id, batch).serialize())
+                except:
+                    logging.info("Connection ended")
+                    return count
                 count += 1
                 # also fires when accounts fit in one sub-BATCH_SIZE batch (small datasets)
                 maybe_crash("client_mid_accounts")
@@ -158,7 +216,11 @@ class Client:
         paths: dict[int, str] = {}
         completed: set[int] = set()
         while len(completed) < NRESPONSES:
-            response = Response.deserialize(self.conn.recv())
+            try:
+                response = Response.deserialize(self.conn.recv())
+            except:
+                logging.info("Connection ended")
+                return
             uc_id = response.uc_id  # type: ignore[reportAttributeAccessIssue]
             handle = handles.get(uc_id)
             if not handle:
