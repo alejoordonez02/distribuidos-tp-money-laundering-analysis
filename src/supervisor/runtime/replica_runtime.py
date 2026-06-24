@@ -51,7 +51,6 @@ class Leader:
                     return
                 skt.connect(self._addr)
                 skt.settimeout(None)
-                logging.warning("NEW CONN 3")
                 self._conn = Connection(skt)
                 return
             except OSError:
@@ -72,7 +71,7 @@ class Leader:
             if not pong:
                 raise LeaderDownError("received an empty pong from leader")
         except OSError as e:
-            logging.warning("lost connection with leader (%s)", e)
+            logging.debug("lost connection with leader (%s)", e)
             self.close()
             raise LeaderDownError(e)
 

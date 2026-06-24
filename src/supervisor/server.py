@@ -84,7 +84,6 @@ class SupervisorNode:
             try:
                 skt.connect((p.host, self._internal_port))
                 skt.settimeout(None)
-                logging.warning("NEW CONN")
                 conn = Connection(skt)
                 conn.send(msg.serialize())
                 acks += 1
@@ -125,8 +124,7 @@ class SupervisorNode:
         self._change_runtime(runtime)
 
     def _event_worker(self):
-        def handle_leader_down(_: LeaderDown):
-            logging.warning("HANDLE LEADER DOWN")
+        def handle_leader_down(_: LeaderDown)
             if self._on_election:
                 return
             if self._is_leader():
@@ -149,7 +147,6 @@ class SupervisorNode:
             self._on_election = False
 
         def handle_new_leader(event: NewLeader):
-            logging.warning("HANDLE NEW LEADER")
             leader_idx = event.idx
             if self._leader and leader_idx == self._leader.idx:
                 return
@@ -193,16 +190,18 @@ class SupervisorNode:
 
                 if not self._keep_running:
                     break
-
                 runtime = self._runtime
 
             assert runtime  # please linter
             logging.debug(f"running as {runtime.__class__.__name__}")
             started_runtime = runtime
-
+            logging.warning("RW post with")
             try:
+                logging.warning("Prestart")
                 runtime.start()
+                logging.warning("Postart")
             except LeaderDownError:
+                logging.warning("Stop pre")
                 runtime.stop()
                 logging.warning("LEADER DOWN!")
                 self._events.put(LeaderDown())
@@ -214,10 +213,9 @@ class SupervisorNode:
                 skt, _ = self._node_listener.accept()
             except:
                 break
-            logging.warning("NEW CONN 2")
             conn = Connection(skt)
             self._events.put(PeerConnection(conn))
-        logging.warning("Llega al fin de list work")
+        logging.warning("Llega al fin de LW")
 
     def stop(self):
         logging.warning("Stop fn started")
@@ -228,22 +226,15 @@ class SupervisorNode:
         
         self._node_listener.shutdown(SHUT_RDWR)
         self._node_listener.close()
-        # while not self._events.empty():
-        #     event = self._events.get()
-        #     match event.type():
-        #         case EventType.LEADER_DOWN:
-        #             handle_leader_down(event)  # type:ignore [reportArgumentType]
-        #         case EventType.PEER_CONNECTION:
-        #             event.conn.close()          # type:ignore [reportArgumentType]
-                    
         
-        logging.warning("Prejoin RH")
+        # Leader
+        if self._is_leader():
+            with self._new_runtime:
+                self._new_runtime.notify()
+        
+        
+        
         self._runtime_handle.join()
-        logging.warning("Posjoin RH")
-        logging.warning("Prejoin LH")
         self._listener_handle.join()
-        logging.warning("Posjoin LH")
-        
         self._events.put(None)
-        logging.warning("Stop fn ended")
         
