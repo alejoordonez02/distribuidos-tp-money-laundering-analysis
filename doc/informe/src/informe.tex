@@ -192,7 +192,8 @@ aggregators distintos:
         y los de \textbf{alto grado de entrada} (al menos 5 predecesores,
         candidatos a destino). El umbral de 5 proviene del enunciado, que exige
         al menos 5 intermediarios. Un nodo que no entra en ninguno de los dos
-        conjuntos no puede participar del patrón, por lo que esta rama actúa como
+        conjuntos no puede participar del patrón, por lo que esta
+        rama actúa como
         una poda temprana que reduce el grafo antes del conteo costoso.
     \item El \textbf{Aggregate graphs} materializa el grafo completo
         (predecesores y sucesores consolidados por nodo).
@@ -298,7 +299,7 @@ satisfacen directamente en la cola de entrada del Join.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.62\textwidth]{../diagrams/v2/12robustness-diagram-uc1.png}
+    \includegraphics[width=0.62\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/12robustness-diagram-uc1.png}
     \caption{Diagrama de Robustez UC1}
 \end{figure}
 
@@ -408,7 +409,8 @@ sistema, pero la operación que se realiza en esta instancia es
 puramente I/O intensive, y por tanto no requiere mayor poder de
 cómputo. Las cotizaciones se cachean por día: solo se emite una request al
 servicio externo de conversión ante un día todavía no visto, amortizando la
-latencia de red (en el período A son a lo sumo unos pocos días para toda la corrida).
+latencia de red (en el período A son a lo sumo unos pocos días para
+toda la corrida).
 Tras la conversión, un segundo Filter aplica el umbral de \$1 USD y el
 \texttt{GroupBy * Count} produce un conteo parcial por instancia. Esos
 conteos parciales se depositan en la cola de entrada del Join, que los
@@ -493,7 +495,7 @@ activa del cliente.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth,keepaspectratio]{../diagrams/v2/14deployment-diagram.png}
+    \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/14deployment-diagram.png}
     \caption{Diagrama de despliegue}
 \end{figure}
 
@@ -517,13 +519,13 @@ cliente de \textit{heartbeat} hacia el Supervisor.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth,keepaspectratio]{../diagrams/v2/15packages-diagram.png}
+    \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/15packages-diagram.png}
     \caption{Diagrama de paquetes}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth,keepaspectratio]{../diagrams/v2/15packages-diagram-filter.png}
+    \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/15packages-diagram-filter.png}
     \caption{Diagrama de paquetes - \texttt{filter/}}
 \end{figure}
 
@@ -586,7 +588,7 @@ complejidad bastante más grande que la de éste.
 \subsubsection{UC2}
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth,keepaspectratio]{../diagrams/v2/16activity-diagram-uc2.png}
+    \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/16activity-diagram-uc2.png}
     \caption{Diagrama de actividades - UC2}
 \end{figure}
 
@@ -594,7 +596,7 @@ complejidad bastante más grande que la de éste.
 \subsubsection{UC3}
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth,keepaspectratio]{../diagrams/v2/16activity-diagram-uc3.png}
+    \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/16activity-diagram-uc3.png}
     \caption{Diagrama de actividades - UC3}
 \end{figure}
 
@@ -602,14 +604,14 @@ complejidad bastante más grande que la de éste.
 \subsubsection{UC4}
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth,keepaspectratio]{../diagrams/v2/16activity-diagram-uc4.png}
+    \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/16activity-diagram-uc4.png}
     \caption{Diagrama de actividades - UC4}
 \end{figure}
 
 \subsubsection{UC5}
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth,keepaspectratio]{../diagrams/v2/16activity-diagram-uc5.png}
+    \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/16activity-diagram-uc5.png}
     \caption{Diagrama de actividades - UC5}
 \end{figure}
 
@@ -624,28 +626,28 @@ complejidad bastante más grande que la de éste.
 \subsubsection{UC2}
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth,keepaspectratio]{../diagrams/v2/13sequence-diagram-uc2.png}
+    \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/13sequence-diagram-uc2.png}
     \caption{Diagrama de secuencia - UC2}
 \end{figure}
 
 \subsubsection{UC3}
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth,keepaspectratio]{../diagrams/v2/13sequence-diagram-uc3.png}
+    \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/13sequence-diagram-uc3.png}
     \caption{Diagrama de secuencia - UC3}
 \end{figure}
 
 \subsubsection{UC4}
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth,keepaspectratio]{../diagrams/v2/13sequence-diagram-uc4.png}
+    \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/13sequence-diagram-uc4.png}
     \caption{Diagrama de secuencia - UC4}
 \end{figure}
 
 \subsubsection{UC5}
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth,keepaspectratio]{../diagrams/v2/13sequence-diagram-uc5.png}
+    \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/13sequence-diagram-uc5.png}
     \caption{Diagrama de secuencia - UC5}
 \end{figure}
 
@@ -693,7 +695,7 @@ pérdida de performance empíricamente despreciable en los datasets evaluados
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{../diagrams/v2/17ft-architecture-diagram.png}\\[1cm]
+    \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/17ft-architecture-diagram.png}\\[1cm]
     \caption{Arquitectura de tolerancia a fallos}
 \end{figure}
 
@@ -710,7 +712,7 @@ responder.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.85\textwidth]{../diagrams/v2/18ft-heartbeat-sequence.png}\\[1cm]
+    \includegraphics[width=0.85\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/18ft-heartbeat-sequence.png}\\[1cm]
     \caption{Detección por heartbeat}
 \end{figure}
 
@@ -742,7 +744,7 @@ una \textit{elección de líder}. En particular, se implementó la
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.72\textwidth]{../diagrams/17supervisor-workers-setup.png}
+    \includegraphics[width=0.72\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/17supervisor-workers-setup.png}
     \caption{Clúster de supervisores y nodos del pipeline}
 \end{figure}
 
@@ -788,7 +790,7 @@ conexiones de la normalidad.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.85\textwidth]{../diagrams/18supervisor-bully-leader-election.png}
+    \includegraphics[width=0.85\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/18supervisor-bully-leader-election.png}
     \caption{Bully leader election en el clúster de supervisores}
 \end{figure}
 
@@ -813,7 +815,7 @@ cuenta total que debe esperar.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.9\textwidth]{../diagrams/v2/19ft-eof-barrier-diagram.png}\\[1cm]
+    \includegraphics[width=0.9\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/19ft-eof-barrier-diagram.png}\\[1cm]
     \caption{Propagación de EOF mediante la barrera de anillo}
 \end{figure}
 
@@ -850,7 +852,7 @@ y se reprocesan sobre el estado restaurado.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.85\textwidth]{../diagrams/v2/20ft-checkpoint-diagram.png}\\[1cm]
+    \includegraphics[width=0.85\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/20ft-checkpoint-diagram.png}\\[1cm]
     \caption{Checkpoint con acks retenidos y deduplicación}
 \end{figure}
 
@@ -862,7 +864,8 @@ creciente. El receptor lleva, por productor, el mayor número de secuencia
 contiguo visto más el conjunto de las vistas por encima de un hueco; descarta
 un mensaje solo si esa secuencia exacta ya fue procesada, nunca una secuencia
 nueva por estar debajo del máximo. Así un reenvío reordenado tras una caída no
-hace perder un mensaje legítimo. Como bajo ruteo por afinidad un ``productor'' es un par
+hace perder un mensaje legítimo. Como bajo ruteo por afinidad un
+``productor'' es un par
 \texttt{(nodo, ruta)} y no un mensaje, la tabla queda acotada por la
 topología. Los contadores de secuencia de salida también se restauran del
 \textit{checkpoint}, de modo que un mensaje reemitido tras una caída lleva la
@@ -894,7 +897,7 @@ reprocesan limpiamente sobre él.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.85\textwidth]{../diagrams/v2/21ft-failure-midbatch.png}\\[1cm]
+    \includegraphics[width=0.85\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/21ft-failure-midbatch.png}\\[1cm]
     \caption{Caída a mitad de batch}
 \end{figure}
 
@@ -907,7 +910,7 @@ El estado queda correcto, tomado del \textit{checkpoint}.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.85\textwidth]{../diagrams/v2/22ft-failure-preack.png}\\[1cm]
+    \includegraphics[width=0.85\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/22ft-failure-preack.png}\\[1cm]
     \caption{Caída tras el checkpoint, antes de los acks}
 \end{figure}
 
@@ -921,7 +924,7 @@ archivos de \textit{spill} se truncan a su \textit{offset} confirmado.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.9\textwidth]{../diagrams/v2/23ft-failure-stateful.png}\\[1cm]
+    \includegraphics[width=0.9\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/23ft-failure-stateful.png}\\[1cm]
     \caption{Caída de un nodo con estado acumulado}
 \end{figure}
 
@@ -1027,7 +1030,7 @@ completa}: el sistema se
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.85\textwidth]{../diagrams/v2/ft_perf_frequency.png}\\[0.4cm]
+    \includegraphics[width=0.85\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/ft_perf_frequency.png}\\[0.4cm]
     \caption{Frecuencia, ralentización relativa por dataset: la
         degradación es despreciable en
     casi todo el rango y sólo se empina en el régimen más agresivo.}
@@ -1054,7 +1057,7 @@ en el rango observado.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.85\textwidth]{../diagrams/v2/ft_perf_burst.png}\\[0.4cm]
+    \includegraphics[width=0.85\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/ft_perf_burst.png}\\[0.4cm]
     \caption{Ráfaga, ralentización relativa por dataset: degradación
         gradual y sostenida al
     crecer la oleada, sin colapso en ningún dataset.}
@@ -1083,11 +1086,11 @@ acotado el costo de recuperación.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.85\textwidth]{../diagrams/v2/ft_perf_checkpoint.png}\\[0.5cm]
+    \includegraphics[width=0.85\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/ft_perf_checkpoint.png}\\[0.5cm]
     \caption{Costo del \texttt{CHECKPOINT\_EVERY} (escala log): curva en U.
         Sin chaos el óptimo es amplio; bajo chaos el sobrecosto es chico en la
         zona frecuente y media, pero crece al espaciar el checkpoint, casi
-        duplicando el tiempo en el punto más espaciado evaluado.}
+    duplicando el tiempo en el punto más espaciado evaluado.}
 \end{figure}
 
 \newpage
