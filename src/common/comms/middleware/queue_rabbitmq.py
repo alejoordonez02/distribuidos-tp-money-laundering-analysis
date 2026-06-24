@@ -83,6 +83,7 @@ class QueueRabbitMQ(MOMQueue):
                 e,
                 exc_info=True,
             )
+            
         except Exception as e:
             raise MOMMessageError(str(e)) from e
 

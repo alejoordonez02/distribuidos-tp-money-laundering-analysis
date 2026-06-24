@@ -47,6 +47,8 @@ class Leader:
             skt = socket(AF_INET, SOCK_STREAM)
             skt.settimeout(0.5)
             try:
+                if not self._keep_running:
+                    return
                 skt.connect(self._addr)
                 skt.settimeout(None)
                 self._conn = Connection(skt)
@@ -59,6 +61,8 @@ class Leader:
         if not self._conn:
             self._connect()
         conn = self._conn
+        if self._keep_running == False:
+            return
         assert conn is not None  # pleasing linter
 
         try:
@@ -72,6 +76,7 @@ class Leader:
             raise LeaderDownError(e)
 
     def close(self):
+        self._keep_running = False
         if not self._conn:
             return
         try:

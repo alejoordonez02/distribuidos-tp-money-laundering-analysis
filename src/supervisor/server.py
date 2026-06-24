@@ -1,6 +1,6 @@
 import logging
 from queue import Queue
-from socket import AF_INET, SOCK_STREAM, socket
+from socket import AF_INET, SHUT_RDWR, SOCK_STREAM, socket
 from threading import Condition, Thread
 from typing import Callable, Sequence
 
@@ -55,7 +55,7 @@ class SupervisorNode:
         self._runtime: SupervisorRuntime | None = None
 
         self._new_runtime = Condition()
-        self._events: Queue[SupervisorEvent] = Queue()
+        self._events: Queue[SupervisorEvent | None] = Queue()
         self._events.put(LeaderDown())
 
         self._runtime_handle = Thread(target=self._runtime_worker)
@@ -64,6 +64,7 @@ class SupervisorNode:
         self._on_election = False
         self._leader: Peer | None = None
         self._keep_running = False
+
 
     def start(self):
         self._keep_running = True
@@ -158,7 +159,6 @@ class SupervisorNode:
 
         def handle_peer_connection(event: PeerConnection):
             conn: Connection = event.conn  # type:ignore [reportAttributeAccessIssue]
-
             msg = deserialize_message(conn.recv())
             match msg.type():
                 case MessageType.SUPERVISOR_ELECTION:
@@ -171,6 +171,8 @@ class SupervisorNode:
 
         while self._keep_running:
             event = self._events.get()
+            if not event:
+                break
             match event.type():
                 case EventType.LEADER_DOWN:
                     handle_leader_down(event)  # type:ignore [reportArgumentType]
@@ -188,13 +190,11 @@ class SupervisorNode:
 
                 if not self._keep_running:
                     break
-
                 runtime = self._runtime
 
             assert runtime  # please linter
             logging.debug(f"running as {runtime.__class__.__name__}")
             started_runtime = runtime
-
             try:
                 runtime.start()
             except LeaderDownError:
@@ -204,7 +204,10 @@ class SupervisorNode:
     def _listener_worker(self):
         self._node_listener.listen()
         while self._keep_running:
-            skt, _ = self._node_listener.accept()
+            try:
+                skt, _ = self._node_listener.accept()
+            except:
+                break
             conn = Connection(skt)
             self._events.put(PeerConnection(conn))
 
@@ -212,3 +215,18 @@ class SupervisorNode:
         self._keep_running = False
         if self._runtime:
             self._runtime.stop()
+        
+        self._node_listener.shutdown(SHUT_RDWR)
+        self._node_listener.close()
+        
+        # Leader
+        if self._is_leader():
+            with self._new_runtime:
+                self._new_runtime.notify()
+        
+        
+        
+        self._runtime_handle.join()
+        self._listener_handle.join()
+        self._events.put(None)
+        
