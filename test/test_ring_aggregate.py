@@ -4,16 +4,30 @@ from uuid import uuid4
 from ring_aggregate import RingAggregate
 
 from common.comms.eof_handler.ring_completion import RingCompletion
-from common.comms.messages import EOF, TransactionCount, deserialize_message
+from common.comms.messages import EOF, TransactionCount
 from common.comms.middleware.mom import MOM
-from common.comms.middleware.stamping_mom import StampingMOM, derive_producer_id
 
 
-class _Cap(MOM):
+class _Rec:
     def __init__(self):
+        self.events: list[str] = []
+
+
+class _FakeCkpt:
+    def __init__(self, rec: _Rec):
+        self._rec = rec
+
+    def flush(self, force: bool = False):
+        self._rec.events.append("flush")
+
+
+class _RecTx(MOM):
+    def __init__(self, rec: _Rec):
+        self._rec = rec
         self.sent: list[bytes] = []
 
     def send(self, message: bytes):
+        self._rec.events.append("send")
         self.sent.append(message)
 
     def start_consuming(self, on_message_callback: Callable):  # pragma: no cover
@@ -25,71 +39,59 @@ class _Cap(MOM):
     def close(self):  # pragma: no cover
         raise NotImplementedError
 
-    def clone(self) -> "_Cap":  # pragma: no cover
+    def clone(self) -> "_RecTx":  # pragma: no cover
         return self
 
 
 class _FakeAggFn:
-    """Yields a fixed result set, in whatever order the list is given — to simulate the
-    divergent get_result order a node sees after a crash/restart replay."""
-
     def __init__(self, results):
-        self._results = results  # list[(Message, affinity)]
+        self._results = results
 
     def get_result(self, _client_id):
         for msg, affinity in self._results:
             yield msg, affinity
 
+    def discard(self, _client_id):
+        pass
 
-def _txs(n):
-    return [StampingMOM(_Cap(), derive_producer_id("agg", 0, route)) for route in range(n)]
 
-
-def _node(fn, txs, broadcast):
+def _node(fn, txs, ckpt, broadcast):
     rc = RingCompletion(node_id=0, peer_ids=[])
     return RingAggregate(
         fn=fn, node_id=0, rc=rc, consumer=None, ring=None, external_txs=txs,
         data_queue="d", data_exchange="d", ring_queue="r", ring_exchange="r",
-        data_prefetch=1, checkpointer=None, broadcast_downstream=broadcast,
+        data_prefetch=1, checkpointer=ckpt, broadcast_downstream=broadcast,
     )
 
 
-def _emit_and_collect(results, broadcast):
-    """Run one _emit over `results` and return {payload_bytes: (producer_id, seq)} for the
-    data messages it stamped (EOFs and other control messages are ignored)."""
+def test_checkpoint_is_flushed_before_emit_sends():
     cid = uuid4()
-    txs = _txs(2)
-    node = _node(_FakeAggFn(results), txs, broadcast)
-    node.rc.on_data(cid)
-    node._emit(cid)
-    stamps = {}
-    for tx in txs:
-        for raw in tx._inner.sent:  # type: ignore[attr-defined]
-            msg = deserialize_message(raw)
-            if isinstance(msg, EOF):
-                continue
-            # key each emitted result by (which shard's producer, the result's identity);
-            # value is the (producer_id, seq) stamp it received
-            stamps[(msg.producer_id, msg.count)] = (msg.producer_id, msg.seq)
-    return stamps
+    rec = _Rec()
+    results = [(TransactionCount(cid, k), k) for k in range(4)]
+    node = _node(_FakeAggFn(results), [_RecTx(rec), _RecTx(rec)], _FakeCkpt(rec), False)
+
+    node._on_eof(EOF(cid, expected_count=0))
+
+    assert "send" in rec.events
+    assert rec.events.index("flush") < rec.events.index("send")
 
 
-def _results(_n):
-    # distinct payloads (identified by count), spread across affinities so both shards
-    # (affinity % 2) receive several results each
-    return [(TransactionCount(uuid4(), k), k) for k in range(6)]
+def test_streaming_emit_does_not_materialize_results():
+    cid = uuid4()
+    rec = _Rec()
+    txs = [_RecTx(rec)]
+    sends = []
 
+    class _Counting:
+        def get_result(self, _c):
+            for k in range(5):
+                sends.append(len(txs[0].sent))
+                yield TransactionCount(cid, k), 0
 
-def test_sharded_emit_is_idempotent_across_replay_reorder():
-    results = _results(6)
-    first = _emit_and_collect(results, broadcast=False)
-    second = _emit_and_collect(list(reversed(results)), broadcast=False)
-    assert first == second
-    assert len(first) == 6
+        def discard(self, _c):
+            pass
 
+    node = _node(_Counting(), txs, _FakeCkpt(rec), False)
+    node._on_eof(EOF(cid, expected_count=0))
 
-def test_broadcast_emit_is_idempotent_across_replay_reorder():
-    results = _results(6)
-    first = _emit_and_collect(results, broadcast=True)
-    second = _emit_and_collect(list(reversed(results)), broadcast=True)
-    assert first == second
+    assert txs[0].sent and sends == [0, 1, 2, 3, 4]

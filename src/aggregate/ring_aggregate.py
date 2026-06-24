@@ -51,22 +51,13 @@ class RingAggregate(RingNode):
 
     def _emit(self, client_id):
         sent: dict[int, int] = {}
-        items = sorted(
-            (aggregated.serialize(), affinity)
-            for aggregated, affinity in self.fn.get_result(client_id)
-        )
-        for payload, affinity in items:
+        for aggregated, affinity in self.fn.get_result(client_id):
             if self.broadcast_downstream:
-                # broadcast: every peer gets the full state, counted per shard so the
-                # barrier forwards each downstream peer an EOF for the whole total.
                 for shard, tx in enumerate(self.external_txs):
-                    seq = sent.get(shard, 0) + 1
-                    sent[shard] = seq
-                    tx.send_stamped(payload, tx.producer_id, seq)
+                    tx.send(aggregated.serialize())
+                    sent[shard] = sent.get(shard, 0) + 1
             else:
                 shard = affinity % len(self.external_txs)
-                tx = self.external_txs[shard]
-                seq = sent.get(shard, 0) + 1
-                sent[shard] = seq
-                tx.send_stamped(payload, tx.producer_id, seq)
+                self.external_txs[shard].send(aggregated.serialize())
+                sent[shard] = sent.get(shard, 0) + 1
         self._run(self.rc.report_sent(client_id, sent))

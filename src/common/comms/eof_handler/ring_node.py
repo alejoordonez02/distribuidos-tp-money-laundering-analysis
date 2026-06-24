@@ -128,7 +128,10 @@ class RingNode:
         raise NotImplementedError
 
     def _on_eof(self, eof: Message):
-        emitted = self._run(self.rc.on_upstream_eof(eof.client_id, eof.expected_count))  # type: ignore[attr-defined]
+        actions = self.rc.on_upstream_eof(eof.client_id, eof.expected_count)  # type: ignore[attr-defined]
+        if actions and self.checkpointer:
+            self.checkpointer.flush(force=True)
+        emitted = self._run(actions)
         if self.checkpointer:
             self.checkpointer.flush(force=True)
         for client_id in emitted:
