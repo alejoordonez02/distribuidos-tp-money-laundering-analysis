@@ -1,6 +1,6 @@
 import logging
 from queue import Queue
-from socket import AF_INET, SOCK_STREAM, socket
+from socket import AF_INET, SHUT_RDWR, SOCK_STREAM, socket
 from threading import Condition, Thread
 from typing import Callable, Sequence
 
@@ -55,7 +55,7 @@ class SupervisorNode:
         self._runtime: SupervisorRuntime | None = None
 
         self._new_runtime = Condition()
-        self._events: Queue[SupervisorEvent] = Queue()
+        self._events: Queue[SupervisorEvent | None] = Queue()
         self._events.put(LeaderDown())
 
         self._runtime_handle = Thread(target=self._runtime_worker)
@@ -64,6 +64,7 @@ class SupervisorNode:
         self._on_election = False
         self._leader: Peer | None = None
         self._keep_running = False
+
 
     def start(self):
         self._keep_running = True
@@ -83,6 +84,7 @@ class SupervisorNode:
             try:
                 skt.connect((p.host, self._internal_port))
                 skt.settimeout(None)
+                logging.warning("NEW CONN")
                 conn = Connection(skt)
                 conn.send(msg.serialize())
                 acks += 1
@@ -124,6 +126,7 @@ class SupervisorNode:
 
     def _event_worker(self):
         def handle_leader_down(_: LeaderDown):
+            logging.warning("HANDLE LEADER DOWN")
             if self._on_election:
                 return
             if self._is_leader():
@@ -146,6 +149,7 @@ class SupervisorNode:
             self._on_election = False
 
         def handle_new_leader(event: NewLeader):
+            logging.warning("HANDLE NEW LEADER")
             leader_idx = event.idx
             if self._leader and leader_idx == self._leader.idx:
                 return
@@ -158,7 +162,6 @@ class SupervisorNode:
 
         def handle_peer_connection(event: PeerConnection):
             conn: Connection = event.conn  # type:ignore [reportAttributeAccessIssue]
-
             msg = deserialize_message(conn.recv())
             match msg.type():
                 case MessageType.SUPERVISOR_ELECTION:
@@ -171,6 +174,8 @@ class SupervisorNode:
 
         while self._keep_running:
             event = self._events.get()
+            if not event:
+                break
             match event.type():
                 case EventType.LEADER_DOWN:
                     handle_leader_down(event)  # type:ignore [reportArgumentType]
@@ -199,16 +204,46 @@ class SupervisorNode:
                 runtime.start()
             except LeaderDownError:
                 runtime.stop()
+                logging.warning("LEADER DOWN!")
                 self._events.put(LeaderDown())
 
     def _listener_worker(self):
         self._node_listener.listen()
         while self._keep_running:
-            skt, _ = self._node_listener.accept()
+            try:
+                skt, _ = self._node_listener.accept()
+            except:
+                break
+            logging.warning("NEW CONN 2")
             conn = Connection(skt)
             self._events.put(PeerConnection(conn))
+        logging.warning("Llega al fin de list work")
 
     def stop(self):
+        logging.warning("Stop fn started")
         self._keep_running = False
         if self._runtime:
+            logging.warning("Enters runtime stop")
             self._runtime.stop()
+        
+        self._node_listener.shutdown(SHUT_RDWR)
+        self._node_listener.close()
+        # while not self._events.empty():
+        #     event = self._events.get()
+        #     match event.type():
+        #         case EventType.LEADER_DOWN:
+        #             handle_leader_down(event)  # type:ignore [reportArgumentType]
+        #         case EventType.PEER_CONNECTION:
+        #             event.conn.close()          # type:ignore [reportArgumentType]
+                    
+        
+        logging.warning("Prejoin RH")
+        self._runtime_handle.join()
+        logging.warning("Posjoin RH")
+        logging.warning("Prejoin LH")
+        self._listener_handle.join()
+        logging.warning("Posjoin LH")
+        
+        self._events.put(None)
+        logging.warning("Stop fn ended")
+        

@@ -47,8 +47,11 @@ class Leader:
             skt = socket(AF_INET, SOCK_STREAM)
             skt.settimeout(0.5)
             try:
+                if not self._keep_running:
+                    return
                 skt.connect(self._addr)
                 skt.settimeout(None)
+                logging.warning("NEW CONN 3")
                 self._conn = Connection(skt)
                 return
             except OSError:
@@ -59,6 +62,8 @@ class Leader:
         if not self._conn:
             self._connect()
         conn = self._conn
+        if self._keep_running == False:
+            return
         assert conn is not None  # pleasing linter
 
         try:
@@ -67,11 +72,12 @@ class Leader:
             if not pong:
                 raise LeaderDownError("received an empty pong from leader")
         except OSError as e:
-            logging.debug("lost connection with leader (%s)", e)
+            logging.warning("lost connection with leader (%s)", e)
             self.close()
             raise LeaderDownError(e)
 
     def close(self):
+        self._keep_running = False
         if not self._conn:
             return
         try:
