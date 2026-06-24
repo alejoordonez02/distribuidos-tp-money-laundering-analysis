@@ -184,22 +184,23 @@ la misma partición, y abre su salida (\textit{fan-out}) hacia las dos ramas
 siguientes.
 
 A partir de ese grafo, el constructor emite el mismo resultado hacia dos
-agregadores distintos:
+aggregators distintos:
 \begin{itemize}
-    \item El \textbf{Aggregate degree} calcula el \textit{grado} de cada nodo y
-        selecciona los nodos de \textbf{alto grado}: aquellos con al menos 5
-        predecesores y/o 5 sucesores (el umbral de 5 proviene del
-        enunciado, que exige al menos 5 intermediarios). Un nodo que no alcanza
-        alguno de esos dos grados no puede participar del patrón, por
-        lo que esta rama actúa como una poda temprana que reduce el
-        grafo antes del conteo costoso.
+    \item El \textbf{Aggregate degree} calcula el grado de entrada y de salida
+        de cada nodo y produce dos conjuntos separados: los de \textbf{alto
+        grado de salida} (al menos 5 sucesores, candidatos a origen del patrón)
+        y los de \textbf{alto grado de entrada} (al menos 5 predecesores,
+        candidatos a destino). El umbral de 5 proviene del enunciado, que exige
+        al menos 5 intermediarios. Un nodo que no entra en ninguno de los dos
+        conjuntos no puede participar del patrón, por lo que esta rama actúa como
+        una poda temprana que reduce el grafo antes del conteo costoso.
     \item El \textbf{Aggregate graphs} materializa el grafo completo
         (predecesores y sucesores consolidados por nodo).
 \end{itemize}
 
 El \textbf{Merge} (\textit{prune}) cruza ambas salidas y conserva únicamente
-aquellas aristas con origenes con al menos 5 sucesores o destinos con
-al menos 5 predecesores.
+las aristas que van de un origen de alto grado de salida a un destino de
+alto grado de entrada.
 
 Sobre ese grafo podado, el \textbf{Count paths} cuenta, para cada par
 \texttt{(origin, destination)}, la cantidad de cuentas que sirven como
@@ -226,8 +227,8 @@ válida después de convertir.
 El Filter inicial aplica formato (Wire o ACH) y período A para
 reducir el dataset antes de la etapa de conversión.
 El paso de conversión traduce cada monto a su equivalente en dólares.
-El Filter siguiente aplica el umbral de \$1. Las transacciones que lo
-superan llegan al GroupBy * Count, donde el \texttt{*} indica que no hay
+El Filter siguiente aplica el umbral de \$1. Las transacciones por debajo
+de \$1 llegan al GroupBy * Count, donde el \texttt{*} indica que no hay
 clave de agrupación: todos los registros se colapsan en un único
 contador global.
 Ese conteo es el resultado final de UC5.
@@ -381,9 +382,10 @@ el grafo completo y lo shardea por \texttt{node} entre las instancias del
 Merge.
 
 El \texttt{Merge prune} corre con varias instancias en anillo
-(\texttt{UC4\_PRUNES}): cada una tiene la lista completa
-de nodos de alto grado (por broadcast) y su shard del grafo (por sharding),
-y conserva solo las aristas cuyos dos extremos son de alto grado. Sobre ese
+(\texttt{UC4\_PRUNES}): cada una tiene los dos conjuntos de nodos de alto
+grado (por broadcast) y su shard del grafo (por sharding), y conserva solo
+las aristas de un origen de alto grado de salida a un destino de alto grado
+de entrada. Sobre ese
 grafo podado, el \texttt{Count paths} (\texttt{UC4\_COUNT\_PATHS}) cuenta los
 intermediarios por par \texttt{(origin, destination)} (shardeando por camino
 para repartir el conteo entre instancias) y el \texttt{Aggregate paths}
@@ -404,8 +406,9 @@ horizontalmente de forma independiente del Filter. Se optó por
 permitir este escalamiento para más libertad en el despliegue del
 sistema, pero la operación que se realiza en esta instancia es
 puramente I/O intensive, y por tanto no requiere mayor poder de
-cómputo. Se emite una sola request al servicio externo de conversión
-por batch, amortizando la latencia de red sobre el conjunto del batch.
+cómputo. Las cotizaciones se cachean por día: solo se emite una request al
+servicio externo de conversión ante un día todavía no visto, amortizando la
+latencia de red (en el período A son a lo sumo unos pocos días para toda la corrida).
 Tras la conversión, un segundo Filter aplica el umbral de \$1 USD y el
 \texttt{GroupBy * Count} produce un conteo parcial por instancia. Esos
 conteos parciales se depositan en la cola de entrada del Join, que los
@@ -499,7 +502,7 @@ activa del cliente.
 Para la distribución de archivos fuente, se optó por mantener un
 directorio por cada \textit{tipo} de controlador bajo \texttt{src/}
 (\texttt{filter/}, \texttt{group\_by/}, \texttt{aggregate/}, \texttt{merge/},
-    \texttt{join/}, \texttt{converter/}, \texttt{gateway/} y
+    \texttt{join/}, \texttt{gateway/} y
 \texttt{client/}), con su
 archivo \texttt{main.py} que levanta el proceso, su correspondiente
 Dockerfile y sus dependencias específicas.
@@ -559,7 +562,7 @@ class UC1Filter(FilterFn):
 
 El mismo esquema se repite para los demás controladores, cada uno con su
 propia interfaz de estrategia: \texttt{GroupByFn}, \texttt{AggregateFn},
-\texttt{MergeFn}, \texttt{ConverterFn} y \texttt{JoinFn}. Todas operan sobre la
+\texttt{MergeFn} y \texttt{JoinFn}. Todas operan sobre la
 abstracción \texttt{Message}, de la que \texttt{Transaction} y \texttt{Account}
 son los datos de dominio que viaja en los mensajes de entrada.
 
@@ -855,9 +858,11 @@ La \textbf{deduplicación} es la que evita que ese reproceso duplique
 efectos. Cada mensaje de datos se \textit{estampa} en origen con un
 identificador de productor estable (derivado de la identidad del nodo y
 su ruta de salida, idéntico entre reinicios) y un número de secuencia
-creciente. El receptor mantiene, por productor, el mayor número de
-secuencia visto; un mensaje cuya secuencia no lo supera es un reenvío y
-se descarta. Como bajo ruteo por afinidad un ``productor'' es un par
+creciente. El receptor lleva, por productor, el mayor número de secuencia
+contiguo visto más el conjunto de las vistas por encima de un hueco; descarta
+un mensaje solo si esa secuencia exacta ya fue procesada, nunca una secuencia
+nueva por estar debajo del máximo. Así un reenvío reordenado tras una caída no
+hace perder un mensaje legítimo. Como bajo ruteo por afinidad un ``productor'' es un par
 \texttt{(nodo, ruta)} y no un mensaje, la tabla queda acotada por la
 topología. Los contadores de secuencia de salida también se restauran del
 \textit{checkpoint}, de modo que un mensaje reemitido tras una caída lleva la
@@ -953,9 +958,8 @@ esperando o acumulando resultados para una conexión inexistente.
 \subsection{Rendimiento bajo tolerancia a fallos}
 La tolerancia a fallos no es gratis: cada nodo manda latidos,
 \textit{checkpointea},
-\textbf{publica cada mensaje con confirmación del broker} —para que
-una caída no pierda
-un envío en vuelo— y, ante una caída, reprocesa desde el último
+\textbf{publica cada mensaje con confirmación del broker} (así un envío en
+vuelo no se pierde) y, ante una caída, reprocesa desde el último
 \textit{checkpoint}.
 Para medir ese costo
 se corrió un \textit{benchmark} con una topología escalada (al menos
@@ -982,12 +986,12 @@ plano de estrés se recorre con \textbf{dos cortes ortogonales}, y
 cada uno expone una falla
 distinta:
 \begin{itemize}
-    \item \textbf{Frecuencia} — se fija el tamaño de la oleada y se
+    \item \textbf{Frecuencia}: se fija el tamaño de la oleada y se
         \emph{acorta el intervalo}
         entre oleadas. Estresa la falla \textbf{acumulativa}: el
         supervisor se va quedando atrás a
         medida que pasa el tiempo.
-    \item \textbf{Ráfaga} — se fija un intervalo generoso y se
+    \item \textbf{Ráfaga}: se fija un intervalo generoso y se
         \emph{agranda la oleada}. Estresa
         la falla por \textbf{simultaneidad}: una sola oleada se lleva
         muchos nodos de golpe, antes
@@ -1011,8 +1015,8 @@ muestra que en casi todo el rango el costo es \textbf{marginal}: las
 tres líneas viajan
 pegadas a la referencia. El sobrecosto recién se dispara en el
 \textbf{régimen más agresivo},
-y lo hace de forma marcadamente \textbf{super-lineal} —una rampa que
-se empina al final—. La
+y lo hace de forma marcadamente \textbf{super-lineal} (una rampa que
+se empina al final). La
 lectura conceptual es que la frecuencia de fallos es un eje
 \emph{barato} hasta cruzar un
 umbral, y a partir de ahí el trabajo de reposición empieza a competir
@@ -1063,9 +1067,9 @@ con dos costos en tensión.
 espaciar mucho abarata
 ese I/O pero, en principio, encarece cada recuperación, porque hay
 más trabajo para reprocesar
-por caída. El óptimo resulta \textbf{amplio y plano} —una meseta, no
+por caída. El óptimo resulta \textbf{amplio y plano} (una meseta, no
 un punto delicado de
-calibrar—.
+calibrar).
 
 En el rango probado, sin embargo, la curva \emph{con chaos} se
 mantiene \textbf{casi superpuesta}
@@ -1236,6 +1240,6 @@ vez. Los refactors, el escalado de nodos, la tolerancia a fallos, el
 testing, los diagramas, la documentación y las correcciones se distribuyeron
 entre los integrantes a lo largo del proyecto, sin atarse a la asignación
 inicial por UC. Hubo, entonces, una asignación inicial por UC, pero la
-evolución real fue más \textit{distribuida} (😛).
+evolución real fue más \textit{distribuida} (:P).
 
 \end{document}
