@@ -128,10 +128,7 @@ class RingNode:
         raise NotImplementedError
 
     def _on_eof(self, eof: Message):
-        actions = self.rc.on_upstream_eof(eof.client_id, eof.expected_count)  # type: ignore[attr-defined]
-        if actions and self.checkpointer:
-            self.checkpointer.flush(force=True)
-        emitted = self._run(actions)
+        emitted = self._run(self.rc.on_upstream_eof(eof.client_id, eof.expected_count))  # type: ignore[attr-defined]
         if self.checkpointer:
             self.checkpointer.flush(force=True)
         for client_id in emitted:
@@ -155,6 +152,8 @@ class RingNode:
         emitted = []
         for action in actions:
             if isinstance(action, Emit):
+                if self.checkpointer:
+                    self.checkpointer.flush(force=True)
                 self._emit(action.client_id)
                 emitted.append(action.client_id)
             elif isinstance(action, Forward):
