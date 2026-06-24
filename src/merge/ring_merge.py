@@ -132,7 +132,10 @@ class RingMerge(RingNode):
         emitted = []
         if client_id in self.counts.left and client_id in self.counts.right:
             combined = self.counts.left[client_id] + self.counts.right[client_id]
-            emitted = self._run(self.rc.on_upstream_eof(client_id, combined))
+            actions = self.rc.on_upstream_eof(client_id, combined)
+            if actions and self.checkpointer:
+                self.checkpointer.flush(force=True)
+            emitted = self._run(actions)
         if self.checkpointer:
             self.checkpointer.flush(force=True)
         for cid in emitted:
