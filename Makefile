@@ -82,7 +82,7 @@ performance_vs_ft:
 
 # re-render the report figures from an existing results.csv (no cluster)
 perf_plots:
-	uv run --with matplotlib --with numpy $(SCRIPTS_DIR)/plot_ft_perf.py
+	uv run --with matplotlib --with numpy --with adjustText $(SCRIPTS_DIR)/plot_ft_perf.py
 
 # arm the chaos monkey on a running cluster and stream what it kills
 # (Ctrl-C stops watching the logs; the chaos container keeps running)

@@ -12,7 +12,10 @@ Three figures, one stress axis each, every dataset size on the same plot:
 The two sweeps use RELATIVE slowdown (time / no-chaos base) on purpose: the dataset sizes
 span an order of magnitude, so absolute minutes don't share a single axis; normalising to
 each dataset's own baseline makes the three directly comparable. No exact values are drawn
-on the figures (the benchmark is re-run often) — the shape carries the conclusion.
+on the figures (the benchmark is re-run often) -- the shape carries the conclusion.
+
+Figures carry no embedded title: the report sets the caption. Text is typeset with LaTeX so
+the figures match the report's Computer Modern.
 
     uv run --with matplotlib --with numpy scripts/plot_ft_perf.py
 """
@@ -24,6 +27,11 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+try:
+    from adjustText import adjust_text
+except ImportError:
+    adjust_text = None
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RESULTS_CSV = os.path.join(ROOT, "tmp/ft_perf/results.csv")
 OUT_DIR = os.path.join(ROOT, "doc/diagrams/v2")
@@ -32,10 +40,10 @@ TIER_LABEL = {"small": "Small", "medium": "Medium", "large": "Large"}
 TIER_COLOR = {"small": "#2a9d8f", "medium": "#e76f51", "large": "#264653"}
 
 FREQ = dict(phase="F1", xkey="chaos_interval",
-            xlabel="Cada cuántos segundos se mata una ráfaga (más a la derecha = más agresivo)",
+            xlabel=r"Cada cuántos segundos cae una ráfaga (derecha $=$ más agresivo)",
             invert_x=True)
 BURST = dict(phase="F2", xkey="kills_per_wave",
-             xlabel="Nodos derribados por ráfaga (intervalo fijo)",
+             xlabel="Nodos caídos por ráfaga (intervalo fijo)",
              invert_x=False)
 
 try:
@@ -43,11 +51,12 @@ try:
 except OSError:
     plt.style.use("ggplot")
 plt.rcParams.update({
+    "text.usetex": True,
+    "font.family": "serif",
+    "text.latex.preamble": r"\usepackage[utf8]{inputenc}\usepackage[T1]{fontenc}",
     "figure.dpi": 150,
-    "font.size": 11,
-    "axes.titlesize": 13,
-    "axes.titleweight": "bold",
-    "axes.labelsize": 11,
+    "font.size": 12,
+    "axes.labelsize": 12,
     "legend.fontsize": 10,
     "lines.linewidth": 2.4,
     "lines.markersize": 7,
@@ -96,14 +105,12 @@ def _chaos_pts(rows, sweep, tier):
     return sorted(pts, key=lambda r: _f(r[sweep["xkey"]]))
 
 
-def plot_sweep_all(rows, sweep, title, fname):
+def plot_sweep_all(rows, sweep, fname):
     """Every dataset on one relative-slowdown axis: how the stress axis degrades throughput.
     Each point is annotated with its slowdown vs base in %, colored by dataset, and a right
     axis reads the same scale directly as a percentage."""
-    fig, ax = plt.subplots(figsize=(9.2, 4.6))
-    drawn = False
-    # per-tier vertical nudge (in points) so overlapping labels in the flat zone don't pile up
-    label_dy = {"small": 11, "medium": 20, "large": -15}
+    fig, ax = plt.subplots(figsize=(9.2, 4.8))
+    series = []
     for tier in ("small", "medium", "large"):
         base = _base_secs(rows, sweep["phase"], tier)
         pts = _chaos_pts(rows, sweep, tier)
@@ -112,36 +119,52 @@ def plot_sweep_all(rows, sweep, title, fname):
         x = [_f(r[sweep["xkey"]]) for r in pts]
         y = [_f(r["total_s"]) / base for r in pts]
         ax.plot(x, y, "o-", color=TIER_COLOR[tier], label=TIER_LABEL[tier], zorder=3)
-        for xi, yi in zip(x, y):
-            ax.annotate(f"+{(yi - 1.0) * 100:.0f}%", (xi, yi),
-                        textcoords="offset points", xytext=(0, label_dy[tier]),
-                        ha="center", fontsize=7, fontweight="bold",
-                        color=TIER_COLOR[tier], zorder=4)
-        drawn = True
-    if not drawn:
+        series.append((tier, x, y))
+    if not series:
         return
-    ax.axhline(1.0, ls="--", color="#555", lw=1.5, label="sin degradación (0%)")
+
+    ax.axhline(1.0, ls="--", color="#555", lw=1.5, label=r"sin degradación ($0\%$)")
     if sweep["invert_x"]:
         ax.invert_xaxis()
-    ax.set_ylim(bottom=0.9)
-    ax.set_ylim(top=ax.get_ylim()[1] * 1.09)  # headroom for the top "+X%" label
+    ax.set_ylim(bottom=0.82)
+    ax.set_ylim(top=ax.get_ylim()[1] * 1.12)  # headroom for the top label
+
+    # label each point with its slowdown; adjustText repositions every label so none overlap
+    # (with thin leader lines when it pulls one away), falling back to a per-column height-rank
+    # stack if the library is absent.
+    if adjust_text is not None:
+        texts = [ax.text(xi, yi, rf"$+{(yi - 1.0) * 100:.0f}\%$", fontsize=8,
+                         color=TIER_COLOR[tier], zorder=5)
+                 for tier, x, y in series for xi, yi in zip(x, y)]
+        adjust_text(texts, ax=ax,
+                    arrowprops=dict(arrowstyle="-", color="0.55", lw=0.4))
+    else:
+        from collections import defaultdict
+        column = defaultdict(list)
+        for tier, x, y in series:
+            for xi, yi in zip(x, y):
+                column[xi].append((yi, tier))
+        offsets = [8, 19, 30]
+        for xi, pts in column.items():
+            for rank, (yi, tier) in enumerate(sorted(pts)):
+                ax.annotate(rf"$+{(yi - 1.0) * 100:.0f}\%$", (xi, yi),
+                            textcoords="offset points", xytext=(0, offsets[min(rank, 2)]),
+                            ha="center", fontsize=8, color=TIER_COLOR[tier], zorder=4)
+
     ax.set_xlabel(sweep["xlabel"])
-    ax.set_ylabel("Ralentización relativa (tiempo / base)")
-    ax.set_title(title, pad=10)
+    ax.set_ylabel(r"Ralentización relativa (tiempo $/$ base)")
     ax.legend(loc="upper left", frameon=True)
-    # right axis: the same scale read directly as "% de sobrecosto vs la corrida base"
     ax2 = ax.twinx()
     lo, hi = ax.get_ylim()
     ax2.set_ylim((lo - 1.0) * 100, (hi - 1.0) * 100)
-    ax2.set_ylabel("Sobrecosto vs base (%)")
+    ax2.set_ylabel(r"Sobrecosto vs base ($\%$)")
     ax2.grid(False)
     _save(fig, fname)
 
 
 def plot_checkpoint(rows):
     """Single tier (the checkpoint cadence is dataset-agnostic): total time vs checkpoint_every,
-    no-chaos vs chaos. Shows the U — frequent checkpoints pay I/O, sparse ones pay reprocessing —
-    and that failures tilt the balance toward more frequent checkpoints."""
+    no-chaos vs chaos. The chaos curve stops where recovery stops converging -- the cliff."""
     tier = "medium"
     f3 = [r for r in rows if r.get("phase") == "F3" and r["tier"] == tier]
     if not f3:
@@ -155,18 +178,25 @@ def plot_checkpoint(rows):
     if not xs:
         return
 
-    fig, ax = plt.subplots(figsize=(8.4, 4.2))
-    if any(c in no_ch for c in xs):
-        ax.plot([c for c in xs if c in no_ch], [no_ch[c] for c in xs if c in no_ch],
-                "o-", color="#2a9d8f", label="sin chaos")
-    if any(c in ch for c in xs):
-        ax.plot([c for c in xs if c in ch], [ch[c] for c in xs if c in ch],
-                "s-", color="#e76f51", label="con chaos")
+    fig, ax = plt.subplots(figsize=(8.4, 4.4))
+    base_x = [c for c in xs if c in no_ch]
+    chaos_x = [c for c in xs if c in ch]
+    if base_x:
+        ax.plot(base_x, [no_ch[c] for c in base_x], "o-", color="#2a9d8f", label="sin chaos")
+    if chaos_x:
+        ax.plot(chaos_x, [ch[c] for c in chaos_x], "s-", color="#e76f51", label="con chaos")
+        # mark the cliff: the first checkpoint where chaos no longer completes
+        last_ch = max(chaos_x)
+        beyond = [c for c in base_x if c > last_ch]
+        if beyond:
+            ax.axvline(min(beyond), ls=":", color="#9b2226", lw=1.6, zorder=1)
+            ax.annotate(r"el recovery deja de converger",
+                        (min(beyond), ax.get_ylim()[1]), xytext=(-6, -8),
+                        textcoords="offset points", ha="right", va="top",
+                        fontsize=9, color="#9b2226")
     ax.set_xscale("log")
-    ax.set_xlabel("checkpoint_every (mensajes entre checkpoints, escala log)")
+    ax.set_xlabel(r"\texttt{checkpoint\_every} (mensajes entre checkpoints, escala log)")
     ax.set_ylabel("Tiempo total (min)")
-    ax.set_title("Checkpoint: hay un óptimo amplio; bajo chaos la curva apenas se mueve",
-                 pad=10)
     ax.set_ylim(bottom=0)
     ax.legend(loc="best", frameon=True)
     _save(fig, "ft_perf_checkpoint.png")
@@ -175,14 +205,10 @@ def plot_checkpoint(rows):
 def main():
     rows = load()
     if not rows:
-        print("no results.csv yet — nothing to plot")
+        print("no results.csv yet -- nothing to plot")
         return
-    plot_sweep_all(rows, FREQ,
-                   "Frecuencia: el costo se concentra solo en el régimen más agresivo",
-                   "ft_perf_frequency.png")
-    plot_sweep_all(rows, BURST,
-                   "Ráfaga: la redundancia absorbe la simultaneidad, sin colapso",
-                   "ft_perf_burst.png")
+    plot_sweep_all(rows, FREQ, "ft_perf_frequency.png")
+    plot_sweep_all(rows, BURST, "ft_perf_burst.png")
     plot_checkpoint(rows)
     print("done")
 

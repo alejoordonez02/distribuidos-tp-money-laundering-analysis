@@ -1064,37 +1064,30 @@ en el rango observado.
 La frecuencia de \textit{checkpoint} traza una curva en \textbf{U}
 con dos costos en tensión.
 \textit{Checkpointear} muy seguido está dominado por el costo de I/O;
-espaciar mucho abarata
-ese I/O pero, en principio, encarece cada recuperación, porque hay
-más trabajo para reprocesar
-por caída. El óptimo resulta \textbf{amplio y plano} (una meseta, no
-un punto delicado de
-calibrar).
+espaciar mucho lo abarata, pero encarece cada recuperación, porque ante
+una caída hay más mensajes para reprocesar. Sin fallos el óptimo es
+\textbf{amplio}: la curva \emph{sin chaos} se aplana en una meseta entre
+unos cientos y unos miles de mensajes por checkpoint.
 
-En el rango probado, sin embargo, la curva \emph{con chaos} se
-mantiene \textbf{casi superpuesta}
-a la \emph{sin chaos}: el sobrecosto de los fallos es pequeño y se
-concentra en el extremo
-\textbf{frecuente} (donde el I/O ya es alto), no en el espaciado. El
-efecto teórico de que
-``espaciar encarece la recuperación'' no llega a observarse aquí,
-porque reprocesar hasta unos
-miles de mensajes por caída sigue siendo barato frente al tiempo
-total de la corrida.
-Conceptualmente la cadencia es un balance entre I/O y reproceso, pero
-con la intensidad de
-fallos evaluada ese balance \textbf{no se desplaza de forma
-apreciable}: el óptimo puede
-calibrarse para el caso normal sin una penalización relevante bajo fallos.
+Bajo fallos, en cambio, ese balance \textbf{se desplaza}. En la zona
+frecuente y en el centro de la meseta la curva \emph{con chaos} corre casi
+pegada a la \emph{sin chaos} (un sobrecosto del orden del 5 al 25\%), pero al
+espaciar el checkpoint el sobrecosto \textbf{crece de forma marcada}: en el
+punto más espaciado evaluado el chaos casi \textbf{duplica} el tiempo de la
+corrida base. Es el efecto teórico de que ``espaciar encarece la
+recuperación'' volviéndose visible: cuanto más raro es el checkpoint, más
+mensajes debe reprocesar un nodo revivido tras una caída, y ese reproceso
+pasa a dominar. La consecuencia práctica es que, bajo fallos, conviene un
+checkpoint \textbf{más frecuente} que el óptimo del caso normal, para mantener
+acotado el costo de recuperación.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.85\textwidth]{../diagrams/v2/ft_perf_checkpoint.png}\\[0.5cm]
-    \caption{Costo del \texttt{CHECKPOINT\_EVERY} (escala log): curva
-        en U con óptimo amplio.
-        Bajo el chaos probado la curva apenas se mueve; el sobrecosto
-        se concentra en el extremo
-    frecuente (I/O), no en el espaciado.}
+    \caption{Costo del \texttt{CHECKPOINT\_EVERY} (escala log): curva en U.
+        Sin chaos el óptimo es amplio; bajo chaos el sobrecosto es chico en la
+        zona frecuente y media, pero crece al espaciar el checkpoint, casi
+        duplicando el tiempo en el punto más espaciado evaluado.}
 \end{figure}
 
 \newpage

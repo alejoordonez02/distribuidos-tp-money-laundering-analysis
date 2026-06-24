@@ -432,7 +432,7 @@ def phase_F3():
 
 def maybe_plot():
     log("regenerating figures ...")
-    r = run("uv run --with matplotlib --with numpy scripts/plot_ft_perf.py", capture=True)
+    r = run("uv run --with matplotlib --with numpy --with adjustText scripts/plot_ft_perf.py", capture=True)
     log(("figures OK" if r.returncode == 0 else f"plot failed: {r.stdout[-400:]}"))
 
 
