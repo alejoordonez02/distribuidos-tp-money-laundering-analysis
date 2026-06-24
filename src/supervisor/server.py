@@ -124,7 +124,7 @@ class SupervisorNode:
         self._change_runtime(runtime)
 
     def _event_worker(self):
-        def handle_leader_down(_: LeaderDown)
+        def handle_leader_down(_: LeaderDown):
             if self._on_election:
                 return
             if self._is_leader():
@@ -195,15 +195,10 @@ class SupervisorNode:
             assert runtime  # please linter
             logging.debug(f"running as {runtime.__class__.__name__}")
             started_runtime = runtime
-            logging.warning("RW post with")
             try:
-                logging.warning("Prestart")
                 runtime.start()
-                logging.warning("Postart")
             except LeaderDownError:
-                logging.warning("Stop pre")
                 runtime.stop()
-                logging.warning("LEADER DOWN!")
                 self._events.put(LeaderDown())
 
     def _listener_worker(self):
@@ -215,13 +210,10 @@ class SupervisorNode:
                 break
             conn = Connection(skt)
             self._events.put(PeerConnection(conn))
-        logging.warning("Llega al fin de LW")
 
     def stop(self):
-        logging.warning("Stop fn started")
         self._keep_running = False
         if self._runtime:
-            logging.warning("Enters runtime stop")
             self._runtime.stop()
         
         self._node_listener.shutdown(SHUT_RDWR)
