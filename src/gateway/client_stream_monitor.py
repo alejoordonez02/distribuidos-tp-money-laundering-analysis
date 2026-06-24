@@ -1,4 +1,3 @@
-import logging
 from threading import Lock
 from uuid import UUID
 
@@ -27,22 +26,13 @@ class ClientStreamMonitor:
     def remove(self, client_id: UUID):
         """Drop a client's session (on crash) so it is no longer tracked or stopped."""
         with self.mtx:
-            client = self.clients.pop(client_id, None)
+            self.clients.pop(client_id, None)
 
     def stop_all(self):
-        """Stop every client's writer and close its socket (on gateway shutdown)."""
-        logging.warning("Monitor stop all")
+        """Stop every client's session and close its socket (on gateway shutdown).
+        `stop` already waits for the handler's own thread, so no separate join here."""
         with self.mtx:
             clients = list(self.clients.values())
             self.clients.clear()
         for client in clients:
-            logging.warning("Prestop")
             client.stop()
-            logging.warning("Postop")
-        logging.warning("Out of stop")
-        for client in clients:
-            logging.warning("Prejoin")
-            client.join()
-            logging.warning("Posjoin")
-
-        logging.warning("Stop all ended")

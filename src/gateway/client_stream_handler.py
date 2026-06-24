@@ -67,30 +67,35 @@ class ClientStreamHandler:
         self.handle.start()
 
     def stop(self):
-        """Close the socket and stop this client's response consumer (idempotent,
-        non-blocking). Used on gateway shutdown; closing the socket also unblocks a
-        response thread stuck mid-send to a slow client."""
+        """Stop this client's session: close the socket, stop its response consumer and
+        wait for the response thread to finish, keeping the inner thread transparent to
+        the caller. Idempotent; used on gateway shutdown. Closing the socket also unblocks
+        a response thread stuck mid-send to a slow client."""
         self._close()
         if self._responses_rx is not None:
             self._responses_rx.stop_consuming()
-
-    def join(self):
-        """Wait for the response thread to finish (after `stop`)."""
-        if self.handle is not None:
-            self.handle.join()
         if self._response_thread is not None:
             self._response_thread.join()
 
     def _run(self):
-        raw = self.conn.recv()
-        if not raw:
-            logging.warning("client disconnected before handshake")
-            self._close()
+        try:
+            raw = self.conn.recv()
+            if not raw:
+                logging.warning("client disconnected before handshake")
+                self._close()
+                return
+            Hello.deserialize(raw)
+            self._register(self)
+            self.conn.send(HelloAck(self.id).serialize())
+            self._start_response_consumer()
+        except OSError:
+            # The client dropped during the handshake: Connection surfaces it as an
+            # OSError (it never swallows an unexpected error), so handle it here instead
+            # of letting the reader thread die. Teardown is idempotent and covers the
+            # case where the client had already registered.
+            logging.warning("client disconnected during handshake")
+            self._teardown()
             return
-        Hello.deserialize(raw)
-        self._register(self)
-        self.conn.send(HelloAck(self.id).serialize())
-        self._start_response_consumer()
 
         # Each stream is round-robined across its downstream ring's shards. A single
         # producer per stream with a monotonic seq dedups exactly under the affinity

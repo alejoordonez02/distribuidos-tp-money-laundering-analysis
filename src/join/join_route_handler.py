@@ -6,7 +6,7 @@ from join_fns import JoinFn
 
 from common.checkpoint import dispatch, make_checkpointer
 from common.comms.messages import Message, deserialize_message
-from common.comms.middleware import MOM, MOMQueue
+from common.comms.middleware import MOMExchange, MOMQueue
 
 
 class _JoinCounts:
@@ -62,7 +62,7 @@ class JoinRouteHandler:
 
     def __init__(
         self,
-        responses_tx_factory: Callable[[], MOM],
+        responses_tx_factory: Callable[[], MOMExchange],
         mom_factory: Callable[[], MOMQueue],
         join_fn: JoinFn,
         uc_id: int,
@@ -80,7 +80,7 @@ class JoinRouteHandler:
           of different UCs arriving on its per-client response queue.
         """
         self.responses_tx_factory = responses_tx_factory
-        self.responses_tx: MOM
+        self.responses_tx: MOMExchange
         self.mom_factory = mom_factory
         self.join_fn = join_fn
         self._uc_id = uc_id
@@ -150,3 +150,4 @@ class JoinRouteHandler:
         # persist the finalized marker before the EOF is acked so a redelivered EOF does not re-emit
         if self._checkpointer is not None:
             self._checkpointer.flush(force=True)
+        self.join_fn.discard(client_id)

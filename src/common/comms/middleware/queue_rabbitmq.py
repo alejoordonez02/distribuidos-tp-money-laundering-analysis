@@ -62,7 +62,7 @@ class QueueRabbitMQ(MOMQueue):
                 exc_info=True,
             )
 
-    def send(self, message: bytes, routing_key: str | None = None) -> None:
+    def send(self, message: bytes) -> None:
         try:
             self.chan.basic_publish(
                 exchange="", routing_key=self.queue_name, body=message

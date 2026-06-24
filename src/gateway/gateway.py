@@ -64,8 +64,7 @@ class Gateway:
             self.listener.close()
         except OSError as e:
             # TODO: handle specific OSError cases (e.g. already closed)
-            # logging.error("!!! UNHANDLED OSError in gateway stop: %s", e, exc_info=True)
-            pass
+            logging.error("!!! UNHANDLED OSError in gateway stop: %s", e, exc_info=True)
 
     def _run(self):
         while self._keep_running:
@@ -73,7 +72,7 @@ class Gateway:
                 skt, _ = self.listener.accept()
             except OSError as e:
                 # TODO: handle specific OSError cases (e.g. socket closed on shutdown vs real error)
-                # logging.error("!!! UNHANDLED OSError in gateway accept loop: %s", e, exc_info=True)
+                logging.error("!!! UNHANDLED OSError in gateway accept loop: %s", e, exc_info=True)
                 break
             conn = Connection(skt, send_timeout=CLIENT_SEND_TIMEOUT_S)
             client = ClientStreamHandler(
