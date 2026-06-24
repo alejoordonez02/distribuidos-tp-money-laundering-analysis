@@ -8,7 +8,6 @@ from common.comms.eof_handler.sent_counts import SentCounts
 from common.comms.eof_handler.ring_node import StatelessRingNode
 from common.comms.messages import Message
 from common.comms.middleware import MOM, MOMRing, MultiQueueConsumer
-from common.comms.middleware.stamping_mom import sub_producer
 
 
 class RingGroupBy(StatelessRingNode):
@@ -45,13 +44,12 @@ class RingGroupBy(StatelessRingNode):
         self.fleets = fleets
 
     def _on_data(self, msg: Message):
-        for sub_index, (group, affinity) in enumerate(self.fn.group_by(msg)):
+        for group, affinity in self.fn.group_by(msg):
             payload = group.serialize()
-            producer = sub_producer(msg.producer_id, sub_index)
             base = 0
             for fleet in self.fleets:
                 shard = affinity % len(fleet)
-                fleet[shard].send_stamped(payload, producer, msg.seq)  # type: ignore[attr-defined]
+                fleet[shard].send(payload)
                 self.sent.add(msg.client_id, base + shard)
                 base += len(fleet)
         self._run(self.rc.on_data(msg.client_id))

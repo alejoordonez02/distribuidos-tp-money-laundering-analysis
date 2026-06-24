@@ -38,14 +38,6 @@ def derive_producer_id(tx_name: str, idx: int, route: int) -> bytes:
     return uuid.uuid5(_PRODUCER_NAMESPACE, f"{tx_name}:{idx}:{route}").bytes
 
 
-def sub_producer(base_producer_id: bytes, sub_index: int) -> bytes:
-    """Stable 16-byte id for one slot of a 1:N node's per-input fan-out. The several
-    outputs of a single input get distinct slots so they never collide on a downstream
-    shard's dedup, while each slot carries the input's own seq — dense per slot and
-    idempotent when a redelivered input is reprocessed after a restart."""
-    return uuid.uuid5(_PRODUCER_NAMESPACE, f"{base_producer_id.hex()}:{sub_index}").bytes
-
-
 class _SeqCounter:
     def __init__(self):
         self._seq = 0
