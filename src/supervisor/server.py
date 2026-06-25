@@ -43,7 +43,7 @@ class SupervisorNode:
 
         self._server_bind = (bind_host, server_port)
         self._leader_bind = (bind_host, leader_port)
-        self._node_listener = _make_skt((bind_host, internal_port))
+        self._peer_listener = _make_skt((bind_host, internal_port))
 
         self._internal_port = internal_port
         self._leader_port = leader_port
@@ -134,46 +134,46 @@ class SupervisorNode:
         runtime = ReplicaRuntime((leader_host, self._leader_port), self._ping_delay)
         self._change_runtime(runtime)
 
-    def _event_worker(self):
-        def handle_leader_down(_: LeaderDown):
-            if self._on_election:
-                return
-            if self._is_leader():
-                self._broadcast_message(SupervisorLeader(self._idx), self._peers)
-                return
-
-            self._on_election = True
-
-            greater_peers = [p for p in self._peers if p > self._idx]
-            acks = self._broadcast_message(SupervisorElection(), greater_peers)
-
-            if acks > 0:
-                self._on_election = False
-                return
-
+    def _handle_leader_down(self, _: LeaderDown):
+        if self._on_election:
+            return
+        if self._is_leader():
             self._broadcast_message(SupervisorLeader(self._idx), self._peers)
+            return
 
-            self._promote()
-            self._leader = None
+        self._on_election = True
+
+        greater_peers = [p for p in self._peers if p > self._idx]
+        acks = self._broadcast_message(SupervisorElection(), greater_peers)
+
+        if acks > 0:
             self._on_election = False
+            return
 
-        def handle_new_leader(event: NewLeader):
-            claim = event.idx
-            if claim <= self._idx:
-                # a node with id <= mine claims leadership: never follow it; if I'm leader and it's strictly lower, re-assert so it steps down (resolves split-brain)
-                if claim < self._idx and self._is_leader():
-                    self._broadcast_message(SupervisorLeader(self._idx), self._peers)
-                return
+        self._broadcast_message(SupervisorLeader(self._idx), self._peers)
 
-            # claim > mine: a higher-id node leads; adopt it unless I already follow an equal-or-higher leader (never downgrade to a lower one)
-            if self._leader is not None and claim <= self._leader.idx:
-                return
+        self._promote()
+        self._leader = None
+        self._on_election = False
 
-            leader_host = next(p.host for p in self._peers if p.idx == claim)
-            self._leader = Peer(claim, leader_host)
-            self._downgrade(leader_host)
-            self._on_election = False
+    def _handle_new_leader(self, event: NewLeader):
+        claim = event.idx
+        if claim <= self._idx:
+            # a node with id <= mine claims leadership: never follow it; if I'm leader and it's strictly lower, re-assert so it steps down (resolves split-brain)
+            if claim < self._idx and self._is_leader():
+                self._broadcast_message(SupervisorLeader(self._idx), self._peers)
+            return
 
+        # claim > mine: a higher-id node leads; adopt it unless I already follow an equal-or-higher leader (never downgrade to a lower one)
+        if self._leader is not None and claim <= self._leader.idx:
+            return
+
+        leader_host = next(p.host for p in self._peers if p.idx == claim)
+        self._leader = Peer(claim, leader_host)
+        self._downgrade(leader_host)
+        self._on_election = False
+
+    def _event_worker(self):
         def handle_peer_connection(event: PeerConnection):
             conn: Connection = event.conn  # type:ignore [reportAttributeAccessIssue]
             msg = deserialize_message(conn.recv())
@@ -182,7 +182,7 @@ class SupervisorNode:
                     self._events.put(LeaderDown())
                 case MessageType.SUPERVISOR_LEADER:
                     leader_idx = msg.idx  # type:ignore [reportAttributeAccessIssue]
-                    handle_new_leader(NewLeader(leader_idx))
+                    self._handle_new_leader(NewLeader(leader_idx))
 
             conn.close()
 
@@ -192,7 +192,7 @@ class SupervisorNode:
                 break
             match event.type():
                 case EventType.LEADER_DOWN:
-                    handle_leader_down(event)  # type:ignore [reportArgumentType]
+                    self._handle_leader_down(event)  # type:ignore [reportArgumentType]
                 case EventType.PEER_CONNECTION:
                     handle_peer_connection(event)  # type:ignore [reportArgumentType]
 
@@ -219,10 +219,10 @@ class SupervisorNode:
                 self._events.put(LeaderDown())
 
     def _listener_worker(self):
-        self._node_listener.listen()
+        self._peer_listener.listen()
         while self._keep_running:
             try:
-                skt, _ = self._node_listener.accept()
+                skt, _ = self._peer_listener.accept()
             except:
                 break
             conn = Connection(skt)
@@ -234,8 +234,8 @@ class SupervisorNode:
         if self._runtime:
             self._runtime.stop()
 
-        self._node_listener.shutdown(SHUT_RDWR)
-        self._node_listener.close()
+        self._peer_listener.shutdown(SHUT_RDWR)
+        self._peer_listener.close()
 
         if self._is_leader():
             with self._new_runtime:

@@ -9,7 +9,7 @@ from common.comms.messages import Graph, Node
 
 from .aggregate_fn import AggregateFn
 
-MAX_AMOUNT = 100_000
+SPILL_THRESHOLD = 100_000
 SHARDING_FILES = 500
 
 AFFINITY_SHARDS = 100
@@ -47,12 +47,12 @@ class UC4AggregateGraphs(AggregateFn):
             self._preds[msg.client_id].setdefault(node, set()).update(predecessors)
             self._succs[msg.client_id].setdefault(node, set()).update(successors)
 
-        if len(self._preds[msg.client_id]) >= MAX_AMOUNT:
-            self.downstream(msg.client_id)
+        if len(self._preds[msg.client_id]) >= SPILL_THRESHOLD:
+            self._spill_to_disk(msg.client_id)
 
     def get_result(self, client_id: UUID) -> Iterable[tuple[Graph, int]]:
         if client_id in self._succs:
-            self.downstream(client_id)
+            self._spill_to_disk(client_id)
 
         for shard in self._spill.shards_of(client_id):
             preds: dict[Node, set[Node]] = defaultdict(set)
@@ -80,7 +80,7 @@ class UC4AggregateGraphs(AggregateFn):
 
     def snapshot_state(self) -> dict[str, Any]:
         for client_id in list(self._preds.keys()):
-            self.downstream(client_id)
+            self._spill_to_disk(client_id)
         return self._spill.snapshot_state()
 
     def restore_state(self, snapshot: dict[str, Any]):
@@ -91,7 +91,7 @@ class UC4AggregateGraphs(AggregateFn):
     def clear_stale_spill(self):
         self._spill.clear_all()
 
-    def downstream(self, client_id):
+    def _spill_to_disk(self, client_id):
         logging.info("writing in memory graphs in disk")
         preds = self._preds[client_id]
         succs = self._succs[client_id]

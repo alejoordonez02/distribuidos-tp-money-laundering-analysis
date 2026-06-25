@@ -12,7 +12,7 @@ from common.comms.messages.path_count import PathCounts
 from .aggregate_fn import AggregateFn
 
 # 500k: fits in RAM (<8GB) thanks to aggregate_graphs' hub tiling
-MAX_AMOUNT = 500_000
+SPILL_THRESHOLD = 500_000
 SHARDING_FILES = 500
 AFFINITY_SHARDS = 10
 
@@ -48,18 +48,18 @@ class UC4CountPaths(AggregateFn):
                         path = Path(a, c)
                         paths[path] = paths.get(path, 0) + 1
 
-                # a single hub emits millions of pairs in one message; checking per-predecessor caps RAM. _downstream pops self._paths[client_id], so re-create paths after it (partials are summed back in get_result)
-                if len(paths) >= MAX_AMOUNT:
-                    self._downstream(client_id)
+                # a single hub emits millions of pairs in one message; checking per-predecessor caps RAM. _spill_to_disk pops self._paths[client_id], so re-create paths after it (partials are summed back in get_result)
+                if len(paths) >= SPILL_THRESHOLD:
+                    self._spill_to_disk(client_id)
                     self._paths[client_id] = {}
                     paths = self._paths[client_id]
 
-        if len(paths) >= MAX_AMOUNT:
-            self._downstream(client_id)
+        if len(paths) >= SPILL_THRESHOLD:
+            self._spill_to_disk(client_id)
 
     def get_result(self, client_id: UUID) -> Iterable[tuple[PathCounts, int]]:
         if client_id in self._paths:
-            self._downstream(client_id)
+            self._spill_to_disk(client_id)
 
         for shard in self._spill.shards_of(client_id):
             paths: dict[Path, int] = {}
@@ -85,7 +85,7 @@ class UC4CountPaths(AggregateFn):
     def snapshot_state(self) -> dict[str, Any]:
         # flush in-memory partials to disk; the checkpoint then only records each shard's committed length (keeps it small)
         for client_id in list(self._paths.keys()):
-            self._downstream(client_id)
+            self._spill_to_disk(client_id)
         return self._spill.snapshot_state()
 
     def restore_state(self, snapshot: dict[str, Any]):
@@ -95,7 +95,7 @@ class UC4CountPaths(AggregateFn):
     def clear_stale_spill(self):
         self._spill.clear_all()
 
-    def _downstream(self, client_id: UUID):
+    def _spill_to_disk(self, client_id: UUID):
         logging.info("spilling count_paths to disk")
         paths = self._paths[client_id]
 

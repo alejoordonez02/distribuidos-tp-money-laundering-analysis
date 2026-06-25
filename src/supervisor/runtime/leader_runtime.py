@@ -27,7 +27,7 @@ def _shutdown_skt(skt: socket):
         pass
 
 
-class Replica:
+class ReplicaLink:
     def __init__(self, conn: Connection):
         self._conn = conn
         self._keep_running = True
@@ -168,7 +168,7 @@ class LeaderRuntime(SupervisorRuntime):
 
     def _handle_replicas(self):
         def handle_replica(conn_skt):
-            rep = Replica(Connection(conn_skt))
+            rep = ReplicaLink(Connection(conn_skt))
             try:
                 while not self._stop.is_set():
                     rep.pong_ping()
