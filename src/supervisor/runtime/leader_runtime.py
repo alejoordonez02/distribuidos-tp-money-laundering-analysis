@@ -124,9 +124,12 @@ class LeaderRuntime(SupervisorRuntime):
         if self._replica_listener:
             _shutdown_skt(self._replica_listener)
 
-        self._sweeper_handle.join()
-        self._accept_handle.join()
-        self._replicas_handle.join()
+        if self._sweeper_handle.is_alive():
+            self._sweeper_handle.join()
+        if self._accept_handle.is_alive():
+            self._accept_handle.join()
+        if self._replicas_handle.is_alive():
+            self._replicas_handle.join()
         if self._reviver_handle:
             self._reviver_handle.join()
         if self._dashboard_handle:
