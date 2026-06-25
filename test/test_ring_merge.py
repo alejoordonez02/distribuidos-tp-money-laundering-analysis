@@ -1,49 +1,11 @@
-from typing import Callable
 from uuid import uuid4
 
 from ring_merge import MergeEofCounts, RingMerge
 
 from common.comms.eof_handler.ring_completion import RingCompletion
 from common.comms.messages import TransactionCount
-from common.comms.middleware.mom import MOM
 
-
-class _Rec:
-    def __init__(self):
-        self.events: list[str] = []
-
-
-class _FakeCkpt:
-    """Records flush() calls into the shared event log so the test can assert the
-    checkpoint that freezes the spill happens BEFORE the emit sends."""
-
-    def __init__(self, rec: _Rec):
-        self._rec = rec
-
-    def flush(self, force: bool = False):
-        self._rec.events.append("flush")
-
-
-class _RecTx(MOM):
-    def __init__(self, rec: _Rec):
-        self._rec = rec
-        self.sent: list[bytes] = []
-
-    def send(self, message: bytes):
-        self._rec.events.append("send")
-        self.sent.append(message)
-
-    def start_consuming(self, on_message_callback: Callable):  # pragma: no cover
-        raise NotImplementedError
-
-    def stop_consuming(self):  # pragma: no cover
-        raise NotImplementedError
-
-    def close(self):  # pragma: no cover
-        raise NotImplementedError
-
-    def clone(self) -> "_RecTx":  # pragma: no cover
-        return self
+from ._fakes import _FakeCkpt, _Rec, _RecTx
 
 
 class _FakeMergeFn:

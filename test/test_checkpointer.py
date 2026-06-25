@@ -5,6 +5,8 @@ from common.checkpoint.checkpoint_store import CheckpointStore
 from common.checkpoint.checkpointer import Checkpointer
 from common.checkpoint.deduplicator import Deduplicator
 
+from ._fakes import FakeFn
+
 P1 = b"\x01" * 16
 
 
@@ -13,17 +15,6 @@ class FakeMsg:
     producer_id: bytes
     seq: int
     client_id: UUID = UUID(int=0)
-
-
-class FakeFn:
-    def __init__(self):
-        self.applied: list[int] = []
-
-    def snapshot_state(self):
-        return {"applied": list(self.applied)}
-
-    def restore_state(self, snapshot):
-        self.applied = list(snapshot["applied"])
 
 
 def _make(tmp_path, every):
