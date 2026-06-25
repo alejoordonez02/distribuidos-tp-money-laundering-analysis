@@ -1,6 +1,6 @@
 <mxfile host="Electron">
   <diagram name="cluster-15" id="cluster-15">
-    <mxGraphModel dx="1276" dy="880" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1288" dy="913" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -132,7 +132,7 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="rb4-agg-deg" connectable="0" parent="1" style="group;strokeWidth=2;" value="" vertex="1">
-          <mxGeometry height="111" width="98.91" x="192.61" y="510" as="geometry" />
+          <mxGeometry height="111" width="98.91" x="178.74" y="490" as="geometry" />
         </mxCell>
         <mxCell id="rb4-agg-deg-1" parent="rb4-agg-deg" style="ellipse;shape=umlControl;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#f8cecc;strokeColor=#b85450;" value="" vertex="1">
           <mxGeometry height="87.92079207920793" width="76.92999999999999" x="21.98" as="geometry" />
@@ -290,6 +290,50 @@
         </mxCell>
         <mxCell id="rb4-pairs-lbl" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=default;align=center;verticalAlign=middle;rounded=0;fontFamily=Helvetica;fontSize=12;fontColor=default;labelBackgroundColor=default;strokeWidth=2;" value="Pairs with count &amp;#8805; 5" vertex="1">
           <mxGeometry height="30" width="115" x="26.375000000000014" y="479.99999999999994" as="geometry" />
+        </mxCell>
+        <mxCell id="NzzZoNWnwo5SGAetgVqT-1" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;strokeWidth=2;" value="Graphs to prune" vertex="1">
+          <mxGeometry height="70" width="58.71" x="358.61" y="870" as="geometry" />
+        </mxCell>
+        <mxCell id="NzzZoNWnwo5SGAetgVqT-2" edge="1" parent="1" source="rb4-merge-3" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="NzzZoNWnwo5SGAetgVqT-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="NzzZoNWnwo5SGAetgVqT-3" connectable="0" parent="NzzZoNWnwo5SGAetgVqT-2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="&lt;div&gt;&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212)); color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;spill until right&lt;/span&gt;&lt;/div&gt;&lt;div&gt;is done&lt;/div&gt;" vertex="1">
+          <mxGeometry relative="1" x="-0.1878" y="-1" as="geometry">
+            <mxPoint x="7" y="7" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="NzzZoNWnwo5SGAetgVqT-4" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;strokeWidth=2;" value="Aggregated graphs" vertex="1">
+          <mxGeometry height="70" width="58.71" x="383.61" y="741" as="geometry" />
+        </mxCell>
+        <mxCell id="NzzZoNWnwo5SGAetgVqT-5" edge="1" parent="1" source="rb4-agg-grph-3" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="NzzZoNWnwo5SGAetgVqT-4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="NzzZoNWnwo5SGAetgVqT-8" connectable="0" parent="NzzZoNWnwo5SGAetgVqT-5" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="&amp;lt;client_id&amp;gt;&lt;div&gt;&amp;lt;node&amp;gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry relative="1" x="-0.247" y="-1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="NzzZoNWnwo5SGAetgVqT-6" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;strokeWidth=2;" value="Aggregated degrees" vertex="1">
+          <mxGeometry height="70" width="58.71" x="262.58" y="641" as="geometry" />
+        </mxCell>
+        <mxCell id="NzzZoNWnwo5SGAetgVqT-7" edge="1" parent="1" source="rb4-agg-deg-3" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="NzzZoNWnwo5SGAetgVqT-6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="NzzZoNWnwo5SGAetgVqT-9" connectable="0" parent="NzzZoNWnwo5SGAetgVqT-7" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="&amp;lt;client_id&amp;gt;&lt;div&gt;&amp;lt;node&amp;gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry relative="1" x="-0.5368" y="1" as="geometry">
+            <mxPoint x="8" y="10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="NzzZoNWnwo5SGAetgVqT-10" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;strokeWidth=2;" value="Aggregated paths" vertex="1">
+          <mxGeometry height="70" width="58.71" x="153.91" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="NzzZoNWnwo5SGAetgVqT-11" edge="1" parent="1" source="rb4-aggp-3" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="NzzZoNWnwo5SGAetgVqT-10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="NzzZoNWnwo5SGAetgVqT-12" connectable="0" parent="NzzZoNWnwo5SGAetgVqT-11" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="&amp;lt;client_id&amp;gt;&lt;div&gt;&amp;lt;path&amp;gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry relative="1" x="-0.163" y="-2" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
         </mxCell>
       </root>
     </mxGraphModel>
