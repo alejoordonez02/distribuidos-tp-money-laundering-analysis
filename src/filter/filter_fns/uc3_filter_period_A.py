@@ -1,20 +1,9 @@
 from datetime import date
 
-from common.comms.messages import Transactions
+from .uc3_filter_period_base import UC3FilterPeriodBase
 
-from .filter_fn import FilterFn
-
-TARGET_CURRENCY = "US Dollar"
 TARGET_PERIOD = (date(year=2022, month=9, day=1), date(year=2022, month=9, day=5))
 
 
-class UC3FilterPeriodA(FilterFn):
-    def filter(self, el: Transactions) -> Transactions:  # type: ignore[reportIncompatibleMethodOverride]
-        filtered = [
-            t
-            for t in el.transactions
-            if t.payment_currency == TARGET_CURRENCY
-            and TARGET_PERIOD[0] <= t.timestamp.date() <= TARGET_PERIOD[1]
-        ]
-
-        return Transactions(el.client_id, filtered)
+class UC3FilterPeriodA(UC3FilterPeriodBase):
+    TARGET_PERIOD = TARGET_PERIOD

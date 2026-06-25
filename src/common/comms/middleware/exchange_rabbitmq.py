@@ -4,6 +4,7 @@ from typing import Callable
 from pika import BlockingConnection, ConnectionParameters
 from pika.exceptions import AMQPConnectionError, ConnectionWrongStateError
 
+from ._ack import ack_threadsafe, nack_threadsafe
 from .errors import (
     MOMDisconnectedError,
     MOMMessageError,
@@ -120,12 +121,7 @@ class ExchangeRabbitMQ(MOMExchange):
         )
 
     def _ack(self, chan, method) -> None:
-        # Schedule on the connection's thread: acks may be flushed from another thread and pika isn't thread-safe.
-        self.conn.add_callback_threadsafe(
-            lambda: chan.basic_ack(delivery_tag=method.delivery_tag)
-        )
+        ack_threadsafe(self.conn, chan, method)
 
     def _nack(self, chan, method) -> None:
-        self.conn.add_callback_threadsafe(
-            lambda: chan.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
-        )
+        nack_threadsafe(self.conn, chan, method)

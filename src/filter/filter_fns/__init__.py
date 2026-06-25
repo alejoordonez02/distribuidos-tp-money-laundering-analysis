@@ -5,6 +5,7 @@ from .uc2_filter import UC2Filter
 from .uc3_avg_filter import UC3AvgFilter
 from .uc3_filter_period_A import UC3FilterPeriodA
 from .uc3_filter_period_B import UC3FilterPeriodB
+from .uc3_filter_period_base import UC3FilterPeriodBase
 from .uc4_filter import UC4Filter
 from .uc4_path_filter import UC4PathFilter
 from .uc5_amount_filter import UC5AmountFilter

@@ -4,6 +4,7 @@ from typing import Callable, NamedTuple
 from pika import BlockingConnection, ConnectionParameters
 from pika.exceptions import AMQPConnectionError
 
+from ._ack import ack_threadsafe, nack_threadsafe
 from .errors import MOMDisconnectedError
 
 MessageHandler = Callable[[bytes, Callable[[], None], Callable[[], None]], None]
@@ -51,14 +52,10 @@ class MultiQueueConsumer:
         self._sources.append(_Source(queue_name, handler, prefetch))
 
     def _ack(self, method):
-        self._conn.add_callback_threadsafe(
-            lambda: self._chan.basic_ack(delivery_tag=method.delivery_tag)
-        )
+        ack_threadsafe(self._conn, self._chan, method)
 
     def _nack(self, method):
-        self._conn.add_callback_threadsafe(
-            lambda: self._chan.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
-        )
+        nack_threadsafe(self._conn, self._chan, method)
 
     def start(self):
         for src in self._sources:
