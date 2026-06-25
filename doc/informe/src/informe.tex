@@ -419,7 +419,7 @@ conteos) vuelcan su estado parcial a archivos particionados por shard, y el
 grafo y, sobre todo, la explosión combinatoria de pares \texttt{(origin,
 destination)} en los nodos de alto grado generan estructuras que no entran en
 memoria. El criterio acá es por umbral: cada etapa acumula en memoria hasta un
-máximo (\texttt{MAX\_AMOUNT}) y recién entonces vuelca, a diferencia del volcado
+máximo (\texttt{SPILL\_THRESHOLD}) y recién entonces vuelca, a diferencia del volcado
 total de UC3 y los Join.
 
 \begin{figure}[H]
@@ -843,7 +843,7 @@ ignora lo escrito en esos archivos después del último checkpoint confirmado.
 
 El criterio de volcado responde a dos casos. En las etapas cuyo estado parcial
 crece de tamaño desconocido (los \texttt{Aggregate} de UC4), se acumula en
-memoria hasta un umbral (\texttt{MAX\_AMOUNT}) y recién ahí se vuelca. En las
+memoria hasta un umbral (\texttt{SPILL\_THRESHOLD}) y recién ahí se vuelca. En las
 etapas cuyo volumen es conocido y siempre grande (el \texttt{Merge} de UC3 y los
 \texttt{Join} de UC1 y UC3), se vuelca el total a disco apenas llega, sin
 mantenerlo en memoria, y se relee en \textit{batches}.
