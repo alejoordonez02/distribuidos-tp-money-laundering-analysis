@@ -114,6 +114,14 @@ class RingCompletion:
             actions.extend(self._maybe_local_complete(client_id))
         return actions
 
+    def resolved_clients(self) -> list[UUID]:
+        """Clients whose result was already emitted (EMITTED) or whose barrier closed
+        (DONE). On restore their spilled state is safe to free: it will never be
+        re-emitted, so a revived node must drop it instead of orphaning it on disk."""
+        return [
+            cid for cid, c in self._clients.items() if c.phase != Phase.PROCESSING
+        ]
+
     def report_sent(self, client_id: UUID, sent: dict[int, int]) -> list[Any]:
         """Called by the controller right after it emits (stateful) or finishes its
         per-message output (stateless), with this node's per-shard sent counts."""

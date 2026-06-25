@@ -82,6 +82,12 @@ class RingMerge(RingNode):
         if self.checkpointer and self.checkpointer.restore():
             logging.info("restored state from checkpoint")
             self._run(self.rc.recheck())
+            # free any client already past PROCESSING: its merged result was durably
+            # emitted before the crash, so its spilled right-side file is dead weight
+            # the live EOF path will never reclaim (only _maybe_complete frees, and
+            # that EOF already passed). Without this the spill is orphaned on disk.
+            for client_id in self.rc.resolved_clients():
+                self._free(client_id)
             self.checkpointer.flush(force=True)
         self.consumer.add_queue(
             self._left_queue, self._on_left_msg, prefetch=self._data_prefetch,

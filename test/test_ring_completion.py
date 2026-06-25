@@ -133,6 +133,29 @@ def test_snapshot_restore_preserves_phase_after_crash():
     assert restored.on_token(full) == [DownstreamEOF(C, expected_per_shard={0: 3})]
 
 
+def test_resolved_clients_lists_emitted_and_done():
+    # A PROCESSING client is not resolved; once it has emitted (EMITTED) its spilled
+    # state is safe to free. Guards the leak where a node revived after a crash that
+    # happened past the emit never frees the spill (only the live EOF path did).
+    rc = RingCompletion(node_id=0, peer_ids=[1])
+    rc.on_data(C)
+    assert rc.resolved_clients() == []  # still PROCESSING
+    rc.on_upstream_eof(C, expected=1)  # received == expected
+    rc.report_sent(C, {0: 1})  # -> EMITTED
+    assert rc.resolved_clients() == [C]
+
+
+def test_resolved_clients_includes_done_and_survives_restore():
+    # A single node closes straight to DONE; the resolved set must survive a restore so
+    # a revived node frees the spill of a client that completed before it crashed.
+    rc = RingCompletion(node_id=0, peer_ids=[])
+    _drive_local_complete(rc, 0, received=4, expected=4, sent={0: 2})
+    assert rc.resolved_clients() == [C]
+    restored = RingCompletion(node_id=0, peer_ids=[])
+    restored.restore_state(rc.snapshot_state())
+    assert restored.resolved_clients() == [C]
+
+
 def test_peer_that_sent_zero_still_participates():
     leader = RingCompletion(node_id=0, peer_ids=[1])
     _drive_local_complete(leader, 0, received=3, expected=3, sent={0: 0})
