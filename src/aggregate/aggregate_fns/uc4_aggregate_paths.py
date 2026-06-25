@@ -11,7 +11,7 @@ from common.comms.messages.path_count import PathCounts
 
 from .aggregate_fn import AggregateFn
 
-MAX_AMOUNT = 100_000
+SPILL_THRESHOLD = 100_000
 SHARDING_FILES = 500
 MIN_PATH_COUNT = 5
 
@@ -42,12 +42,12 @@ class UC4AggregatePaths(AggregateFn):
             paths = self._paths[msg.client_id]
             paths[path] = paths.get(path, 0) + count
 
-        if len(self._paths[msg.client_id]) >= MAX_AMOUNT:
-            self.downstream(msg.client_id)
+        if len(self._paths[msg.client_id]) >= SPILL_THRESHOLD:
+            self._spill_to_disk(msg.client_id)
 
     def get_result(self, client_id: UUID) -> Iterable[tuple[PathCounts, int]]:
         if client_id in self._paths:
-            self.downstream(client_id)
+            self._spill_to_disk(client_id)
 
         for shard in self._spill.shards_of(client_id):
             paths: dict[Path, int] = defaultdict(int)
@@ -63,7 +63,6 @@ class UC4AggregatePaths(AggregateFn):
 
             yield PathCounts(client_id, qualifying), 0
 
-        self._spill.clear(client_id)
         self._paths.pop(client_id, None)
 
     def discard(self, client_id: UUID):
@@ -72,14 +71,17 @@ class UC4AggregatePaths(AggregateFn):
 
     def snapshot_state(self) -> dict[str, Any]:
         for client_id in list(self._paths.keys()):
-            self.downstream(client_id)
+            self._spill_to_disk(client_id)
         return self._spill.snapshot_state()
 
     def restore_state(self, snapshot: dict[str, Any]):
         self._spill.restore_state(snapshot)
         self._paths = {}
 
-    def downstream(self, client_id: UUID):
+    def clear_stale_spill(self):
+        self._spill.clear_all()
+
+    def _spill_to_disk(self, client_id: UUID):
         logging.info("writing in memory paths in disk")
         paths = self._paths[client_id]
 

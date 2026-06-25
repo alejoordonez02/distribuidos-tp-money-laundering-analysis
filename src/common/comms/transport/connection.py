@@ -1,8 +1,6 @@
 import struct
 from socket import SHUT_RDWR, SO_SNDTIMEO, SOL_SOCKET, socket
 
-# TODO: mepa que vamos a tener q partir los msjs q mandamos entre
-#       controladores en el server... bajar esto cuando eso esté.
 LEN_SIZE = 4
 """
 The amount of bytes for the length of the (byte) message.
@@ -19,8 +17,7 @@ class Connection:
         self._keep_running = True
         self.skt = skt
         if send_timeout:
-            # SO_SNDTIMEO makes sendall raise instead of blocking forever on a dead
-            # peer; only the send side is bounded (recv stays blocking).
+            # SO_SNDTIMEO makes sendall raise instead of blocking forever on a dead peer (recv stays blocking).
             self.skt.setsockopt(
                 SOL_SOCKET, SO_SNDTIMEO, struct.pack("ll", send_timeout, 0)
             )
@@ -60,8 +57,7 @@ class Connection:
         while missing:
             received = self.skt.recv(missing)
             if not received:
-                # Peer closed cleanly mid-read; surface it so recv() can report
-                # the closed connection instead of spinning on empty reads.
+                # Peer closed cleanly mid-read; surface it so recv() reports a closed connection.
                 raise OSError("connection closed by peer")
             buf += received
             missing -= len(received)

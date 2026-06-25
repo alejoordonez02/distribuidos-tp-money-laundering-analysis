@@ -29,8 +29,7 @@ def _mp_default(o):
     raise TypeError(f"Object of type {type(o).__name__} is not msgpack-serializable")
 
 
-# Wire-format offsets, defined once so the gateway and the StampingMOM can stamp
-# header fields without unpacking the payload.
+# Wire-format offsets, so gateway and StampingMOM can stamp headers without unpacking the payload.
 # Layout: [type:1][client_id:16][producer_id:16][seq:8][msgpack payload]
 TYPE_RANGE = slice(0, 1)
 PREFIX_RANGE = slice(1, 17)

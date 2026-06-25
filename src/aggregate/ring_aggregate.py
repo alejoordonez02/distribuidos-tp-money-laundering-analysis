@@ -53,8 +53,6 @@ class RingAggregate(RingNode):
         sent: dict[int, int] = {}
         for aggregated, affinity in self.fn.get_result(client_id):
             if self.broadcast_downstream:
-                # broadcast: every peer gets the full state, counted per shard so the
-                # barrier forwards each downstream peer an EOF for the whole total.
                 for shard, tx in enumerate(self.external_txs):
                     tx.send(aggregated.serialize())
                     sent[shard] = sent.get(shard, 0) + 1

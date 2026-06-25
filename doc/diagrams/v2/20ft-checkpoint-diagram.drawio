@@ -1,0 +1,80 @@
+<mxfile host="app.diagrams.net" version="24.0.0">
+  <diagram name="ft-checkpoint" id="ftckpt">
+    <mxGraphModel dx="900" dy="600" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="820" pageHeight="580" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        
+        <mxCell id="lmq" value="RabbitMQ" style="shape=umlLifeline;perimeter=lifelinePerimeter;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;size=40;" vertex="1" parent="1">
+          <mxGeometry x="20.00" y="20.00" width="140" height="510" as="geometry" />
+        </mxCell>
+        <mxCell id="ln" value="Nodo" style="shape=umlLifeline;perimeter=lifelinePerimeter;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;size=40;" vertex="1" parent="1">
+          <mxGeometry x="280.00" y="20.00" width="140" height="510" as="geometry" />
+        </mxCell>
+        <mxCell id="ld" value="Disco (volumen)" style="shape=umlLifeline;perimeter=lifelinePerimeter;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;size=40;" vertex="1" parent="1">
+          <mxGeometry x="540.00" y="20.00" width="140" height="510" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="m1" value="entrega mensaje (seq)" style="html=1;endArrow=block;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="90.00" y="95.00" as="sourcePoint" />
+            <mxPoint x="350.00" y="95.00" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        
+        <mxCell id="m2" value="dedup: descarta si seq ≤ último" style="html=1;endArrow=block;fontSize=11;rounded=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="350.00" y="145.00" as="sourcePoint" />
+            <mxPoint x="350.00" y="185.00" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="435.00" y="145.00" />
+              <mxPoint x="435.00" y="185.00" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        
+        <mxCell id="m3" value="aplica + registra seq" style="html=1;endArrow=block;fontSize=11;rounded=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="350.00" y="230.00" as="sourcePoint" />
+            <mxPoint x="350.00" y="270.00" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="435.00" y="230.00" />
+              <mxPoint x="435.00" y="270.00" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        
+        <mxCell id="note1" value="batch de CHECKPOINT_EVERY" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="452.00" y="192.00" width="110" height="40" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="m4" value="checkpoint atómico&#10;(estado + dedup + seq)" style="html=1;endArrow=block;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="350.00" y="330.00" as="sourcePoint" />
+            <mxPoint x="610.00" y="330.00" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        
+        <mxCell id="m5" value="ack ×CHECKPOINT_EVERY (recién ahora)" style="html=1;endArrow=block;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="350.00" y="400.00" as="sourcePoint" />
+            <mxPoint x="90.00" y="400.00" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        
+        <mxCell id="note2" value="Los acks se retienen hasta que el checkpoint está en disco: lo confirmado ya está persistido." style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="20.00" y="456.00" width="680" height="46" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

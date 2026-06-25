@@ -8,6 +8,8 @@ from common.comms.eof_handler.ring_node import RingNode, StatelessRingNode
 from common.comms.eof_handler.sent_counts import SentCounts
 from common.comms.messages import Abort, deserialize_message
 
+from ._fakes import FakeFn
+
 
 class FakeTx:
     def __init__(self):
@@ -15,14 +17,6 @@ class FakeTx:
 
     def send(self, body: bytes):
         self.sent.append(body)
-
-
-class FakeFn:
-    def snapshot_state(self):
-        return {}
-
-    def restore_state(self, snapshot):
-        pass
 
 
 def _checkpointer(tmp_path):

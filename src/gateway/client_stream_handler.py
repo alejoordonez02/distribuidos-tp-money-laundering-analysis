@@ -89,18 +89,12 @@ class ClientStreamHandler:
             self.conn.send(HelloAck(self.id).serialize())
             self._start_response_consumer()
         except OSError:
-            # The client dropped during the handshake: Connection surfaces it as an
-            # OSError (it never swallows an unexpected error), so handle it here instead
-            # of letting the reader thread die. Teardown is idempotent and covers the
-            # case where the client had already registered.
+            # client dropped mid-handshake (surfaced as OSError); teardown is idempotent and covers an already-registered client.
             logging.warning("client disconnected during handshake")
             self._teardown()
             return
 
-        # Each stream is round-robined across its downstream ring's shards. A single
-        # producer per stream with a monotonic seq dedups exactly under the affinity
-        # routing (each shard is consumed in order by one peer); one shared counter
-        # across the shard publishers keeps the seq monotonic, each shard durable.
+        # one producer + monotonic seq per stream dedups exactly under affinity routing; shared counter keeps seq monotonic across durable shards.
         trans_counter = SeqCounter()
         trans_base = derive_producer_id(str(self.id), 0, 0)
         trans_shards = [

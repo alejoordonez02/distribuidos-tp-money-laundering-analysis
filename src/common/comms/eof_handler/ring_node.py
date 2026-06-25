@@ -68,6 +68,11 @@ class RingNode:
         setup_graceful_shutdown(self.stop)
         if self.checkpointer and self.checkpointer.restore():
             logging.info("restored state from checkpoint")
+            self._run(self.rc.recheck())
+            # free any client past PROCESSING: result was durably emitted pre-crash, so spilled state is dead weight the live EOF path never reclaims.
+            for client_id in self.rc.resolved_clients():
+                self._free(client_id)
+            self.checkpointer.flush(force=True)
         self.consumer.add_queue(
             self._data_queue,
             self._on_data_msg,
@@ -126,17 +131,25 @@ class RingNode:
         raise NotImplementedError
 
     def _on_eof(self, eof: Message):
-        emitted = self._run(self.rc.on_upstream_eof(eof.client_id, eof.expected_count))  # type: ignore[attr-defined]
+        actions = self.rc.on_upstream_eof(eof.client_id, eof.expected_count)  # type: ignore[attr-defined]
+        if actions and self.checkpointer:
+            self.checkpointer.flush(force=True)
+        emitted = self._run(actions)
         if self.checkpointer:
             self.checkpointer.flush(force=True)
         for client_id in emitted:
             self._free(client_id)
 
-    def _on_ring_msg(self, body: bytes, ack: Callable, _nack: Callable):
+    def _on_ring_msg(self, body: bytes, ack: Callable, nack: Callable):
         msg: RingBarrier = deserialize_message(body)  # type: ignore[assignment]
-        emitted = self._run(self.rc.on_token(BarrierToken(msg.client_id, msg.origin, msg.sent_by)))
-        if self.checkpointer:
-            self.checkpointer.flush(force=True)
+        try:
+            emitted = self._run(self.rc.on_token(BarrierToken(msg.client_id, msg.origin, msg.sent_by)))
+            if self.checkpointer:
+                self.checkpointer.flush(force=True)
+        except Exception:
+            logging.error("ring token processing failed; requeuing for retry", exc_info=True)
+            nack()
+            return
         for client_id in emitted:
             self._free(client_id)
         ack()

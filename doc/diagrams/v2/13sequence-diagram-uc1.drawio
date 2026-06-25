@@ -1,0 +1,76 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.6.1 Chrome/142.0.7444.265 Electron/39.5.2 Safari/537.36" version="29.6.1">
+  <diagram id="4eN0XB-g2W9Q-yjO4qrY" name="Página-1">
+    <mxGraphModel dx="712" dy="486" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" parent="1" style="ellipse;shape=umlControl;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#fff2cc;strokeColor=#d6b656;" value="&lt;b&gt;Client&lt;/b&gt;" vertex="1">
+          <mxGeometry height="80" width="70" x="20.00" y="20.00" as="geometry" />
+        </mxCell>
+        <mxCell id="3" parent="1" style="ellipse;shape=umlControl;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#ffe6cc;strokeColor=#d79b00;" value="&lt;b&gt;Gateway&lt;/b&gt;" vertex="1">
+          <mxGeometry height="80" width="70" x="130.00" y="20.00" as="geometry" />
+        </mxCell>
+        <mxCell id="4" parent="1" style="ellipse;shape=umlControl;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#d5e8d4;strokeColor=#82b366;" value="&lt;b&gt;Filter&lt;/b&gt;" vertex="1">
+          <mxGeometry height="80" width="70" x="240.00" y="20.00" as="geometry" />
+        </mxCell>
+        <mxCell id="5" parent="1" style="ellipse;shape=umlControl;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#e1d5e7;strokeColor=#9673a6;" value="&lt;b&gt;Join&lt;/b&gt;" vertex="1">
+          <mxGeometry height="80" width="70" x="350.00" y="20.00" as="geometry" />
+        </mxCell>
+        <mxCell id="11" edge="1" parent="1" style="endArrow=none;html=1;dashed=1;strokeColor=#BBBBBB;strokeWidth=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="55.00" y="100.00" as="sourcePoint" />
+            <mxPoint x="55.00" y="350.00" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="12" edge="1" parent="1" style="endArrow=none;html=1;dashed=1;strokeColor=#BBBBBB;strokeWidth=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="165.00" y="100.00" as="sourcePoint" />
+            <mxPoint x="165.00" y="350.00" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="13" edge="1" parent="1" style="endArrow=none;html=1;dashed=1;strokeColor=#BBBBBB;strokeWidth=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="275.00" y="100.00" as="sourcePoint" />
+            <mxPoint x="275.00" y="350.00" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="14" edge="1" parent="1" style="endArrow=none;html=1;dashed=1;strokeColor=#BBBBBB;strokeWidth=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="385.00" y="100.00" as="sourcePoint" />
+            <mxPoint x="385.00" y="350.00" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="21" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=10;verticalAlign=bottom;" value="transactions">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="55.00" y="125.00" as="sourcePoint" />
+            <mxPoint x="165.00" y="125.00" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="22" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=10;verticalAlign=bottom;" value="transactions&amp;nbsp;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="165.00" y="160.00" as="sourcePoint" />
+            <mxPoint x="275.00" y="160.00" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="34" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=10;verticalAlign=bottom;" value="filtered transactions&lt;div&gt;by&amp;nbsp;&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212)); color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;USD and&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212)); color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;amount threshold&lt;/span&gt;&lt;/div&gt;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="275.00" y="205.00" as="sourcePoint" />
+            <mxPoint x="385.00" y="205.00" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="43" edge="1" parent="1" style="endArrow=open;endFill=0;html=1;fontSize=10;verticalAlign=bottom;dashed=1;dashPattern=6 3;" value="responses">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="385.00" y="270.00" as="sourcePoint" />
+            <mxPoint x="165.00" y="270.00" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="44" edge="1" parent="1" style="endArrow=open;endFill=0;html=1;fontSize=10;verticalAlign=bottom;dashed=1;dashPattern=6 3;" value="responses">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="165.00" y="310.00" as="sourcePoint" />
+            <mxPoint x="55.00" y="310.00" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

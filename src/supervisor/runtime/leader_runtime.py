@@ -27,7 +27,7 @@ def _shutdown_skt(skt: socket):
         pass
 
 
-class Replica:
+class ReplicaLink:
     def __init__(self, conn: Connection):
         self._conn = conn
         self._keep_running = True
@@ -101,8 +101,6 @@ class LeaderRuntime(SupervisorRuntime):
             if self._dashboard
             else None
         )
-        # TODO: mepa q está como el orto usar daemon, no tiene mucho sentido y
-        #       aparte cuándo se joinean los threads? no importa en qué terminan?
 
     def start(self):
         if self._stop.is_set() or self._server_listener or self._replica_listener:
@@ -126,12 +124,15 @@ class LeaderRuntime(SupervisorRuntime):
         if self._replica_listener:
             _shutdown_skt(self._replica_listener)
 
-        self._sweeper_handle.join()
-        self._accept_handle.join()
-        self._replicas_handle.join()
-        if self._reviver_handle:
+        if self._sweeper_handle.is_alive():
+            self._sweeper_handle.join()
+        if self._accept_handle.is_alive():
+            self._accept_handle.join()
+        if self._replicas_handle.is_alive():
+            self._replicas_handle.join()
+        if self._reviver_handle and self._reviver_handle.is_alive():
             self._reviver_handle.join()
-        if self._dashboard_handle:
+        if self._dashboard_handle and self._dashboard_handle.is_alive():
             self._dashboard_handle.join()
 
     def _handle_clients(self):
@@ -170,10 +171,10 @@ class LeaderRuntime(SupervisorRuntime):
 
     def _handle_replicas(self):
         def handle_replica(conn_skt):
-            rep = Replica(Connection(conn_skt))
+            rep = ReplicaLink(Connection(conn_skt))
             try:
                 while not self._stop.is_set():
-                    rep.pong_ping()  # TODO: creo q tiene más sentido q acá esté el sleep
+                    rep.pong_ping()
             except ReplicaDownError as e:
                 logging.debug("lost connection with replica (%s)", e)
 

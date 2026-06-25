@@ -5,6 +5,8 @@ from common.checkpoint.checkpoint_store import CheckpointStore
 from common.checkpoint.checkpointer import Checkpointer
 from common.checkpoint.deduplicator import Deduplicator
 
+from ._fakes import FakeFn
+
 P1 = b"\x01" * 16
 
 
@@ -13,17 +15,6 @@ class FakeMsg:
     producer_id: bytes
     seq: int
     client_id: UUID = UUID(int=0)
-
-
-class FakeFn:
-    def __init__(self):
-        self.applied: list[int] = []
-
-    def snapshot_state(self):
-        return {"applied": list(self.applied)}
-
-    def restore_state(self, snapshot):
-        self.applied = list(snapshot["applied"])
 
 
 def _make(tmp_path, every):
@@ -91,6 +82,35 @@ def test_restore_rebuilds_state_and_dedup(tmp_path):
 def test_restore_returns_false_when_no_checkpoint(tmp_path):
     _, _, cp = _make(tmp_path, every=1)
     assert cp.restore() is False
+
+
+class SpillFn(FakeFn):
+    def __init__(self):
+        super().__init__()
+        self.cleared = False
+
+    def clear_stale_spill(self):
+        self.cleared = True
+
+
+def test_restore_without_checkpoint_clears_stale_spill(tmp_path):
+    fn = SpillFn()
+    store = CheckpointStore(str(tmp_path / "node.ckpt"))
+    cp = Checkpointer(fn, store, Deduplicator(), 1)
+    assert cp.restore() is False
+    assert fn.cleared is True
+
+
+def test_restore_with_checkpoint_does_not_clear_spill(tmp_path):
+    fn = SpillFn()
+    store = CheckpointStore(str(tmp_path / "node.ckpt"))
+    cp = Checkpointer(fn, store, Deduplicator(), 1)
+    cp.handle_data(FakeMsg(P1, 1), lambda: fn.applied.append(1), lambda: None)
+
+    fn2 = SpillFn()
+    cp2 = Checkpointer(fn2, store, Deduplicator(), 1)
+    assert cp2.restore() is True
+    assert fn2.cleared is False
 
 
 def test_aborted_client_data_is_dropped_and_acked(tmp_path):

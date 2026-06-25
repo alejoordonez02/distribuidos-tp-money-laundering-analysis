@@ -76,7 +76,6 @@ class Client:
 
     def start(self):
         setup_graceful_shutdown(self.stop)
-        # TODO: esto lo dejo acá porque me trabé haciendo q se ejecute bien el script de healthcheck
         time.sleep(10)
         self._run()
 
@@ -160,7 +159,7 @@ class Client:
 
         count = 0
         finished = 0
-        while finished < n and not self.shutdown_processes.is_set():    #DONT KNOW WHAT TO DO WITH THIS ONE
+        while finished < n and not self.shutdown_processes.is_set():
             try:
                 item = self.queue.get(block=True, timeout=_QUEUE_TIMEOUT)
             except:
@@ -173,11 +172,11 @@ class Client:
                     self.conn.send(item)
                 except:
                     logging.info("Connection ended")
-                    return count                        ## Maybe raise error
+                    return count
                 count += 1
                 maybe_crash("client_mid_transactions")
 
-        if not self.shutdown_processes.is_set():                        #DONT KNOW WHAT TO DO WITH THIS ONE
+        if not self.shutdown_processes.is_set():
             for p in self.procs:
                 p.join()
         return count
@@ -196,7 +195,7 @@ class Client:
                         self.conn.send(Accounts(self.client_id, batch).serialize())
                     except:
                         logging.info("Connection ended")
-                        return count                                        ## Maybe raise error
+                        return count
                     batch = []
                     count += 1
                     maybe_crash("client_mid_accounts")

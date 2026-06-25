@@ -24,8 +24,7 @@ class CheckpointStore:
         try:
             with os.fdopen(fd, "wb") as f:
                 f.write(msgpack.packb(blob, use_bin_type=True))
-            # Crash here leaves the temp file as garbage; the real checkpoint is
-            # only swapped in by the atomic os.replace below, never partially.
+            # crash here only leaks a temp file; os.replace below swaps the real checkpoint atomically
             maybe_crash("during_checkpoint_write")
             os.replace(tmp, self._path)
         except BaseException:

@@ -4,6 +4,7 @@ from typing import Callable
 from pika import BlockingConnection, ConnectionParameters
 from pika.exceptions import AMQPConnectionError, ConnectionWrongStateError
 
+from ._ack import ack_threadsafe, nack_threadsafe
 from .errors import (
     MOMDisconnectedError,
     MOMMessageError,
@@ -15,15 +16,14 @@ class QueueRabbitMQ(MOMQueue):
     def __init__(self, host: str, queue_name: str, prefetch_count: int = 1):
         self.host = host
         self.queue_name = queue_name
-        # Must be >= the checkpoint batch size, otherwise holding acks for a batch
-        # deadlocks against the broker (it won't deliver past the prefetch window).
+        # Must be >= the checkpoint batch size, else holding acks for a batch deadlocks the broker's prefetch window.
         self.prefetch_count = prefetch_count
 
-        # TODO: heartbeat=600 may be starved by blocking callbacks in start_consuming — revisit
         self.conn = BlockingConnection(ConnectionParameters(host, heartbeat=0))
         self.chan = self.conn.channel()
         self.chan.queue_declare(queue=queue_name)
         self.chan.basic_qos(prefetch_count=prefetch_count)
+        self.chan.confirm_delivery()
 
     def start_consuming(
         self, on_message_callback: Callable[[bytes, Callable, Callable], None]
@@ -39,8 +39,6 @@ class QueueRabbitMQ(MOMQueue):
         except AMQPConnectionError as e:
             raise MOMDisconnectedError(str(e)) from e
         except Exception as e:
-            # TODO: distinguish OSError (socket closed mid-consume) from exceptions
-            # raised inside on_message_callback — the latter would pass silently here
             logging.error(
                 "!!! UNHANDLED exception in start_consuming (queue=%s): %s",
                 self.queue_name,
@@ -54,7 +52,6 @@ class QueueRabbitMQ(MOMQueue):
         except AMQPConnectionError as e:
             raise MOMDisconnectedError(str(e)) from e
         except Exception as e:
-            # TODO: handle specific pika shutdown exceptions
             logging.error(
                 "!!! UNHANDLED exception in stop_consuming (queue=%s): %s",
                 self.queue_name,
@@ -76,7 +73,6 @@ class QueueRabbitMQ(MOMQueue):
         try:
             self.conn.close()
         except ConnectionWrongStateError as e:
-            # TODO: handle specific close-on-wrong-state case
             logging.error(
                 "!!! UNHANDLED ConnectionWrongStateError in close (queue=%s): %s",
                 self.queue_name,
@@ -91,14 +87,7 @@ class QueueRabbitMQ(MOMQueue):
         return QueueRabbitMQ(self.host, self.queue_name, self.prefetch_count)
 
     def _ack(self, chan, method) -> None:
-        # Schedule on the connection's own thread: acks may be flushed (batched
-        # checkpointing) from a different thread than the one owning this channel
-        # (e.g. the merge's two side threads), and pika is not thread-safe.
-        self.conn.add_callback_threadsafe(
-            lambda: chan.basic_ack(delivery_tag=method.delivery_tag)
-        )
+        ack_threadsafe(self.conn, chan, method)
 
     def _nack(self, chan, method) -> None:
-        self.conn.add_callback_threadsafe(
-            lambda: chan.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
-        )
+        nack_threadsafe(self.conn, chan, method)

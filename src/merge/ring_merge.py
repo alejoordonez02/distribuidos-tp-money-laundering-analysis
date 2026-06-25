@@ -81,6 +81,11 @@ class RingMerge(RingNode):
         setup_graceful_shutdown(self.stop)
         if self.checkpointer and self.checkpointer.restore():
             logging.info("restored state from checkpoint")
+            self._run(self.rc.recheck())
+            # free clients past PROCESSING: their result was emitted before the crash, so the live EOF path never reclaims the spill and it stays orphaned on disk
+            for client_id in self.rc.resolved_clients():
+                self._free(client_id)
+            self.checkpointer.flush(force=True)
         self.consumer.add_queue(
             self._left_queue, self._on_left_msg, prefetch=self._data_prefetch,
             durable=True, exchange=self._left_exchange, routing_key=str(self.node_id),
@@ -130,7 +135,10 @@ class RingMerge(RingNode):
         emitted = []
         if client_id in self.counts.left and client_id in self.counts.right:
             combined = self.counts.left[client_id] + self.counts.right[client_id]
-            emitted = self._run(self.rc.on_upstream_eof(client_id, combined))
+            actions = self.rc.on_upstream_eof(client_id, combined)
+            if actions and self.checkpointer:
+                self.checkpointer.flush(force=True)
+            emitted = self._run(actions)
         if self.checkpointer:
             self.checkpointer.flush(force=True)
         for cid in emitted:

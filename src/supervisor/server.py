@@ -1,7 +1,7 @@
 import logging
 from queue import Queue
 from socket import AF_INET, SHUT_RDWR, SOCK_STREAM, socket
-from threading import Condition, Thread
+from threading import Condition, Event, Thread
 from typing import Callable, Sequence
 
 from common.comms.messages import (
@@ -36,13 +36,14 @@ class SupervisorNode:
         dashboard_factory: Callable[[NodeRegistry], Dashboard | None],
         sweep_interval: float = 0.5,
         ping_delay: float = 0.5,
+        announce_interval: float = 1.0,
     ):
 
         self._idx = idx
 
         self._server_bind = (bind_host, server_port)
         self._leader_bind = (bind_host, leader_port)
-        self._node_listener = _make_skt((bind_host, internal_port))
+        self._peer_listener = _make_skt((bind_host, internal_port))
 
         self._internal_port = internal_port
         self._leader_port = leader_port
@@ -60,21 +61,30 @@ class SupervisorNode:
 
         self._runtime_handle = Thread(target=self._runtime_worker)
         self._listener_handle = Thread(target=self._listener_worker)
+        self._announce_interval = announce_interval
+        self._announce_stop = Event()
+        self._announce_handle = Thread(target=self._announce_worker, daemon=True)
 
         self._on_election = False
         self._leader: Peer | None = None
         self._keep_running = False
-
 
     def start(self):
         self._keep_running = True
 
         self._runtime_handle.start()
         self._listener_handle.start()
+        self._announce_handle.start()
         self._event_worker()
 
     def _is_leader(self):
         return not self._leader and self._runtime
+
+    def _announce_worker(self):
+        # as leader, periodically re-assert leadership to reconcile split-brain and let a rebooted node discover the leader
+        while not self._announce_stop.wait(self._announce_interval):
+            if self._is_leader():
+                self._broadcast_message(SupervisorLeader(self._idx), self._peers)
 
     def _broadcast_message(self, msg: Message, peers: Sequence[Peer]) -> int:
         acks = 0
@@ -123,40 +133,47 @@ class SupervisorNode:
         runtime = ReplicaRuntime((leader_host, self._leader_port), self._ping_delay)
         self._change_runtime(runtime)
 
-    def _event_worker(self):
-        def handle_leader_down(_: LeaderDown):
-            if self._on_election:
-                return
-            if self._is_leader():
-                self._broadcast_message(SupervisorLeader(self._idx), self._peers)
-                return
-
-            self._on_election = True
-
-            greater_peers = [p for p in self._peers if p > self._idx]
-            acks = self._broadcast_message(SupervisorElection(), greater_peers)
-
-            if acks > 0:
-                self._on_election = False
-                return
-
+    def _handle_leader_down(self, _: LeaderDown):
+        if self._on_election:
+            return
+        if self._is_leader():
             self._broadcast_message(SupervisorLeader(self._idx), self._peers)
+            return
 
-            self._promote()
+        self._on_election = True
+
+        greater_peers = [p for p in self._peers if p > self._idx]
+        acks = self._broadcast_message(SupervisorElection(), greater_peers)
+
+        if acks > 0:
             self._leader = None
             self._on_election = False
+            return
 
-        def handle_new_leader(event: NewLeader):
-            leader_idx = event.idx
-            if self._leader and leader_idx == self._leader.idx:
-                return
+        self._broadcast_message(SupervisorLeader(self._idx), self._peers)
 
-            leader_host = next(p.host for p in self._peers if p.idx == leader_idx)
+        self._promote()
+        self._leader = None
+        self._on_election = False
 
-            self._leader = Peer(leader_idx, leader_host)
-            self._downgrade(leader_host)
-            self._on_election = False
+    def _handle_new_leader(self, event: NewLeader):
+        claim = event.idx
+        if claim <= self._idx:
+            # a node with id <= mine claims leadership: never follow it; if I'm leader and it's strictly lower, re-assert so it steps down (resolves split-brain)
+            if claim < self._idx and self._is_leader():
+                self._broadcast_message(SupervisorLeader(self._idx), self._peers)
+            return
 
+        # claim > mine: a higher-id node leads; adopt it unless I already follow an equal-or-higher leader (never downgrade to a lower one)
+        if self._leader is not None and claim <= self._leader.idx:
+            return
+
+        leader_host = next(p.host for p in self._peers if p.idx == claim)
+        self._leader = Peer(claim, leader_host)
+        self._downgrade(leader_host)
+        self._on_election = False
+
+    def _event_worker(self):
         def handle_peer_connection(event: PeerConnection):
             conn: Connection = event.conn  # type:ignore [reportAttributeAccessIssue]
             msg = deserialize_message(conn.recv())
@@ -165,7 +182,7 @@ class SupervisorNode:
                     self._events.put(LeaderDown())
                 case MessageType.SUPERVISOR_LEADER:
                     leader_idx = msg.idx  # type:ignore [reportAttributeAccessIssue]
-                    handle_new_leader(NewLeader(leader_idx))
+                    self._handle_new_leader(NewLeader(leader_idx))
 
             conn.close()
 
@@ -175,7 +192,7 @@ class SupervisorNode:
                 break
             match event.type():
                 case EventType.LEADER_DOWN:
-                    handle_leader_down(event)  # type:ignore [reportArgumentType]
+                    self._handle_leader_down(event)  # type:ignore [reportArgumentType]
                 case EventType.PEER_CONNECTION:
                     handle_peer_connection(event)  # type:ignore [reportArgumentType]
 
@@ -202,10 +219,10 @@ class SupervisorNode:
                 self._events.put(LeaderDown())
 
     def _listener_worker(self):
-        self._node_listener.listen()
+        self._peer_listener.listen()
         while self._keep_running:
             try:
-                skt, _ = self._node_listener.accept()
+                skt, _ = self._peer_listener.accept()
             except:
                 break
             conn = Connection(skt)
@@ -213,20 +230,18 @@ class SupervisorNode:
 
     def stop(self):
         self._keep_running = False
+        self._announce_stop.set()
         if self._runtime:
             self._runtime.stop()
-        
-        self._node_listener.shutdown(SHUT_RDWR)
-        self._node_listener.close()
-        
-        # Leader
+
+        self._peer_listener.shutdown(SHUT_RDWR)
+        self._peer_listener.close()
+
         if self._is_leader():
             with self._new_runtime:
                 self._new_runtime.notify()
-        
-        
-        
+
         self._runtime_handle.join()
         self._listener_handle.join()
+        self._announce_handle.join()
         self._events.put(None)
-        

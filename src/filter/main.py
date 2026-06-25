@@ -40,11 +40,7 @@ def make_default_filter() -> RingBroadcastFilter:
     idx = int(os.getenv("IDX", 0))
     npeers = int(os.getenv("NPEERS", "1"))
 
-    # Every transaction is broadcast to each UC's pipeline. A route is SHARDED across
-    # N affinity peers (set by its *_SHARDS env) when that downstream is a ring, or a
-    # single work queue when it isn't (UC1 -> the join). Sharding by message identity
-    # makes a re-emit after a crash land on the same downstream peer, so its dedup
-    # catches the duplicate.
+    # Sharded by message identity so a post-crash re-emit lands on the same peer's dedup
     route_table = [
         (os.environ["UC1_TRANSACTIONS_TX"], UC1Filter(), "UC1_TRANSACTIONS_SHARDS"),
         (os.environ["UC2_TRANSACTIONS_TX"], UC2Filter(), "UC2_TRANSACTIONS_SHARDS"),
@@ -53,8 +49,7 @@ def make_default_filter() -> RingBroadcastFilter:
         (os.environ["UC5_TRANSACTIONS_TX"], UC5Filter(), "UC5_TRANSACTIONS_SHARDS"),
         (os.environ["UC3_PERIOD_B_TRANSACTIONS_TX"], UC3FilterPeriodB(), "UC3_PERIOD_B_SHARDS"),
     ]
-    # naffinity 0 = a plain work queue (UC1 -> the join); >= 1 = one exchange shard per
-    # downstream ring peer (1 included, so a single-peer ring still routes by exchange).
+    # naffinity 0 = plain work queue (UC1 -> join); >= 1 = one exchange shard per ring peer
     routes, sharded_routes = [], []
     for tx, filter_fn, shards_env in route_table:
         naffinity = int(os.getenv(shards_env, "1"))

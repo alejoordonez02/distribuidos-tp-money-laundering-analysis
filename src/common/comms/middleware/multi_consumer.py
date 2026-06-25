@@ -4,6 +4,7 @@ from typing import Callable, NamedTuple
 from pika import BlockingConnection, ConnectionParameters
 from pika.exceptions import AMQPConnectionError
 
+from ._ack import ack_threadsafe, nack_threadsafe
 from .errors import MOMDisconnectedError
 
 MessageHandler = Callable[[bytes, Callable[[], None], Callable[[], None]], None]
@@ -41,8 +42,7 @@ class MultiQueueConsumer:
         exchange: str | None = None,
         routing_key: str | None = None,
     ):
-        # durable + exchange-bound queues survive a crash and keep accumulating
-        # (redelivering un-acked messages) until the node returns.
+        # durable + exchange-bound queues survive a crash, accumulating and redelivering un-acked messages until the node returns.
         self._chan.queue_declare(queue=queue_name, durable=durable)
         if exchange is not None:
             self._chan.exchange_declare(exchange=exchange)
@@ -52,19 +52,14 @@ class MultiQueueConsumer:
         self._sources.append(_Source(queue_name, handler, prefetch))
 
     def _ack(self, method):
-        self._conn.add_callback_threadsafe(
-            lambda: self._chan.basic_ack(delivery_tag=method.delivery_tag)
-        )
+        ack_threadsafe(self._conn, self._chan, method)
 
     def _nack(self, method):
-        self._conn.add_callback_threadsafe(
-            lambda: self._chan.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
-        )
+        nack_threadsafe(self._conn, self._chan, method)
 
     def start(self):
         for src in self._sources:
-            # per-consumer prefetch: the data queue can hold a whole checkpoint batch
-            # without blocking ring control delivery on the same channel.
+            # per-consumer prefetch: the data queue can hold a whole checkpoint batch without blocking ring control on the same channel.
             self._chan.basic_qos(prefetch_count=src.prefetch, global_qos=False)
             self._chan.basic_consume(
                 queue=src.queue_name,

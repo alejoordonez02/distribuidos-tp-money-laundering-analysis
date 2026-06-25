@@ -11,8 +11,7 @@ def gen_uc4() -> str:
     compose = "\n# === uc4 ==="
     queue0 = "uc4_graphs"
     queue2 = "uc4_degree_graphs"
-    # One builder constructs the transaction graph once and fans each partial out to both
-    # aggregates: the full-graph aggregate (queue0) and the degree filter (queue2).
+    # One builder builds the graph once and fans each partial to both aggregates: full-graph (queue0) and degree filter (queue2).
     compose += gen_nodes(
         type2=ContainerType.GROUP_BY,
         strategy=GroupByStrategy.UC4_COMPUTE_GRAPH,

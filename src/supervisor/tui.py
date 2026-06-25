@@ -53,8 +53,7 @@ class Dashboard:
         dead = sum(1 for n in nodes if n.status is Status.DEAD)
 
         node_cells = [self._node_cell(n, now) for n in nodes]
-        # show only the newest events, as many as there are nodes, so both columns
-        # are the same height and the frame does not grow over time
+        # only the newest events, as many as there are nodes, so both columns stay the same height
         event_cells = [self._event_cell(e) for e in reversed(events)][: len(node_cells)]
 
         rows = [

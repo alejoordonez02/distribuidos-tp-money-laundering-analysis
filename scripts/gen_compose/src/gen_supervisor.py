@@ -1,5 +1,5 @@
 from .fault_tolerance import HEARTBEAT_TIMEOUT, REVIVE_INTERVAL
-from .supervisor_env import SUPERVISOR_HOST, SUPERVISOR_PORT
+from .supervisor_env import SUPERVISOR_HOST, SUPERVISOR_PORT, expected_nodes_csv
 
 SUPERVISOR_LOGGING_LEVEL = "WARNING"
 SUPERVISOR_BIND = "0.0.0.0"
@@ -28,6 +28,7 @@ def _gen_supervisor(idx: int, nnodes: int):
       - IDX={idx}
       - NNODES={nnodes}
       - NODE_PREFIX={SUPERVISOR_PREFIX}
+      - EXPECTED_NODES={expected_nodes_csv()}
       - HEARTBEAT_TIMEOUT=${{HEARTBEAT_TIMEOUT:-{HEARTBEAT_TIMEOUT}}}
       - REVIVE_INTERVAL=${{REVIVE_INTERVAL:-{REVIVE_INTERVAL}}}
       - LOGGING_LEVEL={SUPERVISOR_LOGGING_LEVEL}

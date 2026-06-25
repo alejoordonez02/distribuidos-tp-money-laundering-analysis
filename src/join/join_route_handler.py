@@ -30,6 +30,12 @@ class _JoinCounts:
     def is_finalized(self, client_id: UUID) -> bool:
         return client_id in self._finalized
 
+    def finalized_clients(self) -> list[UUID]:
+        """Clients whose response was already emitted. On restore their spilled state
+        is safe to free: they will never re-finalize, so a revived node must drop it
+        instead of orphaning it on disk."""
+        return list(self._finalized)
+
     def mark_finalized(self, client_id: UUID):
         self._finalized.add(client_id)
         self._expected.pop(client_id, None)
@@ -93,8 +99,7 @@ class JoinRouteHandler:
     def start(self):
         self.responses_tx = self.responses_tx_factory()
         self._mom = self.mom_factory()
-        # Built here (in this handler's own thread) so the checkpoint state and the
-        # rx connection share a thread.
+        # built in this handler's own thread so the checkpoint state and the rx connection share a thread
         self._checkpointer = make_checkpointer(
             self._state_dir,
             f"join_uc{self._uc_id}",
@@ -105,6 +110,10 @@ class JoinRouteHandler:
         )
         if self._checkpointer and self._checkpointer.restore():
             logging.info("restored join uc%s from checkpoint", self._uc_id)
+            # free spill of clients finalized before the crash: their response was sent and they never re-finalize, so discard drops the orphan (mirrors the ring-node restore fix)
+            for client_id in self._counts.finalized_clients():
+                self.join_fn.discard(client_id)
+            self._checkpointer.flush(force=True)
 
         self._mom.start_consuming(self._handle_message)
 

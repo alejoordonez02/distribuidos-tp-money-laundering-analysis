@@ -45,8 +45,7 @@ class Checkpointer:
         self._dedup = deduplicator
         self._every = max(1, checkpoint_every)
         self._seq_sources = seq_sources
-        # Extra namespaced state providers (e.g. the EOF ring counters), persisted
-        # atomically with the business state and dedup table.
+        # namespaced state providers (e.g. EOF ring counters), persisted atomically with business + dedup state
         self._extra_state = dict(extra_state or {})
         self._pending_acks: list[Callable] = []
         self._aborted: set[UUID] = set()
@@ -56,6 +55,9 @@ class Checkpointer:
     def restore(self) -> bool:
         blob = self._store.load()
         if blob is None:
+            clear = getattr(self._fn, "clear_stale_spill", None)
+            if clear is not None:
+                clear()
             return False
         self._fn.restore_state(blob["state"])
         self._dedup.restore(blob["dedup"])

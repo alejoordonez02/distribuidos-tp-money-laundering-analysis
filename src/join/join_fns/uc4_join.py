@@ -22,7 +22,6 @@ class UC4Join(JoinFn):
         if el.client_id not in self.client_responses:
             self.client_responses[el.client_id] = PathCounts(el.client_id, {})
 
-        # TODO: esto estaría mejor en `PathCounts`
         self.client_responses[el.client_id].counts.update(el.counts)
 
     def get_response(self, client_id: UUID) -> Response:  # type: ignore[reportIncompatibleMethodOverride]

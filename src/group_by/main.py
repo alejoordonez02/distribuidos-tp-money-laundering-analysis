@@ -85,9 +85,7 @@ def main():
     logging.basicConfig(level=LOGGING_LEVEL)
     logging.getLogger("pika").setLevel(logging.WARNING)
 
-    # Most group-bys have one downstream fleet. UC4 builds the transaction graph once and
-    # fans it out to two aggregates (the full graph and the degree filter), so it adds a
-    # second route — every group-by goes through the same make_groupby.
+    # UC4 fans the graph to two aggregates (full graph + degree filter); others use one route
     routes = [(TX, NAFFINITY_DOWNSTREAM)]
 
     match STRATEGY:

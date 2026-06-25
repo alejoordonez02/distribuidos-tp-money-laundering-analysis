@@ -9,9 +9,7 @@ from common.comms.messages import Response
 class Spill(Protocol):
     def append(self, client_id: UUID, line: str) -> None: ...
 
-    def iter_chunks_and_clear(
-        self, client_id: UUID, batch_lines: int
-    ) -> Iterator[str]: ...
+    def iter_chunks(self, client_id: UUID, batch_lines: int) -> Iterator[str]: ...
 
     def clear(self, client_id: UUID) -> None: ...
 
@@ -57,6 +55,22 @@ class LineSpill:
         finally:
             os.unlink(path)
 
+    def iter_chunks(self, client_id: UUID, batch_lines: int) -> Iterator[str]:
+        handle = self._handles.get(client_id)
+        path = self._paths.get(client_id)
+        if handle is None or path is None:
+            return
+        handle.flush()  # type: ignore[attr-defined]
+        with open(path, "r") as f:
+            batch: list[str] = []
+            for line in f:
+                batch.append(line)
+                if len(batch) >= batch_lines:
+                    yield "".join(batch)
+                    batch = []
+            if batch:
+                yield "".join(batch)
+
     def iter_chunks_and_clear(
         self, client_id: UUID, batch_lines: int
     ) -> Iterator[str]:
@@ -85,7 +99,7 @@ def stream_responses(
 ) -> Iterator[Response]:
     """Stream a UC's spilled result as Response chunks: header on the first,
     `last=True` only on the final one, keeping memory bounded to ~2 chunks."""
-    chunks = spill.iter_chunks_and_clear(client_id, batch_lines)
+    chunks = spill.iter_chunks(client_id, batch_lines)
     prev = next(chunks, None)
     if prev is None:
         yield Response(client_id, header + "\n")

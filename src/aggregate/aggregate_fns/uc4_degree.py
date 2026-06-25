@@ -10,7 +10,7 @@ from common.comms.messages import Graph, HighDegree, Node
 from .aggregate_fn import AggregateFn
 
 MIN_DEGREE = 5
-MAX_AMOUNT = 100_000
+SPILL_THRESHOLD = 100_000
 SHARDING_FILES = 500
 
 
@@ -51,12 +51,12 @@ class UC4Degree(AggregateFn):
             _capped_update(self._in[msg.client_id], node, {str(n) for n in predecessors})
             _capped_update(self._out[msg.client_id], node, {str(n) for n in successors})
 
-        if len(self._out[msg.client_id]) >= MAX_AMOUNT:
-            self._downstream(msg.client_id)
+        if len(self._out[msg.client_id]) >= SPILL_THRESHOLD:
+            self._spill_to_disk(msg.client_id)
 
     def get_result(self, client_id: UUID) -> Iterable[tuple[HighDegree, int]]:  # type: ignore[reportIncompatibleMethodOverride]
         if client_id in self._out:
-            self._downstream(client_id)
+            self._spill_to_disk(client_id)
 
         out: dict[str, set[str]] = defaultdict(set)
         in_: dict[str, set[str]] = defaultdict(set)
@@ -65,8 +65,6 @@ class UC4Degree(AggregateFn):
                 node, o, i = _deserialize(line)
                 _capped_update(out, node, o)
                 _capped_update(in_, node, i)
-
-        self._spill.clear(client_id)
 
         hi_out = {Node.from_str(n) for n, s in out.items() if len(s) >= MIN_DEGREE}
         hi_in = {Node.from_str(n) for n, s in in_.items() if len(s) >= MIN_DEGREE}
@@ -80,7 +78,7 @@ class UC4Degree(AggregateFn):
 
     def snapshot_state(self) -> dict[str, Any]:
         for client_id in list(self._out.keys()):
-            self._downstream(client_id)
+            self._spill_to_disk(client_id)
         return self._spill.snapshot_state()
 
     def restore_state(self, snapshot: dict[str, Any]):
@@ -88,7 +86,10 @@ class UC4Degree(AggregateFn):
         self._out = {}
         self._in = {}
 
-    def _downstream(self, client_id: UUID):
+    def clear_stale_spill(self):
+        self._spill.clear_all()
+
+    def _spill_to_disk(self, client_id: UUID):
         out = self._out.pop(client_id, {})
         in_ = self._in.pop(client_id, {})
         logging.info("spilling degree to disk")

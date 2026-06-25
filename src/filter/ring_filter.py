@@ -38,6 +38,8 @@ class RingFilter(StatelessRingNode):
 
     def _on_data(self, msg: Message):
         shard = shard_of(msg, len(self.external_txs))
-        self.external_txs[shard].send(self.fn.filter(msg).serialize())
+        self.external_txs[shard].send_stamped(  # type: ignore[attr-defined]
+            self.fn.filter(msg).serialize(), msg.producer_id, msg.seq
+        )
         self.sent.add(msg.client_id, shard)
         self._run(self.rc.on_data(msg.client_id))

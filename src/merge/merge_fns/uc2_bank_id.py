@@ -41,8 +41,7 @@ class UC2BankIdMergeFn(MergeFn):
             if bank_id in bank_names
         ]
 
-        # UC2 output is bounded by the number of banks (small), so a single
-        # message is fine; yield to satisfy the streaming MergeFn contract.
+        # UC2 output is bounded by the number of banks (small), so one message is fine; yield to satisfy the streaming MergeFn contract
         merged = MergedBankData(client_id, entries)
         logging.debug("merged:\n%s", merged.__dict__)
         yield merged

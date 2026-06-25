@@ -24,19 +24,28 @@ def main():
 
     filename = args[1]
 
+    # Build node services first so every supervised node registers its name before gen_supervisors reads the expected set.
+    gateway = gen_gateway()
+    default_filters = gen_default_filters()
+    uc1, uc2, uc3, uc4, uc5 = gen_uc1(), gen_uc2(), gen_uc3(), gen_uc4(), gen_uc5()
+    join = gen_join()
+    clients = gen_clients()
+    # gen_supervisors must run last: it injects EXPECTED_NODES from the now-complete set.
+    supervisors = gen_supervisors()
+
     compose = "services:"
     compose += gen_rabbitmq()
-    compose += gen_supervisors()
-    compose += gen_gateway()
-    compose += gen_default_filters()
-    compose += gen_uc1()
-    compose += gen_uc2()
-    compose += gen_uc3()
-    compose += gen_uc4()
-    compose += gen_uc5()
-    compose += gen_join()
+    compose += supervisors
+    compose += gateway
+    compose += default_filters
+    compose += uc1
+    compose += uc2
+    compose += uc3
+    compose += uc4
+    compose += uc5
+    compose += join
     compose += gen_chaos()
-    compose += gen_clients()
+    compose += clients
 
     with open(filename, "w") as f:
         f.write(compose)

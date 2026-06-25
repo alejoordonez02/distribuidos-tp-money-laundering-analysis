@@ -1,0 +1,55 @@
+<mxfile host="app.diagrams.net" version="24.0.0">
+  <diagram name="ft-architecture" id="ftarch">
+    <mxGraphModel dx="900" dy="600" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="900" pageHeight="520" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        
+        <mxCell id="pipe" value="Pipeline de procesamiento" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#666666;dashed=1;dashPattern=8 8;verticalAlign=top;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="20.00" y="30.00" width="500" height="300" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="nfilter" value="Filter" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;strokeWidth=2;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="60.00" y="90.00" width="96" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="ngroup" value="GroupBy" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;strokeWidth=2;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="220.00" y="90.00" width="96" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="naggr" value="Aggregate" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;strokeWidth=2;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="380.00" y="90.00" width="96" height="96" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="cgroup" value="estado" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="242.00" y="230.00" width="52" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="caggr" value="estado" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="402.00" y="230.00" width="52" height="56" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="e1" style="endArrow=classic;html=1;strokeColor=#666666;" edge="1" parent="1" source="nfilter" target="ngroup"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2" style="endArrow=classic;html=1;strokeColor=#666666;" edge="1" parent="1" source="ngroup" target="naggr"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ec1" value="checkpoint" style="endArrow=classic;html=1;strokeColor=#666666;fontSize=9;dashed=1;" edge="1" parent="1" source="ngroup" target="cgroup"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ec2" value="checkpoint" style="endArrow=classic;html=1;strokeColor=#666666;fontSize=9;dashed=1;" edge="1" parent="1" source="naggr" target="caggr"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        
+        <mxCell id="rabbit" value="RabbitMQ&#10;(middleware por grupos, colas durables)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="100.00" y="360.00" width="340" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="edata" value="publish / consume" style="endArrow=classic;startArrow=classic;html=1;strokeColor=#d79b00;fontSize=10;" edge="1" parent="1" source="pipe" target="rabbit"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        
+        <mxCell id="sup" value="Clúster de supervisores&#10;(N réplicas, 1 líder)&#10;&#10;(detección por heartbeat)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;verticalAlign=top;spacingTop=6" vertex="1" parent="1">
+          <mxGeometry x="620.00" y="60.00" width="230" height="90" as="geometry" />
+        </mxCell>
+
+
+        <mxCell id="ehb" value="heartbeats (TCP)" style="endArrow=open;html=1;dashed=1;strokeColor=#6c8ebf;fontSize=10;exitX=1;exitY=0.2;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="pipe" target="sup"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

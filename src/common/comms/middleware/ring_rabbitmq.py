@@ -9,8 +9,7 @@ from .ring_mom import MOMRing, MOMRingError
 def _durable_exchange(
     host: str, exchange_name: str, routing_keys: list[str], queue_name: str
 ) -> MOMExchange:
-    # The back queue must survive a node crash so the EOF token waits there until
-    # the node returns (the ring blocks instead of losing the token).
+    # The back queue must survive a node crash so the EOF token waits there until the node returns.
     return ExchangeRabbitMQ(
         host, exchange_name, routing_keys, queue_name, exclusive=False
     )
@@ -82,8 +81,7 @@ class RingRabbitMQ(MOMRing):
             host, ring_name, [str(self.front_id)], front_queue_name
         )
         self_queue_name = ring_name + QUEUE_NAME_SUFFIX + str(self.id)
-        # The back exchange is the one this node consumes from: its queue must be
-        # durable/non-exclusive so a crash doesn't drop the parked EOF token.
+        # The back exchange is the one this node consumes from: durable/non-exclusive so a crash doesn't drop the parked EOF token.
         back_factory = (
             _durable_exchange if exchange_factory is ExchangeRabbitMQ else exchange_factory
         )
@@ -92,8 +90,6 @@ class RingRabbitMQ(MOMRing):
         )
 
     def nnodes(self) -> int:
-        # TODO: esto para fault tolerance va a
-        #       tener que ser dinámico.
         return 1 + len(self.peer_ids)
 
     def start_consuming(

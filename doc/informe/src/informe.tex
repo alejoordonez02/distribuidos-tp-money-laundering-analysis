@@ -9,6 +9,7 @@
 \usepackage{float}
 \usepackage{minted}
 \usepackage{subcaption}
+\usepackage{placeins}
 
 \title{\textbf{Money Laundering Analysis}}
 \date{\today}
@@ -16,25 +17,25 @@
 \begin{document}
 
 \begin{titlepage}
-  \centering
-  \vspace*{5cm}
+    \centering
+    \vspace*{5cm}
 
-  \includegraphics[width=0.4\textwidth]{img/logo-fiuba.png}\\[1cm]
+    \includegraphics[width=0.4\textwidth]{img/logo-fiuba.png}\\[1cm]
 
-  {\Huge \textbf{Money Laundering Analysis}}\\[0.2cm]
+    {\Huge \textbf{Money Laundering Analysis}}\\[0.2cm]
 
-  {
-    \large \textbf{Sistemas Distribuidos}\\[0.2cm]
-    \begin{tabular}{l l}
-      108397 & Ordoñez Alejo\\
-      107863 & Minervino Lorenzo\\
-      106010 & Valsagna Federico\\
-    \end{tabular}
-  }
+    {
+        \large \textbf{Sistemas Distribuidos}\\[0.2cm]
+        \begin{tabular}{l l}
+            108397 & Ordoñez Alejo\\
+            107863 & Minervino Lorenzo\\
+            106010 & Valsagna Federico\\
+        \end{tabular}
+    }
 
-  \vfill
+    \vfill
 
-  {\large 1c2026}
+    {\large 1c2026}
 \end{titlepage}
 
 \tableofcontents
@@ -54,29 +55,29 @@ concurrente con los demás.
 Una petición del cliente hace que el sistema procese los 5 casos de uso:
 
 \begin{itemize}
-  \item \textbf{UC1} Cuenta de origen, cuenta de destino y monto para
-    transacciones USD con monto menor a \$50.
-  \item \textbf{UC2} Nombre de banco, cuenta de origen y monto de la
-    máxima transacción en USD para cada banco.
-  \item \textbf{UC3} Cuenta de origen y monto de transacciones USD en
-    el período 2022-09-06 al
-    2022-09-15 (período B), cuyo monto sea menor a un centésimo del
-    promedio de monto para su formato en el período 2022-09-01 al
-    2022-09-05 (período A).
-  \item \textbf{UC4} Pares de cuentas que cumplan con el patrón
-    \textit{scatter-gather}
-    con una cuenta
-    de separación y una cantidad mínima de cuentas intermedias igual
-    a 5; en el período A.
-  \item \textbf{UC5} Cantidad de transacciones con formato de pago
-    \textit{Wire} o \textit{ACH} en
-    el período A, cuyo monto en USD sea menor a 1.
+    \item \textbf{UC1} Cuenta de origen, cuenta de destino y monto para
+        transacciones USD con monto menor a \$50.
+    \item \textbf{UC2} Nombre de banco, cuenta de origen y monto de la
+        máxima transacción en USD para cada banco.
+    \item \textbf{UC3} Cuenta de origen y monto de transacciones USD en
+        el período 2022-09-06 al
+        2022-09-15 (período B), cuyo monto sea menor a un centésimo del
+        promedio de monto para su formato en el período 2022-09-01 al
+        2022-09-05 (período A).
+    \item \textbf{UC4} Pares de cuentas que cumplan con el patrón
+        \textit{scatter-gather}
+        con una cuenta
+        de separación y una cantidad mínima de cuentas intermedias igual
+        a 5; en el período A.
+    \item \textbf{UC5} Cantidad de transacciones con formato de pago
+        \textit{Wire} o \textit{ACH} en
+        el período A, cuyo monto en USD sea menor a 1.
 \end{itemize}
 
 \begin{figure}[h!]
-  \centering
-  \includegraphics[width=0.6\textwidth]{../diagrams/08use-cases-diagram.png}\\[1cm]
-  \caption{Diagrama de casos de uso}
+    \centering
+    \includegraphics[width=0.6\textwidth]{../diagrams/v2/08use-cases-diagram.png}\\[1cm]
+    \caption{Diagrama de casos de uso}
 \end{figure}
 
 Los cinco casos de uso presentan niveles crecientes de complejidad:
@@ -94,7 +95,7 @@ Acyclic Graph}). La ausencia de ciclos garantiza que el procesamiento
 siempre converge y que las dependencias entre etapas son explícitas:
 un nodo solo puede procesar datos cuando sus predecesores ya los produjeron.
 
-\subsection{\textbf{UC1} — Filtro directo}
+\subsection{\textbf{UC1} - Filtro directo}
 UC1 establece el patrón base del sistema. El \textbf{Gateway} entrega el
 registro completo \texttt{(origin, destination, amount, format)} y el
 \textbf{Filter} aplica dos condiciones simultáneas: moneda USD y monto
@@ -103,9 +104,9 @@ destination, amount)} hacia el \textbf{Join}. El campo \texttt{format} se
 descarta en esta etapa porque no aporta información al resultado.
 
 \begin{figure}[H]
-  \centering
-  \includegraphics[width=0.4\textwidth]{../diagrams/11dag-diagram-uc1.png}\\[1cm]
-  \caption{Diagrama DAG UC1}
+    \centering
+    \includegraphics[width=0.4\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/11dag-diagram-uc1.png}
+    \caption{Diagrama DAG UC1}
 \end{figure}
 
 Cada transacción se evalúa de forma completamente independiente de
@@ -113,7 +114,7 @@ las demás. No hay computación entre filas, por lo que el pipeline
 puede procesar los registros en cualquier orden y en paralelo sin
 afectar la correctitud del resultado.
 
-\subsection{\textbf{UC2} — Máximo por banco}
+\subsection{\textbf{UC2} - Máximo por banco}
 UC2 introduce dos conceptos nuevos respecto de UC1: múltiples fuentes
 de datos y agregación en dos etapas. Primero se distribuyen dos
 streams simultáneamente: registros de transacciones \texttt{(bank\_id,
@@ -124,9 +125,9 @@ nombres que elimina registros que duplican la información con el
 nombre del banco.
 
 \begin{figure}[H]
-  \centering
-  \includegraphics[width=0.4\textwidth]{../diagrams/11dag-diagram-uc2.png}\\[1cm]
-  \caption{Diagrama DAG UC2}
+    \centering
+    \includegraphics[width=0.5\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/11dag-diagram-uc2.png}
+    \caption{Diagrama DAG UC2}
 \end{figure}
 
 El pipeline de transacciones filtra por USD y luego el GroupBy
@@ -135,16 +136,16 @@ cada partición.
 El \textbf{Aggregate} consolida esos máximos parciales en el máximo global
 definitivo por banco.
 
-\subsection{\textbf{UC3} — Comparación entre períodos}
+\subsection{\textbf{UC3} - Comparación entre períodos}
 UC3 requiere comparar transacciones de dos períodos distintos: el
 umbral \texttt{(amount < promedio\_de\_formato / 100)} no es un valor fijo
 sino que depende del promedio global de cada formato en el período A,
 que solo se conoce una vez que se procesaron todos los datos de ese período.
 
 \begin{figure}[H]
-  \centering
-  \includegraphics[width=0.4\textwidth]{../diagrams/11dag-diagram-uc3.png}\\[1cm]
-  \caption{Diagrama DAG UC3}
+    \centering
+    \includegraphics[width=0.5\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/11dag-diagram-uc3.png}
+    \caption{Diagrama DAG UC3}
 \end{figure}
 
 Primero se divide el stream de datos en dos bifurcaciones a ser
@@ -162,50 +163,73 @@ su formato en el período A.
 Un Filter final aplica la condición \texttt{amount < average/100} y produce
 \texttt{(origin, amount)} para el Join.
 
-\subsection{\textbf{UC4} — Patrón scatter-gather}
+\subsection{\textbf{UC4} - Patrón scatter-gather}
 UC4 requiere detectar el patrón \textit{scatter-gather} en el grafo de
 transacciones: una cuenta origen dispersa fondos hacia múltiples
 intermediarios, que los concentran en una cuenta destino. Esta
 detección no puede hacerse registro a registro.
 
 \begin{figure}[H]
-  \centering
-  \includegraphics[width=0.4\textwidth]{../diagrams/11dag-diagram-uc4.png}\\[1cm]
-  \caption{Diagrama DAG UC4}
+    \centering
+    \includegraphics[width=0.5\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/11dag-diagram-uc4.png}
+    \caption{Diagrama DAG UC4}
 \end{figure}
 
-Después del filtro inicial (currency USD y período A), el GroupBy
-construye la representación del grafo: para cada nodo acumula el
-conjunto de predecesores y sucesores observados. La salida es \texttt{(node,
-predecessors, successors)}.
-El próximo GroupBy toma esa representación y cuenta las rutas de un
-salto para cada par \texttt{(origin, destination)}: la cantidad de cuentas
-que sirven como intermediario directo entre ese origen y ese destino.
-Este conteo corresponde directamente al número de cuentas
-intermediarias en el patrón scatter-gather.
-Por último, el Aggregate consolida los conteos parciales de las
-distintas instancias del GroupBy, produciendo el conteo global
-definitivo por par, que es luego filtrado según la cantidad mínima de
-cuentas intermediarias del patrón.
+Después del filtro inicial (currency USD y período A), el
+\textbf{GroupBy Compute graph} construye la representación del grafo de
+transacciones: para cada nodo, el conjunto de predecesores y sucesores
+observados \texttt{(node, predecessors, successors)}. Esta etapa shardea por
+\texttt{node}, de modo que todas las aristas de un mismo nodo se acumulan en
+la misma partición, y abre su salida (\textit{fan-out}) hacia las dos ramas
+siguientes.
+
+A partir de ese grafo, el constructor emite el mismo resultado hacia dos
+aggregators distintos:
+\begin{itemize}
+    \item El \textbf{Aggregate degree} calcula el grado de entrada y de salida
+        de cada nodo y produce dos conjuntos separados: los de \textbf{alto
+        grado de salida} (al menos 5 sucesores, candidatos a origen del patrón)
+        y los de \textbf{alto grado de entrada} (al menos 5 predecesores,
+        candidatos a destino). El umbral de 5 proviene del enunciado, que exige
+        al menos 5 intermediarios. Un nodo que no entra en ninguno de los dos
+        conjuntos no puede participar del patrón, por lo que esta
+        rama actúa como
+        una poda temprana que reduce el grafo antes del conteo costoso.
+    \item El \textbf{Aggregate graphs} materializa el grafo completo
+        (predecesores y sucesores consolidados por nodo).
+\end{itemize}
+
+El \textbf{Merge} (\textit{prune}) cruza ambas salidas y conserva únicamente
+las aristas que van de un origen de alto grado de salida a un destino de
+alto grado de entrada.
+
+Sobre ese grafo podado, el \textbf{Count paths} cuenta, para cada par
+\texttt{(origin, destination)}, la cantidad de cuentas que sirven como
+intermediario directo entre ese origen y ese destino (es decir, el número
+de cuentas intermediarias del patrón scatter-gather), shardeando por par
+para repartir el conteo. El \textbf{Aggregate paths} consolida esos conteos
+parciales y conserva solo los pares con un conteo mayor o igual a 5. Por el
+volumen del grafo, las etapas que acumulan estado vuelcan sus estructuras
+parciales a disco (\textit{spill}), particionadas en archivos por shard.
 El resultado \texttt{(origin, destination)} llega al Join.
 
-\subsection{\textbf{UC5} — Conteo con conversión de moneda}
+\subsection{\textbf{UC5} - Conteo con conversión de moneda}
 UC5 cuenta cuántas transacciones de formato Wire o ACH en el período
 A tienen un monto menor a \$1 USD. Los montos pueden estar expresados
 en cualquier moneda, por lo que la comparación con el umbral solo es
 válida después de convertir.
 
 \begin{figure}[H]
-  \centering
-  \includegraphics[width=0.4\textwidth]{../diagrams/11dag-diagram-uc5.png}\\[1cm]
-  \caption{Diagrama DAG UC5}
+    \centering
+    \includegraphics[width=0.4\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/11dag-diagram-uc5.png}
+    \caption{Diagrama DAG UC5}
 \end{figure}
 
 El Filter inicial aplica formato (Wire o ACH) y período A para
 reducir el dataset antes de la etapa de conversión.
 El paso de conversión traduce cada monto a su equivalente en dólares.
-El Filter siguiente aplica el umbral de \$1. Las transacciones que lo
-superan llegan al GroupBy * Count, donde el \texttt{*} indica que no hay
+El Filter siguiente aplica el umbral de \$1. Las transacciones por debajo
+de \$1 llegan al GroupBy * Count, donde el \texttt{*} indica que no hay
 clave de agrupación: todos los registros se colapsan en un único
 contador global.
 Ese conteo es el resultado final de UC5.
@@ -217,83 +241,191 @@ los pipelines: qué componentes concretos existen, qué colas los
 conectan, cuántas instancias corren en paralelo y qué estrategia de
 ruteo usa cada etapa.
 
+Todo el ruteo entre etapas se resuelve por \textit{afinidad}: cada enlace
+es un \textit{exchange} directo de RabbitMQ con una cola por instancia
+downstream, ligada por una \textit{routing key} igual a su índice de
+\textit{shard}. El productor elige el shard de cada registro y publica con
+esa clave, de modo que cada instancia consumidora es dueña exclusiva de
+su partición. No existen \textit{working queues} con consumidores
+competitivos: cada cola tiene exactamente un consumidor.
+
+El uso de colas por afinidad/shard en lugar de \textit{working queues}
+competitivas hace que cada instancia sea dueña de una partición y facilita el
+razonamiento de recuperación ante fallos; su justificación se desarrolla en la
+sección de tolerancia a fallos.
+
+La clave de \textit{shard} depende de la etapa, y responde a uno de dos
+criterios:
+\begin{itemize}
+    \item \textbf{Sharding por semántica del problema}: cuando todos los
+        registros de una misma clave deben caer en la misma instancia para
+        preservar la correctitud (por ejemplo, todos los del mismo
+        \texttt{bank\_id}, \texttt{format}, nodo del grafo o par del grafo). El
+        shard se calcula sobre esa clave de dominio.
+    \item \textbf{Sharding equitativo (pseudoaleatorio)}: cuando no hay una
+        clave de dominio que preservar y solo se quiere repartir carga entre
+        réplicas. El productor reparte por la identidad del mensaje (un
+            \textit{hash} estable derivado del identificador del
+            productor más su
+        número de secuencia). Este criterio es el que reemplaza a las working
+        queues competitivas.
+\end{itemize}
+Por el primer criterio, todas las instancias de \texttt{group\_by} y
+\texttt{aggregate} fijan \texttt{PYTHONHASHSEED} para que la
+asignación de shards sea determinística y estable entre reinicios.
+
+El último controlador, el \textbf{Join}, no se escala por datos sino que
+está \textbf{particionado por caso de uso}: recibe una configuración
+(\texttt{JOIN\_PARTITION}) que indica qué casos de uso atiende cada réplica.
+Según la cantidad de réplicas de Join, se asignan uno o más UC a cada
+instancia para equilibrar la carga según el peso relativo de cada caso de
+uso, no según la cantidad de clientes. Así, por ejemplo, una réplica
+podría atender un único caso de uso y otra agrupar varios más livianos,
+según su peso relativo. Esta asignación no es
+automática: es configurable. La ventaja es que todas las respuestas
+parciales de un mismo cliente para un UC convergen en la misma réplica de
+Join, por lo que cada cola de UC tiene un único consumidor sin necesidad de
+shardear por \texttt{client\_id}: la instancia dueña del UC reúne los
+resultados parciales de cada cliente y construye la respuesta final.
+
 \subsubsection{UC1}
-El Filter puede correr con múltiples instancias en paralelo, cada una
-procesando una partición del stream. Dado que el Join también escala
-horizontalmente, todos los resultados de un mismo cliente deben
-llegar siempre a la misma instancia del Join. Esto se implementa
-mediante sharding por \texttt{client\_id} en la cola de salida del Filter.
+El \texttt{default\_filter} corre con múltiples instancias en paralelo
+(\texttt{DEFAULT\_FILTERS}), cada una
+procesando una partición del stream de transacciones que el Gateway reparte
+de forma equitativa entre ellas.
+Cada instancia aplica las dos condiciones (USD y monto menor a \$50) y,
+como UC1 no tiene etapas intermedias, deposita los registros que las
+satisfacen directamente en la cola de entrada del Join.
 
 \begin{figure}[H]
-  \centering
-  \includegraphics[width=0.4\textwidth]{../diagrams/12robustness-diagram-uc1.png}\\[1cm]
-  \caption{Diagrama de Robustez UC1}
+    \centering
+    \includegraphics[width=0.5\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/12robustness-diagram-uc1.png}
+    \caption{Diagrama de Robustez UC1}
 \end{figure}
 
 La cola de Responses desacopla el Join del Gateway: el Join deposita
 los resultados en la cola y el Gateway los consume para cerrar la
 conexión correspondiente.
 
+Por el volumen de salida de UC1 (potencialmente millones de transacciones), el
+\texttt{Join} no acumula el resultado en memoria: lo vuelca a disco
+(\textit{spill}) apenas lo recibe y lo emite hacia la cola de Responses en
+\textit{batches} a medida que lo relee. El criterio acá es de volumen conocido y
+grande, por lo que se vuelca el total sin umbral.
+
 \subsubsection{UC2}
-El Gateway publica en dos colas distintas: \texttt{Transactions} para el
-stream de transacciones y \texttt{Accounts} para el dataset de cuentas.
-Los pipelines para agregar el nombrel de banco y para obtener su
-monto máximo; corren en paralelo: el \texttt{GroupBy bank\_id On bank\_name}
-extrae asociaciones \texttt{(bank\_id, bank\_name)} de cada partición y el
-\texttt{Aggregate bank names} las consolida. El resultado se distribuye al
-Merge con sharding por texttt{bank\_id}.
-El \texttt{Merge On bank\_id} recibe máximos con texttt{bank\_id}
-como clave desde
-el pipeline de transacciones y nombres de banco desde el pipeline de cuentas.
+El Gateway publica en dos exchanges distintos: \texttt{Transactions} para
+el stream de transacciones y \texttt{Accounts} para el dataset de cuentas.
+Los dos pipelines (el que resuelve el nombre de banco y el que obtiene
+su monto máximo) corren en paralelo. En el de transacciones, el
+\texttt{default\_filter} filtra por USD, el \texttt{GroupBy bank\_id Max amount}
+calcula el máximo parcial por \texttt{bank\_id} en cada partición (con shardeo
+por \texttt{bank\_id} entre GroupBy y Aggregate) y el \texttt{Aggregate max
+amounts} consolida el máximo global por banco. En el de cuentas, el
+\texttt{GroupBy bank\_id On bank\_name} extrae las asociaciones
+\texttt{(bank\_id, bank\_name)} y el \texttt{Aggregate bank names}
+las consolida.
+
+El \texttt{Merge On bank\_id} cruza ambos pipelines. Corre con varias
+instancias (\texttt{UC2\_MERGES})
+coordinadas en anillo. El
+Aggregate de máximos hace \textit{broadcast} de su salida (cada instancia del
+Merge recibe los máximos de todos los bancos), mientras que el Aggregate
+de nombres shardea por \texttt{bank\_id}, de modo que cada instancia del
+Merge es dueña de un subconjunto de bancos. Así, cada banco es emitido
+por exactamente una instancia del Merge: la que tiene su nombre en su
+shard. El resultado se deposita en la cola de entrada del Join.
+
+Ninguna etapa de UC2 hace \textit{spill}: el estado es chico (el máximo por
+\texttt{bank\_id} y el mapa de nombres), por lo que se resuelve enteramente en
+memoria.
 
 \begin{figure}[H]
-  \centering
-  \includegraphics[width=0.4\textwidth]{../diagrams/12robustness-diagram-uc2.png}\\[1cm]
-  \caption{Diagrama de Robustez UC2}
+    \centering
+    \includegraphics[width=0.5\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/12robustness-diagram-uc2.png}
+    \caption{Diagrama de Robustez UC2}
 \end{figure}
 
 \subsubsection{UC3}
-El Filter produce dos colas de salida distintas: \texttt{Filtered by USD and
-period A} y \texttt{Filtered by USD and period B}. Además de filtrar por
-currency, rutea cada transacción al pipeline correspondiente según su
-fecha. Una transacción no puede pertenecer a ambos períodos, por lo
-que el ruteo es mutuamente exclusivo.
+El \texttt{default\_filter} produce dos exchanges de salida distintos:
+\texttt{Filtered by USD and period A} y \texttt{Filtered by USD and period
+B}. Además de filtrar por currency, rutea cada transacción al pipeline
+correspondiente según su fecha. Una transacción no puede pertenecer a
+ambos períodos, por lo que el ruteo es mutuamente exclusivo.
 El pipeline del período A usa shardeo por \texttt{format} entre el GroupBy y
 el Aggregate para que todos los registros del mismo formato lleguen a
 la misma instancia.
-Los promedios resultantes se distribuyen al Merge mediante *fan-out*:
-cada resultado del Aggregate se replica a todas las instancias del
-Merge. Cualquier instancia del Merge puede recibir transacciones del
-período B de cualquier formato y necesita los promedios de todos los
-formatos para evaluar la condición; el shardeo enviaría cada promedio
-a una sola instancia, mientras que el fan-out garantiza que todas
-tengan el contexto completo.
-El fan-out es aceptable dado que por la naturaleza de los datos del
+Los promedios resultantes se distribuyen al Merge mediante
+\textit{broadcast}: cada resultado del Aggregate se replica a todas las
+instancias del Merge, mientras que las transacciones del período B se
+reparten por shardeo entre esas mismas instancias. Cualquier instancia
+del Merge puede recibir transacciones del período B de cualquier formato
+y necesita los promedios de todos los formatos para evaluar la condición;
+el shardeo enviaría cada promedio a una sola instancia, mientras que el
+broadcast garantiza que todas tengan el contexto completo.
+El broadcast es aceptable dado que por la naturaleza de los datos del
 problema no puede haber demasiados formatos de pago; en particular,
 hay 7 formatos en el dataset de ejemplo entero.
 
 Después del Merge, un segundo Filter aplica la condición \texttt{amount <
 average/100} y produce la cola final hacia el Join.
 
+Por el volumen del período B (del orden de millones de transacciones), el
+\texttt{Merge} no mantiene ese lado en memoria: lo vuelca a disco
+(\textit{spill}) apenas lo recibe y lo relee en \textit{batches} al cruzarlo
+con los promedios; es el caso que de otro modo causaría un \textit{out of
+memory}. El \texttt{Join} de UC3 también vuelca su salida a disco por el mismo
+motivo de volumen. En ambos el criterio es volcado total sin umbral.
+
 \begin{figure}[H]
-  \centering
-  \includegraphics[width=0.4\textwidth]{../diagrams/12robustness-diagram-uc3.png}\\[1cm]
-  \caption{Diagrama de Robustez UC3}
+    \centering
+    \includegraphics[width=0.5\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/12robustness-diagram-uc3.png}
+    \caption{Diagrama de Robustez UC3}
 \end{figure}
 
 \subsubsection{UC4}
-El \texttt{GroupBy origin/destination Compute graph} genera para cada nodo
-la lista de predecesores y sucesores; para luego rutear por \texttt{node} la
-información resultante de los grafos a \texttt{GroupBy one length paths
-Count}, cuenta los intermediarios por par \texttt{(origin, destination)}.
-Un Filter final descarta los pares cuyo conteo de intermediarios es
-inferior a 5 y los envía a la cola de resultados del caso de uso, que
-llega al Join.
+Tras el \texttt{default\_filter} (USD y período A), un único \texttt{GroupBy
+Compute graph} construye la representación del grafo (ruteando por
+\texttt{node}) y abre su salida (\textit{fan-out}) hacia dos Aggregate
+distintos. Esta etapa corre con varias instancias
+(\texttt{UC4\_COMPUTE\_GRAPHS}).
+
+El primer Aggregate, \texttt{Aggregate degree}
+(\texttt{UC4\_DEGREE\_AGGREGATES}),
+selecciona los nodos de alto grado (al menos 5 predecesores y/o 5 sucesores)
+y los hace \textit{broadcast} hacia todas las instancias del Merge. El
+segundo, \texttt{Aggregate graphs} (\texttt{UC4\_AGGREGATE\_GRAPHS}),
+materializa
+el grafo completo y lo shardea por \texttt{node} entre las instancias del
+Merge.
+
+El \texttt{Merge prune} corre con varias instancias en anillo
+(\texttt{UC4\_PRUNES}): cada una tiene los dos conjuntos de nodos de alto
+grado (por broadcast) y su shard del grafo (por sharding), y conserva solo
+las aristas de un origen de alto grado de salida a un destino de alto grado
+de entrada. Sobre ese
+grafo podado, el \texttt{Count paths} (\texttt{UC4\_COUNT\_PATHS}) cuenta los
+intermediarios por par \texttt{(origin, destination)} (shardeando por camino
+para repartir el conteo entre instancias) y el \texttt{Aggregate paths}
+(\texttt{UC4\_PATHS\_AGGREGATES}) consolida los conteos parciales, conservando
+los pares con conteo mayor o igual a 5 y depositándolos en la cola de
+entrada del Join.
+
+Por el volumen del grafo, UC4 es el caso que más vuelca a disco
+(\textit{spill}). Todas las etapas \texttt{Aggregate} (la materialización del
+grafo, el cálculo de grados, el conteo de caminos y la consolidación de
+conteos) vuelcan su estado parcial a archivos particionados por shard, y el
+\texttt{Merge prune} también vuelca su lado del grafo. Es necesario porque el
+grafo y, sobre todo, la explosión combinatoria de pares \texttt{(origin,
+destination)} en los nodos de alto grado generan estructuras que no entran en
+memoria. El criterio acá es por umbral: cada etapa acumula en memoria hasta un
+máximo (\texttt{SPILL\_THRESHOLD}) y recién entonces vuelca, a diferencia del volcado
+total de UC3 y los Join.
 
 \begin{figure}[H]
-  \centering
-  \includegraphics[width=0.4\textwidth]{../diagrams/12robustness-diagram-uc4.png}\\[1cm]
-  \caption{Diagrama de Robustez UC4}
+    \centering
+    \includegraphics[width=0.5\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/12robustness-diagram-uc4.png}
+    \caption{Diagrama de Robustez UC4}
 \end{figure}
 
 \subsubsection{UC5}
@@ -302,68 +434,67 @@ horizontalmente de forma independiente del Filter. Se optó por
 permitir este escalamiento para más libertad en el despliegue del
 sistema, pero la operación que se realiza en esta instancia es
 puramente I/O intensive, y por tanto no requiere mayor poder de
-cómputo. Se emite una sola request al servicio externo de conversión
-por batch, amortizando la latencia de red sobre el conjunto del lote.
-El GroupBy produce conteos parciales, uno por instancia, que se
-terminan shardeando por \texttt{client\_id} hacia el Join.
+cómputo. Las cotizaciones se cachean por día: solo se emite una request al
+servicio externo de conversión ante un día todavía no visto, amortizando la
+latencia de red (en el período A son a lo sumo unos pocos días para
+toda la corrida).
+Tras la conversión, un segundo Filter aplica el umbral de \$1 USD y el
+\texttt{GroupBy * Count} produce un conteo parcial por instancia. Esos
+conteos parciales se depositan en la cola de entrada del Join, que los
+suma en el conteo global definitivo del caso de uso.
+
+Ninguna etapa de UC5 hace \textit{spill}: el resultado es un conteo, por lo que
+el estado es chico y se mantiene en memoria.
 
 \begin{figure}[H]
-  \centering
-  \includegraphics[width=0.4\textwidth]{../diagrams/12robustness-diagram-uc5.png}\\[1cm]
-  \caption{Diagrama de Robustez UC5}
+    \centering
+    \includegraphics[width=0.5\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/12robustness-diagram-uc5.png}
+    \caption{Diagrama de Robustez UC5}
 \end{figure}
 
 \subsubsection{Overview del sistema completo}
 
 \begin{figure}[h!]
-  \centering
-  \includegraphics[width=0.9\textwidth]{../diagrams/12robustness-diagram.png}\\[1cm]
-  \caption{Diagrama de Robustez del sistema completo}
+    \centering
+    \includegraphics[width=\textwidth,height=0.9\textheight,keepaspectratio]{../diagrams/v2/12robustness-diagram.png}
+    \caption{Diagrama de Robustez del sistema completo}
 \end{figure}
 
-El Filter es el nodo con una mayor cantidad de conexiones: recibe el
-stream completo de transacciones y produce múltiples colas
-clasificadas por período, formato y moneda. Su escalado horizontal
-genera una topología \textit{many-to-many} con los nodos downstream que debe
-gestionarse a nivel de exchanges y colas del broker.
-Esto se modeló así porque las alternativas que surgieron son:
+El sistema completo se organiza como una colección de pipelines
+independientes que comparten un único punto de entrada (el
+\texttt{default\_filter}) y un único punto de salida (el Join).
 
+El \textbf{Filter} inicial es el nodo con más conexiones: recibe el stream
+completo de transacciones y produce múltiples colas clasificadas por
+período, formato y moneda, una topología \textit{many-to-many} con los nodos
+downstream. Podría parecer un cuello de botella, pero no lo es, por dos
+razones. Primero, el filtrado es \texttt{O(1)} por registro: descarta o rutea
+cada transacción con un costo mínimo, sin acumular estado ni tocar disco,
+de modo que difícilmente sea la etapa limitante. Segundo, si hiciera falta
+más capacidad, el Filter escala horizontalmente con más libertad que otros
+nodos: al ser \textit{stateless}, se le pueden agregar instancias
+(\texttt{DEFAULT\_FILTERS}) sin coordinación de estado.
+
+Concentrar el filtrado inicial en un único tipo de controlador es, además,
+lo más simple. Varios casos de uso comparten condiciones iniciales (la
+mayoría filtra primero por currency USD), así que un Filter común recorre
+cada \textit{batch} una sola vez y rutea cada registro a las colas que
+correspondan. Los ruteos por clave hacia los \texttt{aggregate} y
+\texttt{merge} preservan la correctitud (todos los registros de un grupo caen
+en la misma instancia) y se aplican solo donde la cantidad de variantes es
+suficiente para seguir aprovechando la estrategia \textit{multi-computing}.
+
+Se consideraron dos alternativas para el filtrado, ambas descartadas:
 \begin{itemize}
-  \item Segregar el filtrado en distintas instancias de filter y
-    encadenarlas (por ejemplo filtrar primero por currency USD y después
-    por amount menor a \$50 en el primer caso de uso).
-  \item Segregar \textit{los filtros} en distintas instancias según el
-    filtro a aplicar.
+    \item Encadenar el filtrado en varias instancias de Filter (por ejemplo,
+        filtrar primero por currency USD y luego por monto menor a \$50). No
+        reduce la cantidad de conexiones (la mayoría de los UC requieren el
+        filtro de USD igual) y obliga a recorrer cada batch varias veces en vez
+        de una sola.
+    \item Segregar los filtros en distintas instancias según el filtro a
+        aplicar. Es equivalente en robustez a escalar horizontalmente el único
+        Filter, pero con más complejidad de ruteo.
 \end{itemize}
-
-El problema con estas alternativas es que por la naturaleza de los
-casos de uso, las cantidad de conexiones sería igual de grande, dado
-que la mayoría requieren primero filtrar por currency USD. Por otro
-lado, separar el filtrado en múltiples instancias hace que sea
-necesario recorrer los batches varias veces en vez de sólo una y
-rutear los registros en los batches de manera acorde. Además, la
-segunda alternativa es equivalente en robustez a escalar
-horizontalmente el único controlador Filter por el se terminó optando.
-
-Los ruteos por clave que se realizan hacia algunos de los
-controladores aggregate o Merge son necesarios para garantizar que
-todos los registros de un mismo grupo se aggreguen correctamente.
-Además se realizan en instancias del pipeline en las que se asegura
-que la cantidad de variantes por las que se hace es tan grande como
-para seguir aprovechando la estrategia \textit{multi-computing}.
-
-El último controlador Join está siempre shardeado por \texttt{client\_id},
-garantizando que todos los resultados parciales de un cliente,
-provenientes de cualquiera de las cinco pipelines, converjan en la
-instancia para poder construir la respuesta final.
-Este ruteo no se puede escapar, dado que necesariamente deben
-agruparse los resultados para cada cliente en algún momento. Pero
-podría parametrizarse la cantidad de instancias de Join según la
-cantidad de clientes distintos que se esperan.
-
-Los nodos Merge (UC2, UC3) son los únicos puntos donde se cruzan
-pipelines que provienen de fuentes distintas. Fuera de esos dos
-casos, cada pipeline corre de extremo a extremo sin interacción con las demás.
 
 \newpage
 \subsection{Despliegue}
@@ -373,52 +504,75 @@ realicen un filtrado, no debería impactar en la decisión de en qué
 nodos desplegarlos.
 Dicho esto, en el siguiente diagrama, se muestra cómo podrían
 desplegarse los procesos del pipeline de la manera más distribuida posible.
-\textit{Es posible que este despliegue se modifique en próximas iteraciones
-  del trabajo, de acuerdo a la relación de robustez que terminen
-teniendo los controladores en el pipeline.}
 
-\begin{figure}[h!]
-  \centering
-  \includegraphics[width=0.9\textwidth]{../diagrams/14deployment-diagram.png}\\[1cm]
-  \caption{Diagrama de despliegue}
+Cada controlador corre en su propio contenedor y se conecta al
+\textit{broker} RabbitMQ, que actúa como middleware de comunicación por
+grupos. El \textbf{Gateway} es el borde entre el cliente y el sistema:
+recibe la conexión TCP del cliente, inyecta sus datos al pipeline y le
+devuelve las respuestas. Además de los nodos del pipeline, el despliegue
+incluye dos procesos de infraestructura: el contenedor de RabbitMQ y el
+\textbf{Supervisor}, un proceso de supervisión que recibe los
+\textit{heartbeats} de todos los nodos, detecta los que dejan de responder y
+permite diagnosticar qué falló. Cada nodo con estado monta además un
+volumen propio donde persiste su \textit{checkpoint}, de modo que al
+reiniciarse recupera su estado desde el mismo volumen. La detección de
+caídas se detalla en la sección de tolerancia a fallos; el mecanismo
+concreto que reinicia los contenedores y el \textbf{Chaos Monkey} que inyecta
+fallas pertenecen al entorno de simulación y se describen en Testing. Por
+ser el borde cliente-sistema, el Gateway se excluye de esas pruebas de
+Chaos Monkey (\texttt{CHAOS\_EXCLUDE}): matarlo rompería la conexión TCP
+activa del cliente.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/14deployment-diagram.png}
+    \caption{Diagrama de despliegue}
 \end{figure}
 
 \section{Vista de desarrollo}
 \subsection{Paquetes}
 Para la distribución de archivos fuente, se optó por mantener un
-directorio para cada \textit{tipo} de controlador en
-\texttt{controllers/}, con su
-archivo proceso fuente, su correspondiente Dockerfile y sus
-dependencias específicas.
-También se centralizaron las dependencias comunes en \texttt{common/}, en
-particular, \texttt{net/} y \texttt{data/}, que corresponden a la
-comunicación por
-red y al modelo de datos con los que interactúan los controladores,
-respectivamente.
+directorio por cada \textit{tipo} de controlador bajo \texttt{src/}
+(\texttt{filter/}, \texttt{group\_by/}, \texttt{aggregate/}, \texttt{merge/},
+    \texttt{join/}, \texttt{gateway/} y
+\texttt{client/}), con su
+archivo \texttt{main.py} que levanta el proceso, su correspondiente
+Dockerfile y sus dependencias específicas.
+Las dependencias comunes se centralizan en \texttt{common/}, que cada
+Dockerfile copia junto al código del controlador. Sus subpaquetes
+principales son: \texttt{comms/}, la comunicación, que agrupa el middleware
+sobre RabbitMQ (\texttt{middleware/}), el modelo de mensajes
+(\texttt{messages/}) y la maquinaria de fin de stream (\texttt{eof\_handler/});
+\texttt{data/}, el modelo de dominio (\texttt{Transaction} y \texttt{Account});
+\texttt{checkpoint/}, persistencia y deduplicación; y \texttt{heartbeat/}, el
+cliente de \textit{heartbeat} hacia el Supervisor.
 
-\begin{figure}[!h]
-  \captionsetup[subfigure]{labelformat=empty}
-  \begin{subfigure}[b]{0.4\textwidth}
-    \includegraphics[width=\textwidth]{../diagrams/15packages-diagram.png}\\[1cm]
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[b]{0.4\textwidth}
-    \includegraphics[width=\textwidth]{../diagrams/15packages-diagram-filter.png}\\[1cm]
-    \caption{Diagrama de paquetes — \texttt{filter/}}
-  \end{subfigure}
-  \caption{Diagrama de paquetes}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/15packages-diagram.png}
+    \caption{Diagrama de paquetes}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/15packages-diagram-filter.png}
+    \caption{Diagrama de paquetes - \texttt{filter/}}
 \end{figure}
 
 La razón por la cuál se pueden generalizar los controladores es el
-patrón de implementación por el que se optó. Un archivo fuente para
-levantar el proceso del controlador, que puede ser configurado para
-filtrar según la implementación de la interfaz que corresponda.
+patrón de implementación por el que se optó. Cada tipo de controlador
+tiene un nodo genérico (que hereda de \texttt{RingNode} (o de
+    \texttt{StatelessRingNode} cuando no acumula estado) y resuelve el consumo,
+    el ruteo por afinidad, la sincronización de fin de stream y el
+\textit{checkpointing}) al que se le inyecta una \textit{función de estrategia}
+que encapsula la lógica propia del caso de uso. La estrategia concreta se
+elige al levantar el proceso mediante la variable de entorno
+\texttt{STRATEGY}.
 
-Por ejemplo, el código fuente para un Filter consta
-del controlador
+Por ejemplo, el código fuente para un Filter consta del nodo genérico
 \begin{minted}{python}
-class Filter:
-    def __init__(self,filter_fn: FilterFn):
+class RingFilter(StatelessRingNode):
+    def __init__(self, fn: FilterFn, ...):
         # ...
 \end{minted}
 
@@ -426,99 +580,600 @@ de la interfaz para la función de filtro
 \begin{minted}{python}
 class FilterFn:
     @abstractmethod
-    def filter(self, list[Data]) -> list[Data]:
-        pass
+    def filter(self, el: Message) -> Message:
+        ...
 \end{minted}
 
 y de la implementación particular del filtro que se quiera correr
 \begin{minted}{python}
-class FilterByCurrecyUSD:
-    def filter(self, list[Transaction]) -> list[Transaction]:
-        # ...
+class UC1Filter(FilterFn):
+    def filter(self, el: Message) -> Message:
+        # USD y monto < 50
+        ...
 \end{minted}
 
-En este ejemplo también se puede observar el uso de la interfaz
-\texttt{Data} y una implementación \texttt{Transaction} para la misma.
+El mismo esquema se repite para los demás controladores, cada uno con su
+propia interfaz de estrategia: \texttt{GroupByFn}, \texttt{AggregateFn},
+\texttt{MergeFn} y \texttt{JoinFn}. Todas operan sobre la
+abstracción \texttt{Message}, de la que \texttt{Transaction} y \texttt{Account}
+son los datos de dominio que viaja en los mensajes de entrada.
 
 \newpage
-\section{Vista de procesos}
-\subsection{Actividades}
-\subsubsection{UC1}
-En este diagrama se muestra, además del pipeline necesario para
-computar los resultados a retornarle al cliente, cómo se manejan los
-datos que el cliente envía por batches. Esta explicación se abstrae
-del resto de casos de uso, puesto a que de por sí ya presentan una
-complejidad bastante más grande que la de éste.
+\section{Tolerancia a fallos}
+El sistema asume que cualquier nodo del pipeline puede caerse en
+cualquier momento y debe recuperarse manteniendo la correctitud de
+los resultados. El modelo de fallas considerado es la caída abrupta
+de un proceso; se asume que los nodos del Gateway y del
+\textit{broker} RabbitMQ, junto con sus colas durables sobreviven; y
+que el volumen de estado de cada nodo persiste a través de los reinicios.
+
+La garantía de correctitud se construye combinando dos mecanismos.
+RabbitMQ entrega \textbf{al menos una vez}: todo mensaje no confirmado
+(\textit{ack}) se reenvía tras una caída. Sobre esa base, la
+\textbf{deduplicación} descarta los reenvíos ya procesados, de modo que el
+efecto observable es un procesamiento \textbf{efectivamente único}. La
+detección de los nodos caídos queda a cargo de un \textbf{Supervisor}
+externo, mientras que la consistencia del estado tras el reinicio la
+garantiza el \textbf{checkpointing}.
+
+\subsection{Arquitectura de tolerancia a fallos}
+Dos piezas sostienen la tolerancia a fallos, ortogonales al pipeline de
+procesamiento:
+
+\begin{itemize}
+    \item El \textbf{Supervisor}, un proceso externo de supervisión que recibe
+        los \textit{heartbeats} de todos los nodos y detecta los que dejan de
+        responder, permitiendo diagnosticar qué nodo falló.
+    \item El \textbf{checkpoint} local de cada nodo con estado, que persiste
+        en un volumen propio su estado de negocio, su tabla de deduplicación
+        y sus contadores de secuencia de salida.
+\end{itemize}
+
+La estrategia de ruteo es, además, parte de la tolerancia a fallos:
+como se explicó en robustez, el sharding determinístico hace que cada
+mensaje reentregado por RabbitMQ vuelva siempre a la misma partición del
+mismo nodo lógico. Esto mantiene el estado local de cada réplica acotado a
+su propia partición y simplifica la deduplicación y la recuperación. Con
+\textit{working queues} competitivas, en cambio, un reenvío podría caer en
+otra réplica, complicando el razonamiento sobre estado y duplicados; se
+optó por sharding determinístico precisamente para evitarlo, con una
+pérdida de performance empíricamente despreciable en los datasets evaluados
+(las etapas afectadas eran \textit{stateless} y rápidas).
 
 \begin{figure}[H]
-  \centering
-  \includegraphics[width=0.9\textwidth]{../diagrams/16activity-diagram-uc1.png}\\[1cm]
-  \caption{Diagrama de actividades — UC1}
+    \centering
+    \includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/17ft-architecture-diagram.png}\\[1cm]
+    \caption{Arquitectura de tolerancia a fallos}
 \end{figure}
 
-\subsubsection{UC2}
+\subsection{Detección de caídas}
+Cada nodo levanta, en un \textit{thread} de fondo, un cliente de
+\textit{heartbeat} que se registra contra el Supervisor por TCP y le envía
+un latido cada cierto intervalo (\texttt{HEARTBEAT\_INTERVAL}). El
+Supervisor mantiene el último latido de cada nodo y, si
+pasan más de cierto tiempo (\texttt{HEARTBEAT\_TIMEOUT}) sin recibir
+uno, lo marca como caído. La detección es puramente por
+\textit{heartbeat} (reloj monótono, sin sondear Docker ni la red), de modo
+que el Supervisor siempre puede diagnosticar \textit{qué} nodo dejó de
+responder.
+
 \begin{figure}[H]
-  \centering
-  \includegraphics[width=\textwidth]{../diagrams/16activity-diagram-uc2.png}\\[1cm]
-  \caption{Diagrama de actividades — UC2}
+    \centering
+    \includegraphics[width=0.6\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/18ft-heartbeat-sequence.png}\\[1cm]
+    \caption{Detección por heartbeat}
 \end{figure}
 
-\subsubsection{UC3}
+La liveness del Supervisor está desacoplada de la correctitud del
+pipeline: durante una caída del Supervisor los nodos siguen procesando con
+normalidad.
+
+La \textbf{recuperación} de un nodo caído (reiniciar su proceso para que
+    restaure su \textit{checkpoint}, se reconecte a RabbitMQ y reanude el
+consumo) depende del entorno de ejecución. En la simulación con Docker un
+\textit{reviver} reinicia el contenedor; ese mecanismo, sus variables de
+configuración y la línea de tiempo de recuperación se describen en Testing.
+
+\subsection{Cluster de supervisores}
+El supervisor es entonces el encargado de detectar cuando un nodo se
+cae, proveyendo así la posibilidad de volver a levantarlo. ¿Pero qué
+pasa si se cae el supervisor? Para resolver esto se agregaron
+réplicas del nodo supervisor, de manera tal que este último pasa de
+ser un único nodo a un \textit{servicio tolerante a fallos}.
+
+En el clúster de supervisores, el \textit{líder} es el encargado de
+llevar la cuenta del estado de los nodos del pipeline. Por otro lado,
+para controlar el estado del líder, las réplicas del clúster le
+mandan \textit{pings} con un delay configurable, a los cuales el
+líder contesta con \textit{pongs} para certificar que sigue vivo.
+Cuando una réplica detecta que el líder se cayó, entonces se inicia
+una \textit{elección de líder}. En particular, se implementó la
+\textit{bully leader election} por ser más simple de programar.
+
 \begin{figure}[H]
-  \centering
-  \includegraphics[width=\textwidth]{../diagrams/16activity-diagram-uc3.png}\\[1cm]
-  \caption{Diagrama de actividades — UC3}
+    \centering
+    \includegraphics[width=0.5\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/17supervisor-workers-setup.png}
+    \caption{Clúster de supervisores y nodos del pipeline}
 \end{figure}
 
-\subsubsection{UC4}
+La implementación de los supervisores consta principalmente de tres módulos:
+\begin{itemize}
+    \item \textbf{Event loop.} Lee de la cola de eventos y handlea acordemente.
+    \item \textbf{Runtime.} Lleva a cabo la funcionalidad del
+        \textit{rol} actual del
+        supervisor (líder o réplica), implementado con un
+        \textit{strategy pattern}.
+        Cuando se cae el líder, se pushea el evento
+        \textit{LeaderDown} en la cola de
+        eventos.
+    \item \textbf{Internal/node listener.} Acepta conexiones de otros nodos del
+        clúster y las pushea en la cola de eventos.
+\end{itemize}
+
+Los eventos están implementados con una \textit{multiple producer
+    single consumer
+queue}: los productores son el runtime y el listener; y el consumidor
+es el event
+loop. El listener está basado en el \textit{modelo de actores},
+escucha mensajes y
+delega el manejo y la correspondiente contestación de los mismos al event loop.
+
+Se optó por mantener conexiones TCP entre los nodos, para evitar casos borde de
+pérdida de mensajes en el clúster. Algo a notar de la implementación,
+es que busca
+minimizar la cantidad de conexiones activas entre nodos. Normalmente, cuando el
+líder está vivo, sólo existen $N-1$ conexiones, con $N$ la cantidad
+de nodos: las
+réplicas conectadas al líder para hacer el ping pong. Cuando se cae el líder, se
+inicializan sólo las conexiones necesarias para llevar a cabo la bully leader
+election: la réplica que detecta la caída instancia conexiones con
+aquellos otros
+nodos con un ID mayor al suyo, manda mensaje de elección, espera el
+ACK, y corta la
+conexión; y así sucesivamente hasta que la cantidad de ACKs recibidos para el
+mensaje \textit{election} es cero, en cuyo caso el nodo sabe que es
+aquel que sigue vivo con el mayor id del clúster, y broadcastea
+entonces el mensaje \textit{coordinator}, volviendo así a las $N-1$
+conexiones de la normalidad.
+
 \begin{figure}[H]
-  \centering
-  \includegraphics[width=\textwidth]{../diagrams/16activity-diagram-uc4.png}\\[1cm]
-  \caption{Diagrama de actividades — UC4}
+    \centering
+    \includegraphics[width=0.85\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/18supervisor-bully-leader-election.png}
+    \caption{Bully leader election en el clúster de supervisores}
 \end{figure}
 
-\subsubsection{UC5}
+\subsection{Fin de stream y barrera de anillo}
+El fin de un stream se señaliza con un mensaje especial de \textit{EOF}.
+Cuando el Gateway termina de repartir los datos de un cliente, emite un
+EOF por cada \textit{shard} con la cantidad exacta de mensajes que envió a
+ese shard, de modo que cada instancia downstream sabe cuántos registros
+debe haber recibido antes de darse por completa.
+
+El problema aparece cuando una etapa con $N$ instancias en paralelo debe
+emitir un único EOF hacia la etapa siguiente: ninguna instancia, por sí
+sola, sabe si las demás ya terminaron. Para resolverlo, las instancias de
+cada etapa se organizan en un \textbf{anillo} y ejecutan una barrera
+distribuida. Cuando una instancia alcanza su conteo esperado, vacía su
+estado acumulado hacia downstream y registra cuántos mensajes emitió por
+shard. Un \textit{token} de barrera circula por el anillo acumulando los
+conteos de cada instancia; cuando vuelve al líder con los aportes de las
+$N$, éste emite hacia la etapa siguiente un EOF por shard con el total
+agregado del clúster. Así, la etapa downstream recibe exactamente la
+cuenta total que debe esperar.
+
 \begin{figure}[H]
-  \centering
-  \includegraphics[width=\textwidth]{../diagrams/16activity-diagram-uc5.png}\\[1cm]
-  \caption{Diagrama de actividades — UC5}
+    \centering
+    \includegraphics[width=0.9\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/19ft-eof-barrier-diagram.png}\\[1cm]
+    \caption{Propagación de EOF mediante la barrera de anillo}
 \end{figure}
 
-\subsection{Secuencia}
-\subsubsection{UC1}
+Este mecanismo es también el que indica a las etapas con estado
+(\texttt{aggregate}, \texttt{merge}) cuándo materializar su resultado: una
+instancia sólo vacía sus agregados parciales al completarse su entrada.
+El \texttt{merge} es un caso particular porque tiene dos entradas (la chica,
+por \textit{broadcast}, y la grande, por \textit{sharding}): sólo se da por
+completo cuando llegaron los EOF de ambas, usando la suma de los dos
+conteos. El Join, en cambio, es de instancia única por caso de uso: no
+participa del anillo, sino que espera el EOF agregado y, al alcanzar la
+cuenta, materializa y emite las respuestas del cliente.
+
+La comunicación lógica de anillo se logra mediante el uso de un
+Exchange de RabbitMQ. Cada nodo suscribe a su ID y rutea sus mensajes
+al ID que le sigue (si hay 3, el 0 al 1, el 1 al 2 y el 2 al 0).
+
 \begin{figure}[H]
-  \centering
-  \includegraphics[width=0.4\textwidth]{../diagrams/13sequence-diagram-uc1.png}\\[1cm]
-  \caption{Diagrama de secuencia — UC1}
+    \centering
+    \includegraphics[width=0.3\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/26ft-eof-barrier-infra-diagram.png}\\[1cm]
+    \caption{Infraestructura de la comunicación lógica en anillo}
 \end{figure}
 
-\subsubsection{UC2}
+\subsection{Checkpointing y deduplicación}
+Cada nodo con estado persiste periódicamente un \textit{checkpoint}
+que incluye su estado de negocio, la tabla de deduplicación y los
+contadores de secuencia de salida. Para evitar escrituras
+incompletas: el bloque se vuelca primero a un archivo temporal y,
+sólo cuando la escritura terminó correctamente, se renombra sobre el
+checkpoint anterior. Como el \textit{rename} es una operación atómica
+del sistema de archivos, nunca puede quedar un checkpoint
+\textbf{parcial o corrupto} como estado válido: si el nodo cae
+mientras escribe el temporal, el checkpoint anterior queda intacto y
+es el que se restaura.
+
+La pieza clave es el \textbf{orden entre el checkpoint y los acks}. Los
+mensajes se procesan en batch (de tamaño \texttt{CHECKPOINT\_EVERY})
+y sus \textit{acks} se
+retienen: recién se
+confirman a RabbitMQ \textbf{después} de que el \textit{checkpoint} quedó
+escrito en disco. Así, todo lo confirmado tiene su estado ya persistido;
+si el nodo cae con \textit{acks} pendientes, RabbitMQ reenvía esos mensajes
+y se reprocesan sobre el estado restaurado.
+
 \begin{figure}[H]
-  \centering
-  \includegraphics[width=0.9\textwidth]{../diagrams/13sequence-diagram-uc2.png}\\[1cm]
-  \caption{Diagrama de secuencia — UC2}
+    \centering
+    \includegraphics[width=0.85\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/20ft-checkpoint-diagram.png}\\[1cm]
+    \caption{Checkpoint con acks retenidos y deduplicación}
 \end{figure}
 
-\subsubsection{UC3}
+La \textbf{deduplicación} es la que evita que ese reproceso duplique
+efectos. Cada mensaje de datos se \textit{estampa} en origen con un
+identificador de productor estable (derivado de la identidad del nodo y
+su ruta de salida, idéntico entre reinicios) y un número de secuencia
+creciente. El receptor lleva, por productor, el mayor número de secuencia
+contiguo visto más el conjunto de las vistas por encima de un hueco; descarta
+un mensaje solo si esa secuencia exacta ya fue procesada, nunca una secuencia
+nueva por estar debajo del máximo. Así un reenvío reordenado tras una caída no
+hace perder un mensaje legítimo. Como bajo ruteo por afinidad un
+``productor'' es un par
+\texttt{(nodo, ruta)} y no un mensaje, la tabla queda acotada por la
+topología. Los contadores de secuencia de salida también se restauran del
+\textit{checkpoint}, de modo que un mensaje reemitido tras una caída lleva la
+misma secuencia que su original y el deduplicador downstream lo reconoce.
+Por último, varias etapas con estado manejan volúmenes que no entran en
+memoria, y por eso vuelcan su estado pesado a disco (\textit{spill}). La razón
+primaria es de \textbf{memoria en runtime}: mantener todo ese estado en RAM
+desbordaría el proceso. Por ejemplo, el \texttt{Merge} de UC3 acumula del orden
+de millones de transacciones del período B, que en memoria superarían varios GB
+y provocarían un \textit{out of memory}; el conteo de caminos de UC4 puede
+generar una explosión combinatoria de pares. El \textit{spill} acota ese uso de
+RAM volcando el estado de forma incremental a archivos auxiliares particionados
+por shard, que luego se releen en \textit{batches}. Como consecuencia
+secundaria, el checkpoint tampoco necesita reescribir ese estado gigante en cada
+ciclo: sólo guarda la metadata necesaria (los \textit{offsets} confirmados) para
+recuperarlo hasta un punto consistente, y al restaurar el sistema trunca o
+ignora lo escrito en esos archivos después del último checkpoint confirmado.
+
+El criterio de volcado responde a dos casos. En las etapas cuyo estado parcial
+crece de tamaño desconocido (los \texttt{Aggregate} de UC4), se acumula en
+memoria hasta un umbral (\texttt{SPILL\_THRESHOLD}) y recién ahí se vuelca. En las
+etapas cuyo volumen es conocido y siempre grande (el \texttt{Merge} de UC3 y los
+\texttt{Join} de UC1 y UC3), se vuelca el total a disco apenas llega, sin
+mantenerlo en memoria, y se relee en \textit{batches}.
+
+\subsection{Puntos de falla}
+La combinación de entrega al-menos-una-vez, deduplicación,
+\textit{acks} retenidos y barrera idempotente cubre los distintos
+momentos en que un nodo puede caer. A continuación se enumeran los
+puntos protegidos más importantes y cómo se preserva la correctitud en cada uno.
+
+\subsubsection{Caída a mitad de batch}
+Un nodo procesa parte de un batch (aplicando estado y registrando
+deduplicación en memoria) y cae antes de \textit{checkpointear}. Como esos
+mensajes no se confirmaron, RabbitMQ los reenvía; el estado y la
+deduplicación se restauran del último \textit{checkpoint} y los mensajes se
+reprocesan limpiamente sobre él.
+
 \begin{figure}[H]
-  \centering
-  \includegraphics[width=0.9\textwidth]{../diagrams/13sequence-diagram-uc3.png}\\[1cm]
-  \caption{Diagrama de secuencia — UC3}
+    \centering
+    \includegraphics[width=0.85\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/21ft-failure-midbatch.png}\\[1cm]
+    \caption{Caída a mitad de batch}
 \end{figure}
 
-\subsubsection{UC4}
+\subsubsection{Caída tras el checkpoint y antes de los acks}
+El nodo escribe el \textit{checkpoint} del batch y cae antes de confirmar los
+\textit{acks}. RabbitMQ reenvía el batch completo, pero al restaurar, la tabla
+de deduplicación ya contiene esas secuencias: cada mensaje reenviado se
+detecta como duplicado, se confirma y se descarta sin volver a aplicarse.
+El estado queda correcto, tomado del \textit{checkpoint}.
+
 \begin{figure}[H]
-  \centering
-  \includegraphics[width=0.9\textwidth]{../diagrams/13sequence-diagram-uc4.png}\\[1cm]
-  \caption{Diagrama de secuencia — UC4}
+    \centering
+    \includegraphics[width=0.85\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/22ft-failure-preack.png}\\[1cm]
+    \caption{Caída tras el checkpoint, antes de los acks}
 \end{figure}
 
-\subsubsection{UC5}
+\subsubsection{Caída de un nodo con estado acumulado}
+Un \texttt{aggregate} o \texttt{merge} cae con resultados parciales
+acumulados a lo largo de varios \textit{checkpoints}. Se restaura el estado
+del último \textit{checkpoint} y, si ya había emitido y enviado el
+\textit{token} de barrera, la barrera es idempotente: re-recibir el token
+sólo vuelve a registrar los mismos conteos, sin doble emisión. Los
+archivos de \textit{spill} se truncan a su \textit{offset} confirmado.
+
 \begin{figure}[H]
-  \centering
-  \includegraphics[width=0.9\textwidth]{../diagrams/13sequence-diagram-uc5.png}\\[1cm]
-  \caption{Diagrama de secuencia — UC5}
+    \centering
+    \includegraphics[width=0.9\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/23ft-failure-stateful.png}\\[1cm]
+    \caption{Caída de un nodo con estado acumulado}
 \end{figure}
+
+\subsubsection{Caída del cliente}
+El cliente también puede caerse, y se distinguen dos casos según el momento.
+
+Si el cliente cae \textbf{mientras envía datos}, el Gateway lo detecta porque la
+lectura del socket de ese cliente devuelve un cierre o error de
+conexión antes de
+recibir el \textit{EOF} del stream. En ese caso el Gateway emite un mensaje
+\texttt{Abort} por cada \textit{shard}, estampado con el
+\texttt{client\_id} de esa
+sesión, que viaja por el pipeline igual que los datos. Cada etapa que lo recibe
+\textbf{descarta} el estado parcial de ese cliente: en el Join, el
+\texttt{Abort}
+dispara el \texttt{discard} del estado de negocio del cliente, el borrado de sus
+contadores de recepción y el marcado del cliente como abortado en el
+\textit{checkpoint}. Así no quedan sesiones huérfanas ni etapas esperando
+indefinidamente un EOF que nunca va a llegar.
+
+Si el cliente cae \textbf{cuando el sistema ya está procesando}, el
+pipeline puede
+seguir avanzando o limpiar su estado según el mecanismo de
+\texttt{Abort}, pero el
+cliente ya no va a recibir las respuestas: su conexión dejó de
+existir. La solución
+no es ``recuperar'' al cliente, sino \textbf{abortar/cancelar la
+sesión}, liberar los
+recursos asociados a ese \texttt{client\_id} y evitar que el Join o
+el Gateway queden
+esperando o acumulando resultados para una conexión inexistente.
+
+\newpage
+\subsection{Rendimiento bajo tolerancia a fallos}
+La tolerancia a fallos no es gratis: cada nodo manda latidos,
+\textit{checkpointea},
+\textbf{publica cada mensaje con confirmación del broker} (así un envío en
+vuelo no se pierde) y, ante una caída, reprocesa desde el último
+\textit{checkpoint}.
+Para medir ese costo
+se corrió un \textit{benchmark} con una topología escalada (al menos
+    dos instancias
+por anillo/etapa relevante, de modo que matar una réplica no detiene una etapa)
+sometida al \textit{chaos monkey}, que se \textbf{siembra con una
+semilla fija} para
+que las corridas sean reproducibles por configuración.
+
+Estos resultados deben leerse como \textbf{tendencias y conclusiones
+conceptuales},
+no como valores absolutos. Aunque las corridas sean reproducibles por
+configuración/semilla, el \textit{chaos monkey} introduce caídas sobre nodos y
+combinaciones que pueden variar entre ejecuciones, por lo que los
+valores exactos
+pueden cambiar. Por eso el análisis se enfoca en conclusiones estables sobre el
+comportamiento del sistema bajo fallos y no en números puntuales.
+
+El estrés del \textit{chaos} no es un solo número: el
+\textbf{kill-rate} es el producto de
+\emph{cuántos} nodos se matan por oleada y \emph{cada cuánto} se mata
+una oleada. Por eso el
+plano de estrés se recorre con \textbf{dos cortes ortogonales}, y
+cada uno expone una falla
+distinta:
+\begin{itemize}
+    \item \textbf{Frecuencia}: se fija el tamaño de la oleada y se
+        \emph{acorta el intervalo}
+        entre oleadas. Estresa la falla \textbf{acumulativa}: el
+        supervisor se va quedando atrás a
+        medida que pasa el tiempo.
+    \item \textbf{Ráfaga}: se fija un intervalo generoso y se
+        \emph{agranda la oleada}. Estresa
+        la falla por \textbf{simultaneidad}: una sola oleada se lleva
+        muchos nodos de golpe, antes
+        de que el supervisor alcance a reaccionar.
+\end{itemize}
+Ambos cortes se corren sobre los tres datasets. Como sus tamaños
+difieren en un orden de
+magnitud, los tiempos absolutos no comparten un mismo eje (el dataset
+    chico quedaría aplastado
+contra el piso). Por eso las dos curvas se muestran en
+\textbf{ralentización relativa}: el
+tiempo de cada corrida dividido por el de su propia corrida \emph{sin
+chaos}. Así los tres
+datasets se leen juntos, y la línea de referencia en $\times 1$ marca
+el ``sin degradación''.
+
+Como referencia de los tiempos absolutos, las corridas \textbf{base}
+(sin \textit{chaos}, topología \texttt{min2}, \textit{checkpoint} cada
+1000) tardaron: \textbf{small $\approx$ 2,9 min}, \textbf{medium
+$\approx$ 10,4 min} y \textbf{large $\approx$ 32,6 min}.
+
+\subsubsection{Frecuencia: matar más seguido}
+A intervalos más cortos hay más caídas que recuperar mientras la
+corrida avanza. La curva
+muestra que en casi todo el rango el costo es \textbf{marginal}: las
+tres líneas viajan
+pegadas a la referencia. El sobrecosto recién se dispara en el
+\textbf{régimen más agresivo},
+y lo hace de forma marcadamente \textbf{super-lineal} (una rampa que
+se empina al final). La
+lectura conceptual es que la frecuencia de fallos es un eje
+\emph{barato} hasta cruzar un
+umbral, y a partir de ahí el trabajo de reposición empieza a competir
+en serio con el de
+procesamiento. Aun en el extremo, lo medido \textbf{siempre
+completa}: el sistema se
+\emph{ralentiza}, no se traba.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/ft_perf_frequency.png}\\[0.4cm]
+    \caption{Frecuencia, ralentización relativa por dataset: la
+        degradación es despreciable en
+    casi todo el rango y sólo se empina en el régimen más agresivo.}
+\end{figure}
+
+\subsubsection{Ráfaga: matar más de golpe}
+Con un intervalo holgado el supervisor tiene tiempo de sobra entre
+oleadas, así que lo que se
+mide es cuánta pérdida \emph{instantánea} absorbe la redundancia de
+la topología escalada. El
+comportamiento es \textbf{cualitativamente distinto al de
+frecuencia}: la degradación crece de
+forma \textbf{gradual y sostenida} en todo el rango, sin rodilla ni
+salto abrupto. En el rango
+probado, la ráfaga degradó el tiempo pero no produjo colapso: eso
+muestra \textbf{robustez
+empírica bajo esas condiciones}, no una garantía universal para
+cualquier combinación de
+caídas. De combinar los dos cortes se desprende, conceptualmente, que
+el eje que más penaliza
+es la \textbf{acumulación de fallos en el tiempo} más que la
+simultaneidad puntual, al menos
+en el rango observado.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/ft_perf_burst.png}\\[0.4cm]
+    \caption{Ráfaga, ralentización relativa por dataset: degradación
+        gradual y sostenida al
+    crecer la oleada, sin colapso en ningún dataset.}
+\end{figure}
+
+\subsubsection{El costo del checkpoint}
+La frecuencia de \textit{checkpoint} traza una curva en \textbf{U}
+con dos costos en tensión.
+\textit{Checkpointear} muy seguido está dominado por el costo de I/O;
+espaciar mucho lo abarata, pero encarece cada recuperación, porque ante
+una caída hay más mensajes para reprocesar. Sin fallos el óptimo es
+\textbf{amplio}: la curva \emph{sin chaos} se aplana en una meseta entre
+unos cientos y unos miles de mensajes por checkpoint.
+
+Bajo fallos, en cambio, ese balance \textbf{se desplaza}. En la zona
+frecuente y en el centro de la meseta la curva \emph{con chaos} corre casi
+pegada a la \emph{sin chaos} (un sobrecosto del orden del 5 al 25\%), pero al
+espaciar el checkpoint el sobrecosto \textbf{crece de forma marcada}: en el
+punto más espaciado evaluado el chaos casi \textbf{duplica} el tiempo de la
+corrida base. Es el efecto teórico de que ``espaciar encarece la
+recuperación'' volviéndose visible: cuanto más raro es el checkpoint, más
+mensajes debe reprocesar un nodo revivido tras una caída, y ese reproceso
+pasa a dominar. La consecuencia práctica es que, bajo fallos, conviene un
+checkpoint \textbf{más frecuente} que el óptimo del caso normal, para mantener
+acotado el costo de recuperación.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/ft_perf_checkpoint.png}\\[0.5cm]
+    \caption{Costo del \texttt{CHECKPOINT\_EVERY} (escala log): curva en U.
+        Sin chaos el óptimo es amplio; bajo chaos el sobrecosto es chico en la
+        zona frecuente y media, pero crece al espaciar el checkpoint, casi
+    duplicando el tiempo en el punto más espaciado evaluado.}
+\end{figure}
+
+\newpage
+\section{Testing}
+El sistema se valida con dos tipos de pruebas: de \textbf{correctitud del
+pipeline} (que el resultado final de cada caso de uso sea el correcto) y de
+\textbf{tolerancia a fallos} (que esa correctitud se preserve ante caídas).
+
+\subsection{Testing del pipeline}
+Un script genera, de forma \textbf{secuencial}, los resultados esperados para
+un dataset dado (el \textit{oráculo}). Al no ser distribuido puede ser más
+lento, pero por su simplicidad sirve como referencia de correctitud. Luego se
+levanta con Docker una simulación de todos los contenedores del sistema, se le
+envía el mismo dataset y se comparan los resultados finales de cada UC contra
+los esperados.
+
+La prueba puede correrse:
+\begin{itemize}
+    \item con un \textbf{único cliente} o con \textbf{múltiples clientes}
+        simultáneos (\texttt{NCLIENTS}), para validar el aislamiento por
+        \texttt{client\_id};
+    \item con distintos \textbf{datasets}, seleccionables en \texttt{cfg.py}. El
+        dataset \texttt{perfect} es chico, pero está construido a propósito para
+        testear \textbf{correctitud}: incluye todos los casos borde
+        posibles para
+        los casos de uso específicos del enunciado. Los datasets \texttt{small},
+        \texttt{medium} y \texttt{large} son los datasets reales del
+        problema, de
+        tamaño creciente ($\sim$620\,MB, $\sim$2.8\,GB y $\sim$16\,GB
+        respectivamente), para validar el sistema a escala;
+        son independientes los unos de los otros (los más chicos no
+        son subsets del large).
+\end{itemize}
+El objetivo es comprobar que, para cada combinación, la salida de los cinco
+casos de uso coincida exactamente con la del oráculo.
+
+\subsection{Testing de tolerancia a fallos}
+Hay dos modos de probar la tolerancia a fallos.
+
+\subsubsection{Pruebas determinísticas}
+Se levanta el sistema con Docker y se inyectan caídas \textbf{controladas} en
+puntos críticos del pipeline (\textit{crash points}): tras aplicar un batch pero
+antes de checkpointear, durante la escritura del checkpoint, antes de
+confirmar los \textit{acks}, al propagar el EOF del anillo, al restaurar en el
+arranque, etc. Para cada nodo y cada punto de falla relevante se mata y se
+vuelve a levantar el nodo en ese momento exacto, y se verifica que el pipeline
+completo termine y que los resultados finales coincidan con el oráculo. Como
+recorrer la matriz completa ``nodos $\times$ puntos de falla'' es costoso, no
+siempre se ejecuta entera.
+
+\subsubsection{Demo con Chaos Monkey}
+El \textbf{Chaos Monkey} es un proceso de prueba que, mientras el sistema
+procesa, mata contenedores al azar para validar la recuperación de forma no
+determinística. Cuando un nodo cae, el \textbf{Supervisor} lo detecta por la
+ausencia de \textit{heartbeats} y, en esta simulación, lo reinicia: los
+supervisores cumplen una función especial con \textbf{Docker-in-Docker} para
+poder levantar los contenedores caídos reutilizando su volumen de estado.
+
+Es importante entender que esto es una \textbf{herramienta de prueba/demo}, no
+un supuesto de producción: en un sistema verdaderamente distribuido los nodos
+no serían simples contenedores locales reiniciables por Docker, sino procesos
+gestionados por el orquestador del entorno.
+
+Las variables que gobiernan el Chaos Monkey y el mecanismo de
+supervisión/revival son configurables. Las principales:
+\begin{itemize}
+    \item \texttt{CHAOS\_ENABLED}: arma o desarma el Chaos Monkey;
+        en \texttt{1} empieza a matar nodos.
+    \item \texttt{CHAOS\_INTERVAL}: cada cuánto mata nodos. Menor =
+        fallas más frecuentes.
+    \item \texttt{CHAOS\_KILLS\_MIN} / \texttt{CHAOS\_KILLS\_MAX}: cuántos nodos
+        mata por ronda. Mayor = fallas
+        más severas y simultáneas.
+    \item \texttt{CHAOS\_START\_DELAY}: cuánto espera antes de
+        empezar, para dar tiempo al \textit{warmup} del sistema.
+    \item \texttt{CHAOS\_EXCLUDE}: nodos inmunes al chaos (entre
+            ellos el Gateway,
+        RabbitMQ y el Supervisor); sacar uno lo vuelve vulnerable.
+    \item \texttt{HEARTBEAT\_INTERVAL}: cada cuánto late cada
+        nodo. Menor = detección más rápida pero más tráfico.
+    \item \texttt{HEARTBEAT\_TIMEOUT}: cuánto sin latidos antes
+        de marcar caído. Menor = detección más rápida pero más falsos positivos.
+    \item \texttt{REVIVE\_INTERVAL}: cada cuánto el reviver busca
+        nodos caídos para reiniciarlos.
+    \item \textit{cooldown} de revival: espera mínima entre
+        reintentos sobre un mismo nodo, para no martillar a uno que tarda en
+        volver.
+\end{itemize}
+La línea de tiempo de recuperación de un nodo es, así, la suma de tres
+términos: el tiempo hasta perder el primer latido, el \textit{timeout} de
+detección, y la espera hasta la siguiente pasada del reviver.
+
+\subsection{Testing de escalabilidad}
+Más allá de la correctitud con un cliente, se agregó una prueba e2e dedicada
+(\texttt{make scalability\_test}, hermana de \texttt{make test\_ft})
+que verifica que
+los anillos de afinidad siguen produciendo el resultado correcto a
+medida que cada etapa
+se escala de un nodo a un anillo de 2 o 3. Para cada configuración de escalado
+(desde la topología base hasta topologías con todas las etapas en
+    $\geq 2$ instancias,
+o que escalan el camino caliente de UC4) reescribe los tamaños de los anillos,
+levanta el cluster y corre un cliente por cada dataset (perfect /
+    small / medium /
+large), comparando el resultado contra el oráculo cacheado. Cada
+combinación puede
+repetirse varias veces para cubrir la variabilidad de \textit{timing}.
+Ante una falla vuelca las colas trabadas, los códigos de salida de
+los nodos caídos y
+los \textit{logs} alrededor, y al terminar verifica que el cluster,
+el estado en disco
+y las colas queden limpios.
 
 \newpage
 \section{Desarrollo}
@@ -530,22 +1185,28 @@ seguimiento del total funcionamiento del sistema, pero sin la
 necesidad de entrar de lleno en los detalles específicos de cada caso de uso.
 
 \subsection{Asignación}
-Aquellas tareas de las que dependan todas los casos, serán
-desarrolladas en una primera implementación por todos los miembros
-del equipo, y serán modificadas como se requiera por quien lo
-necesite a lo largo de la continuación del trabajo.
-El primer caso de uso será desarrollado en gran medida con la
-dinámica de *ping-pong pair-programming*; con el objetivo de usar el
-caso más simple para la interiorización de la implementación del
-trabajo para todos los miembros del equipo en paralelo.
-El resto de ítems quedan divididos de la siguiente manera:
+La división del trabajo arrancó siguiendo una lógica \textbf{por caso de
+uso}. Las tareas de las que dependen todos los casos se implementaron
+primero entre todos los miembros del equipo y luego se fueron modificando
+según lo necesitara cada uno. El primer caso de uso se desarrolló en gran
+medida con la dinámica de \textit{ping-pong pair-programming}, usando el caso
+más simple para que todo el equipo se interiorizara en paralelo de la
+implementación. El resto quedó dividido así:
 
 \begin{itemize}
-  \item UC1: Todos
-  \item UC2: Lorenzo Minervino
-  \item UC3: Valsagna Federico.
-  \item UC4: Ordoñez Alejo.
-  \item UC5: Lorenzo Minervino.
+    \item UC2: Lorenzo Minervino
+    \item UC3: Federico Valsagna
+    \item UC4: Alejo Ordoñez
+    \item UC5: Lorenzo Minervino
 \end{itemize}
+
+A medida que el proyecto avanzó, sin embargo, el trabajo dejó de
+organizarse por caso de uso y pasó a estructurarse por \textbf{features
+transversales}, ya que la mayoría afectaba a muchas partes del sistema a la
+vez. Los refactors, el escalado de nodos, la tolerancia a fallos, el
+testing, los diagramas, la documentación y las correcciones se distribuyeron
+entre los integrantes a lo largo del proyecto, sin atarse a la asignación
+inicial por UC. Hubo, entonces, una asignación inicial por UC, pero la
+evolución real fue más \textit{distribuida} (:P).
 
 \end{document}

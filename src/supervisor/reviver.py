@@ -8,8 +8,7 @@ from .registry import NodeRegistry, Status
 
 
 def _docker_start(node_id: str) -> None:
-    # Recovery (not detection) is allowed to use Docker: start the dead node's
-    # container again, reusing its state volume so it restores from checkpoint.
+    # recovery (not detection) may use Docker: restart the container reusing its state volume to restore from checkpoint
     subprocess.run(
         ["docker", "start", node_id],
         check=False,

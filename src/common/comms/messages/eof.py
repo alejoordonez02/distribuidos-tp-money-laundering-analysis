@@ -20,8 +20,7 @@ class EOF(Message):
         self.expected_count = expected_count
         self.next_expected_count = next_expected_count
         self.origin = origin
-        # output count per downstream shard; circulated while the emitter's ring sums
-        # each shard, so it can send each downstream peer its own expected_count.
+        # output count per downstream shard; circulated while the ring sums each shard so each peer gets its own expected_count.
         self.next_expected_per_shard = next_expected_per_shard or {}
 
     @classmethod

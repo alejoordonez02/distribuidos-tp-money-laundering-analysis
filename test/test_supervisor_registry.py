@@ -41,6 +41,23 @@ def test_expected_nodes_start_unknown():
     }
 
 
+def test_expected_node_never_seen_is_marked_dead_after_grace():
+    # A leader elected after a crash must revive a node that died at the transition and never sends THIS leader a heartbeat; grace is measured from the first sweep, not t=0.
+    reg = NodeRegistry(timeout=5, expected=["n1"])
+    reg.check_timeouts(now=100.0)  # sweep starts -> grace begins
+    assert _status_of(reg, "n1") is Status.UNKNOWN  # still within grace
+    reg.check_timeouts(now=106.0)  # past the grace
+    assert _status_of(reg, "n1") is Status.DEAD
+
+
+def test_expected_node_that_registers_is_not_killed_as_never_seen():
+    reg = NodeRegistry(timeout=5, expected=["n1"])
+    reg.check_timeouts(now=100.0)  # grace begins
+    reg.register("n1", "filter", now=103.0)  # reports in
+    reg.check_timeouts(now=107.0)  # 7s since grace start, but node is ALIVE & fresh
+    assert _status_of(reg, "n1") is Status.ALIVE
+
+
 def test_transitions_are_logged_as_events():
     reg = NodeRegistry(timeout=5)
     reg.register("n1", "filter", now=0.0)

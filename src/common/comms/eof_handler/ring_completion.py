@@ -71,12 +71,10 @@ class RingCompletion:
     def __init__(self, node_id: int, peer_ids: list[int]):
         self.node_id = node_id
         self.n_nodes = len(peer_ids) + 1
-        # one fixed leader circulates and closes the single barrier token; redundant
-        # tokens would only force every downstream consumer to dedup re-emitted EOFs.
+        # single fixed leader closes the one barrier token; extra tokens would force downstream dedup
         self.leader = min([node_id, *peer_ids])
         self._clients: dict[UUID, _Client] = {}
-        # tombstone aborted clients: a barrier token still circulating would otherwise
-        # re-create the client on each hop and loop forever — on_token drops it instead.
+        # tombstone aborted clients: else a circulating token re-creates them each hop and loops forever
         self._aborted: set[UUID] = set()
 
     def _client(self, client_id: UUID) -> _Client:
@@ -108,6 +106,20 @@ class RingCompletion:
             return []
         return [Emit(client_id)]
 
+    def recheck(self) -> list[Any]:
+        actions: list[Any] = []
+        for client_id in list(self._clients):
+            actions.extend(self._maybe_local_complete(client_id))
+        return actions
+
+    def resolved_clients(self) -> list[UUID]:
+        """Clients whose result was already emitted (EMITTED) or whose barrier closed
+        (DONE). On restore their spilled state is safe to free: it will never be
+        re-emitted, so a revived node must drop it instead of orphaning it on disk."""
+        return [
+            cid for cid, c in self._clients.items() if c.phase != Phase.PROCESSING
+        ]
+
     def report_sent(self, client_id: UUID, sent: dict[int, int]) -> list[Any]:
         """Called by the controller right after it emits (stateful) or finishes its
         per-message output (stateless), with this node's per-shard sent counts."""
@@ -128,8 +140,7 @@ class RingCompletion:
         if token.client_id in self._aborted:
             return []  # the client aborted: drop its circulating token, don't forward
         c = self._client(token.client_id)
-        # only count a peer that has already emitted; a token passing a peer still
-        # PROCESSING must not record its stale (zero) slot. idempotent on redelivery.
+        # only record a peer that already emitted, never a PROCESSING peer's stale slot; idempotent
         if c.phase != Phase.PROCESSING:
             token.sent_by[self.node_id] = c.sent
         return self._advance(token)

@@ -6,7 +6,6 @@ from common.comms.transport import Connection
 
 from .supervisor_runtime import SupervisorRuntime
 
-# TODO: esto mejor pasarlo por envs pero posta ALTA pj
 CONNECTION_RETRIES = 5
 RETRY_DELAY = 0.1
 
@@ -16,7 +15,7 @@ class LeaderDownError(Exception): ...
 
 class ReplicaRuntime(SupervisorRuntime):
     def __init__(self, leader_addr: tuple[str, int], ping_delay: float):
-        self._leader = Leader(leader_addr)
+        self._leader = LeaderLink(leader_addr)
         self._keep_running = False
         self._ping_delay = ping_delay
 
@@ -35,7 +34,7 @@ class ReplicaRuntime(SupervisorRuntime):
         self._leader.close()
 
 
-class Leader:
+class LeaderLink:
     def __init__(self, leader_addr: tuple[str, int]):
         self._addr = leader_addr
         self._conn: Connection | None = None

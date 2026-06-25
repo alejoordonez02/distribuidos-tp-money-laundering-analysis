@@ -7,10 +7,19 @@ import time
 _INFRA_PREFIXES = ("client",)
 
 
+def _excluded(name, exclude):
+    """Match an exclude entry by exact name or as its `name_N` replica, so a base name
+    like `supervisor` also protects the `supervisor_0..N` cluster containers."""
+    return any(name == e or name.startswith(e + "_") for e in exclude)
+
+
 def select_victims(candidates, exclude, kills, rng):
     """Pure target selection: drop excluded names and infra, then randomly sample
     up to `kills` victims. Kept separate from Docker so it is easy to test."""
-    pool = [c for c in candidates if c not in exclude and not c.startswith(_INFRA_PREFIXES)]
+    pool = sorted(
+        c for c in candidates
+        if not _excluded(c, exclude) and not c.startswith(_INFRA_PREFIXES)
+    )
     if not pool:
         return []
     return rng.sample(pool, min(kills, len(pool)))

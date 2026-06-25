@@ -11,10 +11,7 @@ from .merge_fn import MergeFn
 
 _DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
-# Max transactions per emitted MergedTransactions. The right side is already
-# spilled to disk, so get_result streams it back in bounded batches instead of
-# loading every matching transaction into one list / one giant message (which
-# OOM'd uc3_merge on the medium dataset: 3.76M txns ~= 4.7GB in RAM).
+# max txns per message: the right side is already on disk and streams back in bounded batches (loading it all OOM'd uc3_merge on medium: 3.76M txns ~= 4.7GB)
 _CHUNK_SIZE = 10_000
 
 
@@ -53,12 +50,10 @@ class UC3BankIdMergeFn(MergeFn):
     def get_result(self, client_id: UUID) -> Iterator[MergedTransactions]:  # type: ignore[reportIncompatibleMethodOverride]
         averages = self._averages.pop(client_id, {})
 
-        # Stream the spilled right side back in bounded batches. Every chunk
-        # carries the (small) averages dict so the downstream filter can process
-        # each message independently — same data, same result as one big message.
+        # stream the spilled right side back in bounded batches; each chunk carries the small averages dict so the downstream filter processes it independently
         batch: list[Transaction] = []
         emitted = False
-        for line in self._spill.iter_lines_and_clear(client_id):
+        for line in self._spill.iter_lines(client_id):
             t = _deserialize(line.rstrip("\n"))
             if t.payment_format in averages:
                 batch.append(t)
@@ -71,8 +66,7 @@ class UC3BankIdMergeFn(MergeFn):
             yield MergedTransactions(client_id, batch, averages)
             emitted = True
 
-        # Preserve the old contract of always emitting at least one message
-        # (downstream expects >= 1 even when there are no matching transactions).
+        # keep the contract of emitting at least one message (downstream expects >= 1 even with no matching transactions)
         if not emitted:
             yield MergedTransactions(client_id, [], averages)
 
@@ -91,3 +85,6 @@ class UC3BankIdMergeFn(MergeFn):
             UUID(c): dict(v) for c, v in snapshot.get("averages", {}).items()
         }
         self._spill.restore_state(snapshot.get("spill", {}))
+
+    def clear_stale_spill(self):
+        self._spill.clear_all()

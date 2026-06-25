@@ -44,6 +44,8 @@ class NodeRegistry:
             node_id: NodeState(node_id) for node_id in (expected or [])
         }
         self._events: list[Event] = []
+        # grace from the first sweep before declaring a never-seen node dead
+        self._started_at: Optional[float] = None
 
     def register(self, node_id: str, kind: str, now: float) -> None:
         with self._lock:
@@ -61,6 +63,8 @@ class NodeRegistry:
 
     def check_timeouts(self, now: float) -> None:
         with self._lock:
+            if self._started_at is None:
+                self._started_at = now
             for node in self._nodes.values():
                 if (
                     node.status is Status.ALIVE
@@ -68,6 +72,13 @@ class NodeRegistry:
                     and now - node.last_heartbeat > self._timeout
                 ):
                     self._transition(node, Status.DEAD, "heartbeat lost")
+                elif (
+                    node.status is Status.UNKNOWN
+                    and node.last_heartbeat is None
+                    and now - self._started_at > self._timeout
+                ):
+                    # expected node that never reported: a leader elected after a crash must revive it anyway
+                    self._transition(node, Status.DEAD, "never seen")
 
     def note(self, node_id: str, message: str) -> None:
         """Append an external event (e.g. the reviver issuing a docker start) to

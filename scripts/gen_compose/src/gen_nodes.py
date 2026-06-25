@@ -1,10 +1,12 @@
+import os
 from enum import StrEnum
 
 from .container_type import ContainerType
 from .runtime import restart_line
 from .supervisor_env import supervisor_env
 
-CHECKPOINT_EVERY = 1000
+# Overridable via env so the FT-vs-performance bench can sweep it; defaults to the production value.
+CHECKPOINT_EVERY = int(os.getenv("CHECKPOINT_EVERY", "1000"))
 
 
 def gen_nodes(
@@ -62,7 +64,9 @@ def gen_nodes(
       - RING_NAME={name}_ring
       - NAFFINITY_DOWNSTREAM={naffinity_downstream}
       - BROADCAST_DOWNSTREAM={1 if broadcast_downstream else 0}
-      - PYTHONHASHSEED=2026"""
+      - PYTHONHASHSEED=2026
+      - PYTHONUNBUFFERED=1
+      - LOGGING_LEVEL={os.getenv("LOGGING_LEVEL", "WARNING")}"""
         for key, value in (extra_env or {}).items():
             compose += f"""
       - {key}={value}"""
