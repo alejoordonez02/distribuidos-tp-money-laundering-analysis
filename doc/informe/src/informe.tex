@@ -307,6 +307,12 @@ La cola de Responses desacopla el Join del Gateway: el Join deposita
 los resultados en la cola y el Gateway los consume para cerrar la
 conexión correspondiente.
 
+Por el volumen de salida de UC1 (potencialmente millones de transacciones), el
+\texttt{Join} no acumula el resultado en memoria: lo vuelca a disco
+(\textit{spill}) apenas lo recibe y lo emite hacia la cola de Responses en
+\textit{batches} a medida que lo relee. El criterio acá es de volumen conocido y
+grande, por lo que se vuelca el total sin umbral.
+
 \subsubsection{UC2}
 El Gateway publica en dos exchanges distintos: \texttt{Transactions} para
 el stream de transacciones y \texttt{Accounts} para el dataset de cuentas.
@@ -329,6 +335,10 @@ de nombres shardea por \texttt{bank\_id}, de modo que cada instancia del
 Merge es dueña de un subconjunto de bancos. Así, cada banco es emitido
 por exactamente una instancia del Merge: la que tiene su nombre en su
 shard. El resultado se deposita en la cola de entrada del Join.
+
+Ninguna etapa de UC2 hace \textit{spill}: el estado es chico (el máximo por
+\texttt{bank\_id} y el mapa de nombres), por lo que se resuelve enteramente en
+memoria.
 
 \begin{figure}[H]
     \centering
@@ -359,6 +369,13 @@ hay 7 formatos en el dataset de ejemplo entero.
 
 Después del Merge, un segundo Filter aplica la condición \texttt{amount <
 average/100} y produce la cola final hacia el Join.
+
+Por el volumen del período B (del orden de millones de transacciones), el
+\texttt{Merge} no mantiene ese lado en memoria: lo vuelca a disco
+(\textit{spill}) apenas lo recibe y lo relee en \textit{batches} al cruzarlo
+con los promedios; es el caso que de otro modo causaría un \textit{out of
+memory}. El \texttt{Join} de UC3 también vuelca su salida a disco por el mismo
+motivo de volumen. En ambos el criterio es volcado total sin umbral.
 
 \begin{figure}[H]
     \centering
@@ -392,8 +409,18 @@ intermediarios por par \texttt{(origin, destination)} (shardeando por camino
 para repartir el conteo entre instancias) y el \texttt{Aggregate paths}
 (\texttt{UC4\_PATHS\_AGGREGATES}) consolida los conteos parciales, conservando
 los pares con conteo mayor o igual a 5 y depositándolos en la cola de
-entrada del Join. Por el volumen del grafo, el conteo de caminos vuelca su
-estado parcial a disco (\textit{spill}), particionado en archivos por shard.
+entrada del Join.
+
+Por el volumen del grafo, UC4 es el caso que más vuelca a disco
+(\textit{spill}). Todas las etapas \texttt{Aggregate} (la materialización del
+grafo, el cálculo de grados, el conteo de caminos y la consolidación de
+conteos) vuelcan su estado parcial a archivos particionados por shard, y el
+\texttt{Merge prune} también vuelca su lado del grafo. Es necesario porque el
+grafo y, sobre todo, la explosión combinatoria de pares \texttt{(origin,
+destination)} en los nodos de alto grado generan estructuras que no entran en
+memoria. El criterio acá es por umbral: cada etapa acumula en memoria hasta un
+máximo (\texttt{MAX\_AMOUNT}) y recién entonces vuelca, a diferencia del volcado
+total de UC3 y los Join.
 
 \begin{figure}[H]
     \centering
@@ -415,6 +442,9 @@ Tras la conversión, un segundo Filter aplica el umbral de \$1 USD y el
 \texttt{GroupBy * Count} produce un conteo parcial por instancia. Esos
 conteos parciales se depositan en la cola de entrada del Join, que los
 suma en el conteo global definitivo del caso de uso.
+
+Ninguna etapa de UC5 hace \textit{spill}: el resultado es un conteo, por lo que
+el estado es chico y se mantiene en memoria.
 
 \begin{figure}[H]
     \centering
@@ -797,17 +827,26 @@ hace perder un mensaje legítimo. Como bajo ruteo por afinidad un
 topología. Los contadores de secuencia de salida también se restauran del
 \textit{checkpoint}, de modo que un mensaje reemitido tras una caída lleva la
 misma secuencia que su original y el deduplicador downstream lo reconoce.
-Por último, no todo el estado entra en el bloque del checkpoint. Algunas
-etapas acumulan un estado demasiado grande como para reescribirlo entero en
-cada ciclo (en particular UC4, cuyo procesamiento del grafo y conteo de
-caminos pueden generar estructuras enormes). Para eso se usa \textit{spill}
-a disco: el estado pesado se vuelca de forma incremental a archivos
-auxiliares particionados por shard, y el checkpoint sólo guarda la metadata
-necesaria (los \textit{offsets} confirmados) para recuperarlo hasta un punto
-consistente. Al restaurar, el sistema trunca o ignora lo que se hubiera
-escrito en esos archivos después del último checkpoint confirmado. Así, el
-checkpoint no necesita duplicar ni reescribir un estado gigante en cada
-ciclo, algo que no escalaría.
+Por último, varias etapas con estado manejan volúmenes que no entran en
+memoria, y por eso vuelcan su estado pesado a disco (\textit{spill}). La razón
+primaria es de \textbf{memoria en runtime}: mantener todo ese estado en RAM
+desbordaría el proceso. Por ejemplo, el \texttt{Merge} de UC3 acumula del orden
+de millones de transacciones del período B, que en memoria superarían varios GB
+y provocarían un \textit{out of memory}; el conteo de caminos de UC4 puede
+generar una explosión combinatoria de pares. El \textit{spill} acota ese uso de
+RAM volcando el estado de forma incremental a archivos auxiliares particionados
+por shard, que luego se releen en \textit{batches}. Como consecuencia
+secundaria, el checkpoint tampoco necesita reescribir ese estado gigante en cada
+ciclo: sólo guarda la metadata necesaria (los \textit{offsets} confirmados) para
+recuperarlo hasta un punto consistente, y al restaurar el sistema trunca o
+ignora lo escrito en esos archivos después del último checkpoint confirmado.
+
+El criterio de volcado responde a dos casos. En las etapas cuyo estado parcial
+crece de tamaño desconocido (los \texttt{Aggregate} de UC4), se acumula en
+memoria hasta un umbral (\texttt{MAX\_AMOUNT}) y recién ahí se vuelca. En las
+etapas cuyo volumen es conocido y siempre grande (el \texttt{Merge} de UC3 y los
+\texttt{Join} de UC1 y UC3), se vuelca el total a disco apenas llega, sin
+mantenerlo en memoria, y se relee en \textit{batches}.
 
 \subsection{Puntos de falla}
 La combinación de entrega al-menos-una-vez, deduplicación,
