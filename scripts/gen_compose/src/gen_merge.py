@@ -46,7 +46,7 @@ def _merge_service(
       - STATE_DIR=/state
       - CHECKPOINT_EVERY={CHECKPOINT_EVERY}
     volumes:
-      - ./state/{container}:/state"""
+      - {container}_state:/state"""
 
     return compose
 

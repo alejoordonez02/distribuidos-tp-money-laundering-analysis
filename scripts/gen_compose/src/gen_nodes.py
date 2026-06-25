@@ -77,6 +77,6 @@ def gen_nodes(
       - STATE_DIR=/state
       - CHECKPOINT_EVERY={CHECKPOINT_EVERY}
     volumes:
-      - ./state/{name}_{idx}:/state"""
+      - {name}_{idx}_state:/state"""
 
     return compose
