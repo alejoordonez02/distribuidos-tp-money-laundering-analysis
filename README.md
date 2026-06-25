@@ -1,6 +1,6 @@
 # Money Laundering Analysis
 
-![There are only two hard problems in distributed systems: 2. Exactly-once delivery / 1. Guaranteed order of messages / 2. Exactly-once delivery](assets/distributed-systems.png)
+<img src="assets/distributed-systems.png" alt="There are only two hard problems in distributed systems: 2. Exactly-once delivery / 1. Guaranteed order of messages / 2. Exactly-once delivery" width="480">
 
 Distributed pipeline that runs 5 use cases over transaction datasets.
 
