@@ -100,8 +100,7 @@ def dump_deadlock(down):
     print("\n  === DEADLOCK diagnostics ===", flush=True)
     backlog = _backlog_queues()
     print(f"  --- queues with backlog: {backlog} ---", flush=True)
-    # the stuck stage is whichever ring queue still holds a token; dump BOTH its peers so we
-    # can see each peer's received/expected counts and find the one that never completed.
+    # the stuck stage is whichever ring queue still holds a token; dump BOTH peers to find the one that never completed.
     stages = sorted({q.split("_ring_queue")[0] for q, _ in backlog if "_ring_queue" in q})
     for stage in stages:
         for peer in (f"{stage}_0", f"{stage}_1"):

@@ -70,8 +70,7 @@ EXCLUDE = os.getenv("CHAOS_EXCLUDE", "rabbitmq,supervisor,gateway,chaos")
 
 # A hard ceiling so the script never runs longer than the bench would (matches the 1810s cap).
 HARD_TIMEOUT = _int("HARD_TIMEOUT", 1900)
-# Early stall verdict: if the queue makes no new low for this long while the client is still
-# running, we call it wedged. Keep it comfortably above a legitimate recovery plateau.
+# Early stall verdict: queue makes no new low for this long while the client runs -> wedged (kept above a legit recovery plateau).
 STALL_WINDOW = _int("STALL_WINDOW", 150)
 # Don't arm the stall detector until the pipeline has had a chance to ramp up and drain once.
 MIN_RUNTIME = _int("MIN_RUNTIME", 120)

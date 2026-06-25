@@ -44,9 +44,7 @@ class NodeRegistry:
             node_id: NodeState(node_id) for node_id in (expected or [])
         }
         self._events: list[Event] = []
-        # First sweep clock, to give expected-but-never-seen nodes a grace before
-        # declaring them dead (so a freshly-elected leader does not revive nodes
-        # that are simply still booting / re-registering).
+        # grace from the first sweep before declaring a never-seen node dead
         self._started_at: Optional[float] = None
 
     def register(self, node_id: str, kind: str, now: float) -> None:
@@ -79,9 +77,7 @@ class NodeRegistry:
                     and node.last_heartbeat is None
                     and now - self._started_at > self._timeout
                 ):
-                    # Expected node that never reported, even after the grace: a
-                    # leader elected after a crash must revive it, not stay blind
-                    # to it just because it never sent THIS leader a heartbeat.
+                    # expected node that never reported: a leader elected after a crash must revive it anyway
                     self._transition(node, Status.DEAD, "never seen")
 
     def note(self, node_id: str, message: str) -> None:

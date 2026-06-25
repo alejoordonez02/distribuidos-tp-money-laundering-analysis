@@ -15,8 +15,7 @@ MOM_HOST = os.environ["MOM_HOST"]
 RESPONSES_EXCHANGE = os.environ["SERVER_QUEUE_RX"]
 TRANSACTIONS_TX = os.environ["TRANSACTIONS_TX"]
 ACCOUNTS_TX = os.environ["ACCOUNTS_TX"]
-# downstream rings consume their input by affinity: the gateway routes each message
-# to one of N durable shard queues bound to the *_TX exchange (1 = a plain work queue).
+# gateway routes each message by affinity to one of N durable shard queues on *_TX (1 = plain work queue).
 NDEFAULT_FILTERS = int(os.getenv("NDEFAULT_FILTERS", "1"))
 NBANK_NAMES = int(os.getenv("NBANK_NAMES", "1"))
 

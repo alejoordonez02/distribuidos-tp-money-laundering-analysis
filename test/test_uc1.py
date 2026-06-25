@@ -27,9 +27,6 @@ class Result:
         )
 
 
-# TODO: las condiciones de corte que puse ("--- UC1 ---" o "---") están horribles,
-#       quizás se podría reutilizar el formatter que usa join...
-# TODO: deshardcodear los nombres de los archivos
 def test_uc1():
     """
     Test UC1 for all clients.

@@ -71,12 +71,10 @@ class RingCompletion:
     def __init__(self, node_id: int, peer_ids: list[int]):
         self.node_id = node_id
         self.n_nodes = len(peer_ids) + 1
-        # one fixed leader circulates and closes the single barrier token; redundant
-        # tokens would only force every downstream consumer to dedup re-emitted EOFs.
+        # single fixed leader closes the one barrier token; extra tokens would force downstream dedup
         self.leader = min([node_id, *peer_ids])
         self._clients: dict[UUID, _Client] = {}
-        # tombstone aborted clients: a barrier token still circulating would otherwise
-        # re-create the client on each hop and loop forever — on_token drops it instead.
+        # tombstone aborted clients: else a circulating token re-creates them each hop and loops forever
         self._aborted: set[UUID] = set()
 
     def _client(self, client_id: UUID) -> _Client:
@@ -142,8 +140,7 @@ class RingCompletion:
         if token.client_id in self._aborted:
             return []  # the client aborted: drop its circulating token, don't forward
         c = self._client(token.client_id)
-        # only count a peer that has already emitted; a token passing a peer still
-        # PROCESSING must not record its stale (zero) slot. idempotent on redelivery.
+        # only record a peer that already emitted, never a PROCESSING peer's stale slot; idempotent
         if c.phase != Phase.PROCESSING:
             token.sent_by[self.node_id] = c.sent
         return self._advance(token)

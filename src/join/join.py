@@ -49,11 +49,9 @@ class Join:
         try:
             main_rh.start()
         except Exception as e:
-            # TODO: handle specific exceptions from JoinRouteHandler
             logging.error("!!! UNHANDLED exception in join main route handler: %s", e, exc_info=True)
 
         logging.warning("Start going towards stop")
-        # self.stop()
 
     def stop(self):
         logging.warning("Enters sigterm")

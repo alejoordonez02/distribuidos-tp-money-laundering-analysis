@@ -13,8 +13,7 @@ _USD_CURRENCY = "US Dollar"
 _BASE_DELAY_SECS = 1.0
 _MAX_DELAY_SECS = 30.0
 
-# Bitcoin rates not provided by Frankfurter API; injected from Binance BTCUSDT daily
-# closing prices (investing.com source per professor email). Same values as gen_input_output.
+# Bitcoin rates aren't in Frankfurter; injected from Binance BTCUSDT daily closes (same as gen_input_output)
 _BITCOIN_RATES_USD: dict[date, float] = {
     date(2022, 9, 1): 20131.46,
     date(2022, 9, 2): 19951.86,

@@ -5,8 +5,7 @@ import sys
 import threading
 import time
 
-# The gateway package uses flat imports (it runs with src/gateway on PYTHONPATH inside
-# its container), so import the handler the same way instead of through the package.
+# The gateway runs with src/gateway on PYTHONPATH (flat imports), so import the handler the same way, not through the package.
 sys.path.insert(0, os.path.join("src", "gateway"))
 
 from common.comms.transport.connection import Connection

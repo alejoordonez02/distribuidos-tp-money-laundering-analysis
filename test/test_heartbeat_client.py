@@ -43,8 +43,7 @@ def test_client_registers_then_heartbeats():
 
 
 def test_stop_is_clean_when_supervisor_never_came_up():
-    # Nothing listening on this port: the client should keep retrying without
-    # raising, and stop() must return promptly.
+    # Nothing listening on this port: the client keeps retrying without raising, and stop() must return promptly.
     client = HeartbeatClient("node_1", "filter", "127.0.0.1", 1, interval=0.05)
     client.start()
     client.stop()

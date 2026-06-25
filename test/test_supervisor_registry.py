@@ -42,9 +42,7 @@ def test_expected_nodes_start_unknown():
 
 
 def test_expected_node_never_seen_is_marked_dead_after_grace():
-    # A leader elected after a crash must revive a node that was already dead at
-    # the transition and therefore never sends THIS leader a heartbeat. The grace
-    # is measured from the first sweep, not from t=0.
+    # A leader elected after a crash must revive a node that died at the transition and never sends THIS leader a heartbeat; grace is measured from the first sweep, not t=0.
     reg = NodeRegistry(timeout=5, expected=["n1"])
     reg.check_timeouts(now=100.0)  # sweep starts -> grace begins
     assert _status_of(reg, "n1") is Status.UNKNOWN  # still within grace

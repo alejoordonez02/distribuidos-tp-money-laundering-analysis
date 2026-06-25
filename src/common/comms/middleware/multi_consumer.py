@@ -41,8 +41,7 @@ class MultiQueueConsumer:
         exchange: str | None = None,
         routing_key: str | None = None,
     ):
-        # durable + exchange-bound queues survive a crash and keep accumulating
-        # (redelivering un-acked messages) until the node returns.
+        # durable + exchange-bound queues survive a crash, accumulating and redelivering un-acked messages until the node returns.
         self._chan.queue_declare(queue=queue_name, durable=durable)
         if exchange is not None:
             self._chan.exchange_declare(exchange=exchange)
@@ -63,8 +62,7 @@ class MultiQueueConsumer:
 
     def start(self):
         for src in self._sources:
-            # per-consumer prefetch: the data queue can hold a whole checkpoint batch
-            # without blocking ring control delivery on the same channel.
+            # per-consumer prefetch: the data queue can hold a whole checkpoint batch without blocking ring control on the same channel.
             self._chan.basic_qos(prefetch_count=src.prefetch, global_qos=False)
             self._chan.basic_consume(
                 queue=src.queue_name,

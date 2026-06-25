@@ -10,8 +10,7 @@ from .errors import (
 )
 from .exchange_mom import MOMExchange
 
-# Max messages RabbitMQ delivers without an ack. Keeps the socket write buffer
-# from filling up when callbacks block on heavy processing (e.g. uc4 count paths).
+# Cap on unacked deliveries so blocking callbacks (e.g. uc4 count paths) don't fill the socket write buffer
 PREFETCH_COUNT = 10
 
 
@@ -29,14 +28,11 @@ class ExchangeRabbitMQ(MOMExchange):
         self.exchange_name = exchange_name
         self.routing_keys = routing_keys
         self.queue_name = queue_name
-        # Non-exclusive queues survive a consumer crash so RabbitMQ keeps
-        # accumulating (and redelivers un-acked) messages until the node returns.
+        # Non-exclusive queues survive a consumer crash: RabbitMQ keeps accumulating and redelivers un-acked messages.
         self.exclusive = exclusive
-        # Must be >= the checkpoint batch, otherwise holding acks for a batch
-        # deadlocks against the broker's delivery window.
+        # Must be >= the checkpoint batch, else holding acks for a batch deadlocks the broker's delivery window.
         self.prefetch_count = max(prefetch_count, PREFETCH_COUNT)
 
-        # TODO: heartbeat=600 may be starved by blocking callbacks in start_consuming — revisit
         self.conn = BlockingConnection(ConnectionParameters(host, heartbeat=0))
         self.chan = self.conn.channel()
         self.chan.exchange_declare(exchange=exchange_name)
@@ -54,8 +50,7 @@ class ExchangeRabbitMQ(MOMExchange):
                 exchange=self.exchange_name, queue=self.queue_name, routing_key=k
             )
 
-        # Limit unacked messages so a slow consumer doesn't let RabbitMQ fill the
-        # socket write buffer (which closes the connection with send_failed,timeout).
+        # Limit unacked messages so a slow consumer doesn't let RabbitMQ fill the socket write buffer (closes conn: send_failed,timeout).
         self.chan.basic_qos(prefetch_count=self.prefetch_count)
 
         def callback(chan, method, _, body):
@@ -69,8 +64,6 @@ class ExchangeRabbitMQ(MOMExchange):
         except AMQPConnectionError as e:
             raise MOMDisconnectedError(str(e)) from e
         except Exception as e:
-            # TODO: distinguish OSError (socket closed mid-consume) from exceptions
-            # raised inside on_message_callback — the latter would pass silently here
             logging.error(
                 "!!! UNHANDLED exception in start_consuming (exchange=%s): %s",
                 self.exchange_name,
@@ -84,7 +77,6 @@ class ExchangeRabbitMQ(MOMExchange):
         except AMQPConnectionError as e:
             raise MOMDisconnectedError(str(e)) from e
         except Exception as e:
-            # TODO: handle specific pika shutdown exceptions
             logging.error(
                 "!!! UNHANDLED exception in stop_consuming (exchange=%s): %s",
                 self.exchange_name,
@@ -108,7 +100,6 @@ class ExchangeRabbitMQ(MOMExchange):
         try:
             self.conn.close()
         except ConnectionWrongStateError as e:
-            # TODO: handle specific close-on-wrong-state case
             logging.error(
                 "!!! UNHANDLED ConnectionWrongStateError in close (exchange=%s): %s",
                 self.exchange_name,
@@ -129,9 +120,7 @@ class ExchangeRabbitMQ(MOMExchange):
         )
 
     def _ack(self, chan, method) -> None:
-        # Schedule on the connection's own thread: acks may be flushed (batched
-        # checkpointing) from a different thread than the one owning this channel,
-        # and pika is not thread-safe.
+        # Schedule on the connection's thread: acks may be flushed from another thread and pika isn't thread-safe.
         self.conn.add_callback_threadsafe(
             lambda: chan.basic_ack(delivery_tag=method.delivery_tag)
         )

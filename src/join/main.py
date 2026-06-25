@@ -19,9 +19,7 @@ RESPONSES_TX = os.environ["RESPONSES_TX"]
 STATE_DIR = os.getenv("STATE_DIR")
 CHECKPOINT_EVERY = int(os.getenv("CHECKPOINT_EVERY", 5))
 
-# Which UCs this join replica owns (the rest are handled by sibling replicas). The
-# per-UC handlers are independent, so a replica simply consumes only its UCs' queues;
-# each UC queue thus has exactly one consumer (no competing). Defaults to all five.
+# UCs this replica owns; it consumes only those queues so each UC queue has exactly one consumer (no competing). Defaults to all five
 JOIN_UCS = {int(x) for x in os.getenv("JOIN_UCS", "1,2,3,4,5").split(",") if x}
 
 LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "WARNING")

@@ -26,8 +26,7 @@ STRATEGY = os.environ["STRATEGY"]
 
 IDX = int(os.getenv("IDX", 0))
 NAFFINITY_DOWNSTREAM = int(os.getenv("NAFFINITY_DOWNSTREAM", 0))
-# broadcast a small global result to every downstream replica (UC3 averages fanned
-# out to the broadcast-join merges) instead of sharding by affinity.
+# broadcast a small global result to every downstream replica instead of sharding by affinity (UC3 averages to the broadcast-join merges)
 BROADCAST_DOWNSTREAM = os.getenv("BROADCAST_DOWNSTREAM", "0") == "1"
 
 STATE_DIR = os.getenv("STATE_DIR")

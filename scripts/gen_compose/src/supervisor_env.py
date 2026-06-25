@@ -3,10 +3,7 @@ from .fault_tolerance import HEARTBEAT_INTERVAL
 SUPERVISOR_HOST = "supervisor"
 SUPERVISOR_PORT = 9100
 
-# Every node that wires a heartbeat client registers its name here, so the
-# supervisors can be seeded with the full expected set (see expected_nodes_csv).
-# A leader elected after a crash thus knows a node exists even if that node is
-# already dead and never sends it a heartbeat -> it can still be revived.
+# Each node registers here to seed the supervisors' expected set: a leader elected after a crash can revive a node it never heard a heartbeat from.
 _SUPERVISED_NODES: list[str] = []
 
 

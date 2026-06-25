@@ -5,8 +5,7 @@ from .container_type import ContainerType
 from .runtime import restart_line
 from .supervisor_env import supervisor_env
 
-# Overridable from the environment so the FT-vs-performance benchmark can sweep it
-# without rewriting this file. Defaults to the production value when unset.
+# Overridable via env so the FT-vs-performance bench can sweep it; defaults to the production value.
 CHECKPOINT_EVERY = int(os.getenv("CHECKPOINT_EVERY", "1000"))
 
 

@@ -82,10 +82,7 @@ class SupervisorNode:
         return not self._leader and self._runtime
 
     def _announce_worker(self):
-        # While leader, periodically re-assert leadership. This is what reconciles a
-        # split-brain: if two nodes ended up leaders (a coordinator broadcast was
-        # missed), each hears the other and the lower-idx one steps down. It also
-        # lets a just-rebooted node discover the current leader without an election.
+        # as leader, periodically re-assert leadership to reconcile split-brain and let a rebooted node discover the leader
         while not self._announce_stop.wait(self._announce_interval):
             if self._is_leader():
                 self._broadcast_message(SupervisorLeader(self._idx), self._peers)
@@ -163,16 +160,12 @@ class SupervisorNode:
         def handle_new_leader(event: NewLeader):
             claim = event.idx
             if claim <= self._idx:
-                # A node with id <= mine claims leadership. Never follow it; if I am
-                # the leader and the claimant is strictly lower, re-assert so it
-                # steps down (this resolves a split-brain instead of letting two
-                # leaders coexist).
+                # a node with id <= mine claims leadership: never follow it; if I'm leader and it's strictly lower, re-assert so it steps down (resolves split-brain)
                 if claim < self._idx and self._is_leader():
                     self._broadcast_message(SupervisorLeader(self._idx), self._peers)
                 return
 
-            # claim > self._idx: a higher-id node leads. Adopt it unless I already
-            # follow an equal-or-higher leader (so I never downgrade to a lower one).
+            # claim > mine: a higher-id node leads; adopt it unless I already follow an equal-or-higher leader (never downgrade to a lower one)
             if self._leader is not None and claim <= self._leader.idx:
                 return
 
@@ -244,7 +237,6 @@ class SupervisorNode:
         self._node_listener.shutdown(SHUT_RDWR)
         self._node_listener.close()
 
-        # Leader
         if self._is_leader():
             with self._new_runtime:
                 self._new_runtime.notify()

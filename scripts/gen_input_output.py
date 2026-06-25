@@ -1,7 +1,4 @@
-# This analysis was taken from
-# `https://www.kaggle.com/code/pablodroca/money-laundering-analysis`,
-# source was only modified so that it produces files with input and expected output
-# for each client.
+# Adapted from https://www.kaggle.com/code/pablodroca/money-laundering-analysis to emit per-client input + expected output.
 
 import gc
 import os
@@ -30,8 +27,7 @@ RANDOM_SEED = 2026
 
 _CHUNK_SIZE = 50_000
 
-# Optimized dtypes: categories for low-cardinality strings, int32/int8 for integers.
-# Amount Paid stays float64 to preserve precision in expected output comparisons.
+# Optimized dtypes; Amount Paid stays float64 to keep precision in expected-output comparisons.
 _TRANS_DTYPE: DtypeArg = {
     "From Bank": "int32",
     "To Bank": "int32",
@@ -110,10 +106,7 @@ def main():
         _log("STREAMING MODE — full dataset per client (NCLIENTS=1, no size cap)")
         for n in range(NCLIENTS):
             _log(f"--- Client {n + 1}/{NCLIENTS} ---")
-            # Symlink the client's input straight to the full dataset — no 15GB
-            # normalized copy. The client now normalizes bank ids in its parser
-            # (str(int(...))), so reading the raw dataset is consistent with the
-            # oracle. Drop any stale real copy / old symlink first.
+            # Symlink to the full dataset (no 15GB copy); the client normalizes bank ids in its parser, so raw matches the oracle.
             dst = CLIENT_DATASETS_PATH + f"transactions_{n}.csv"
             if os.path.lexists(dst):
                 os.remove(dst)
@@ -217,8 +210,7 @@ class _CsvSink:
 
     def close(self) -> int:
         if self._first:
-            # No rows matched — emit a header-only file, exactly like
-            # an empty DataFrame's to_csv would.
+            # No rows matched — emit a header-only file, like an empty DataFrame's to_csv.
             pd.DataFrame(columns=self._columns).to_csv(self._path)
         return self._offset
 
@@ -630,8 +622,7 @@ def gen_uc2_results(trans_df, accounts_df):
         "Amount Paid"
     ].idxmax()
     max_amount_trans_usd = trans_usd_df.loc[max_amount_trans_usd_idx]
-    # Each bank_id maps to exactly one bank_name; deduplicate before merging
-    # to avoid producing one row per account in the bank (many-to-many explosion)
+    # Each bank_id maps to one bank_name; dedup before merging to avoid a many-to-many explosion.
     bank_names = accounts_df.drop_duplicates("Bank ID")[["Bank ID", "Bank Name"]]
     max_amount_bank = max_amount_trans_usd.merge(
         bank_names, left_on="From Bank", right_on="Bank ID"

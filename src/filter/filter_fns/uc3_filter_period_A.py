@@ -8,7 +8,6 @@ TARGET_CURRENCY = "US Dollar"
 TARGET_PERIOD = (date(year=2022, month=9, day=1), date(year=2022, month=9, day=5))
 
 
-# TODO: este código está repetido en period b
 class UC3FilterPeriodA(FilterFn):
     def filter(self, el: Transactions) -> Transactions:  # type: ignore[reportIncompatibleMethodOverride]
         filtered = [

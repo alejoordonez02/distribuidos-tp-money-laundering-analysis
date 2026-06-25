@@ -101,8 +101,6 @@ class LeaderRuntime(SupervisorRuntime):
             if self._dashboard
             else None
         )
-        # TODO: mepa q está como el orto usar daemon, no tiene mucho sentido y
-        #       aparte cuándo se joinean los threads? no importa en qué terminan?
 
     def start(self):
         if self._stop.is_set() or self._server_listener or self._replica_listener:
@@ -173,7 +171,7 @@ class LeaderRuntime(SupervisorRuntime):
             rep = Replica(Connection(conn_skt))
             try:
                 while not self._stop.is_set():
-                    rep.pong_ping()  # TODO: creo q tiene más sentido q acá esté el sleep
+                    rep.pong_ping()
             except ReplicaDownError as e:
                 logging.debug("lost connection with replica (%s)", e)
 

@@ -267,8 +267,7 @@ def run_client_crash(node, point):
 
 
 def prepare():
-    # self-crash points rely on docker's restart policy to recover the node, so the
-    # e2e opts back into it (it is off by default, where the supervisor revives).
+    # self-crash points rely on docker's restart policy to recover the node; e2e opts back in (off by default, where the supervisor revives).
     run(
         f"GEN_RESTART_ON_FAILURE=1 uv run -m scripts.gen_compose.gen_compose {COMPOSE}",
         capture=True,

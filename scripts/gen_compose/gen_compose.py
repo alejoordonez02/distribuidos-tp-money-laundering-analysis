@@ -24,8 +24,7 @@ def main():
 
     filename = args[1]
 
-    # Build the node services first so every supervised node has registered its
-    # name (via supervisor_env) before gen_supervisors reads the expected set.
+    # Build node services first so every supervised node registers its name before gen_supervisors reads the expected set.
     gateway = gen_gateway()
     default_filters = gen_default_filters()
     uc1, uc2, uc3, uc4, uc5 = gen_uc1(), gen_uc2(), gen_uc3(), gen_uc4(), gen_uc5()

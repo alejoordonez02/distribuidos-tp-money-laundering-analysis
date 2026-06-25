@@ -16,8 +16,7 @@ from .mom import MOM
 _PRODUCER_NAMESPACE = uuid.UUID("6f1c5e1e-0000-4000-8000-000000000001")
 _PRODUCER_LEN = PRODUCER_RANGE.stop - PRODUCER_RANGE.start
 
-# Control/handshake messages carry no identity: skipping them keeps the EOF ring
-# bytes untouched and avoids advancing the per-route sequence.
+# Control/handshake messages carry no identity: skipping them leaves EOF ring bytes untouched and the per-route seq unadvanced.
 _UNSTAMPED_TYPES = frozenset(
     int(t)
     for t in (
@@ -57,8 +56,7 @@ class _SeqCounter:
             self._seq = value
 
 
-# Public alias: a sequence counter that can be shared between several StampingMOMs
-# (e.g. a node whose output is emitted from more than one thread/connection).
+# Public alias: a seq counter shareable across StampingMOMs (e.g. output emitted from multiple threads/connections).
 SeqCounter = _SeqCounter
 
 
@@ -98,8 +96,7 @@ class StampingMOM(MOM):
         return self._counter.value()
 
     def restore_seq(self, value: int):
-        # Resume the sequence after a restart so re-emitted messages keep the same
-        # seq and stay deduplicable downstream.
+        # Resume the sequence after a restart so re-emitted messages keep their seq and stay deduplicable downstream.
         self._counter.restore(value)
 
     def send(self, message: bytes):

@@ -99,8 +99,7 @@ class JoinRouteHandler:
     def start(self):
         self.responses_tx = self.responses_tx_factory()
         self._mom = self.mom_factory()
-        # Built here (in this handler's own thread) so the checkpoint state and the
-        # rx connection share a thread.
+        # built in this handler's own thread so the checkpoint state and the rx connection share a thread
         self._checkpointer = make_checkpointer(
             self._state_dir,
             f"join_uc{self._uc_id}",
@@ -111,9 +110,7 @@ class JoinRouteHandler:
         )
         if self._checkpointer and self._checkpointer.restore():
             logging.info("restored join uc%s from checkpoint", self._uc_id)
-            # free spill of clients already finalized before the crash: their response
-            # was sent and they will never re-finalize, so discard drops the orphaned
-            # spill instead of leaving it on disk (mirrors the ring-node restore fix).
+            # free spill of clients finalized before the crash: their response was sent and they never re-finalize, so discard drops the orphan (mirrors the ring-node restore fix)
             for client_id in self._counts.finalized_clients():
                 self.join_fn.discard(client_id)
             self._checkpointer.flush(force=True)

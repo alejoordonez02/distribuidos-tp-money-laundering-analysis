@@ -74,9 +74,7 @@ class MultiShardSpill:
                 pass
 
     def snapshot_state(self) -> dict[str, Any]:
-        # flush() pushes the buffer to the OS; no fsync — the fault model is a
-        # process crash (RabbitMQ stable), and OS page cache survives that. fsync
-        # (for power loss) is out of scope and would cost hundreds of syncs/ckpt.
+        # no fsync: process-crash model (RabbitMQ stable), OS page cache survives; power loss out of scope
         committed = {}
         for (client_id, shard), handle in self._handles.items():
             handle.flush()

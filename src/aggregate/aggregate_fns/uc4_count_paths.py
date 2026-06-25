@@ -11,10 +11,7 @@ from common.comms.messages.path_count import PathCounts
 
 from .aggregate_fn import AggregateFn
 
-# Pairs held in memory before spilling. Raised now that aggregate_graphs salts
-# hubs into ~SPLIT_THRESHOLD-sized tiles: no single message can dump a mega-hub
-# here anymore, so we can keep more in RAM (fewer, larger spills — and small/
-# perfect datasets stay entirely in memory) while staying well within 8GB.
+# 500k: fits in RAM (<8GB) thanks to aggregate_graphs' hub tiling
 MAX_AMOUNT = 500_000
 SHARDING_FILES = 500
 AFFINITY_SHARDS = 10
@@ -51,14 +48,7 @@ class UC4CountPaths(AggregateFn):
                         path = Path(a, c)
                         paths[path] = paths.get(path, 0) + 1
 
-                # Spill mid-message: a single hub node generates len(preds) *
-                # len(succs) pairs in one Graph message, which can be millions —
-                # far past MAX_AMOUNT — before the per-message check below would
-                # ever run, blowing up RAM. Checking per predecessor caps the
-                # in-memory dict regardless of hub size. _downstream pops
-                # self._paths[client_id], so re-create and re-bind paths after it.
-                # Counts stay correct: spilled partials are summed back per path
-                # in get_result, so the result is identical to never spilling.
+                # a single hub emits millions of pairs in one message; checking per-predecessor caps RAM. _downstream pops self._paths[client_id], so re-create paths after it (partials are summed back in get_result)
                 if len(paths) >= MAX_AMOUNT:
                     self._downstream(client_id)
                     self._paths[client_id] = {}
@@ -93,8 +83,7 @@ class UC4CountPaths(AggregateFn):
         self._paths.pop(client_id, None)
 
     def snapshot_state(self) -> dict[str, Any]:
-        # Force the in-memory partials to disk, then the checkpoint only records
-        # each shard's committed length (keeps the checkpoint small).
+        # flush in-memory partials to disk; the checkpoint then only records each shard's committed length (keeps it small)
         for client_id in list(self._paths.keys()):
             self._downstream(client_id)
         return self._spill.snapshot_state()

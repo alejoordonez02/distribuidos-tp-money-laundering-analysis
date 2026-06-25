@@ -34,9 +34,7 @@ def test_eof_before_all_received_does_not_complete():
 
 
 def test_data_after_eof_completes_when_expected_reached():
-    # The upstream EOF (which carries `expected`) can arrive before the last data
-    # when a multi-peer upstream feeds one shard. on_data must re-check completion,
-    # so the message that finally reaches `expected` is data, not the EOF.
+    # When a multi-peer upstream feeds one shard, the EOF (carrying `expected`) can arrive before the last data, so on_data must re-check completion: the message that reaches `expected` is data, not the EOF.
     rc = RingCompletion(node_id=0, peer_ids=[])
     rc.on_data(C)
     assert rc.on_upstream_eof(C, expected=3) == []  # only 1 of 3 received
@@ -58,10 +56,7 @@ def test_drop_forgets_a_client():
 
 
 def test_drop_kills_a_circulating_token():
-    # When a client aborts AFTER its EOF already started the barrier, a token is in
-    # flight. The drop must tombstone the client so the relapping token DIES instead
-    # of resurrecting a PROCESSING client and being forwarded forever (the live bug:
-    # the token circulated default_filter's ring at 2 hops/s and never drained).
+    # When a client aborts after its EOF started the barrier, a token is in flight; the drop must tombstone it so the relapping token dies instead of resurrecting a PROCESSING client and looping forever (live bug: token circulated default_filter's ring at 2 hops/s, never drained).
     leader = RingCompletion(node_id=0, peer_ids=[1])
     [fwd] = _drive_local_complete(leader, 0, received=4, expected=4, sent={0: 2})
     assert isinstance(fwd, Forward)  # a token is now circulating for C
@@ -70,8 +65,7 @@ def test_drop_kills_a_circulating_token():
 
 
 def test_drop_ignores_late_data_and_eof():
-    # tombstone is sticky: late data / a redelivered EOF for an aborted client must
-    # not resurrect it (client ids are gateway-minted per connection, never reused).
+    # tombstone is sticky: late data or a redelivered EOF for an aborted client must not resurrect it (client ids are gateway-minted per connection, never reused).
     rc = RingCompletion(node_id=0, peer_ids=[1])
     rc.drop(C)
     rc.on_data(C)
@@ -80,8 +74,7 @@ def test_drop_ignores_late_data_and_eof():
 
 
 def test_snapshot_restore_preserves_tombstone():
-    # a node that crashes after an abort must still drop the aborted client's token
-    # once restored, or the immortal-token loop reappears post-recovery.
+    # a node that crashes after an abort must still drop the client's token once restored, or the immortal-token loop reappears post-recovery.
     rc = RingCompletion(node_id=0, peer_ids=[1])
     rc.drop(C)
     restored = RingCompletion(node_id=0, peer_ids=[1])
@@ -134,9 +127,7 @@ def test_snapshot_restore_preserves_phase_after_crash():
 
 
 def test_resolved_clients_lists_emitted_and_done():
-    # A PROCESSING client is not resolved; once it has emitted (EMITTED) its spilled
-    # state is safe to free. Guards the leak where a node revived after a crash that
-    # happened past the emit never frees the spill (only the live EOF path did).
+    # A PROCESSING client is not resolved; once EMITTED its spilled state is safe to free. Guards the leak where a node revived after a crash past the emit never frees the spill (only the live EOF path did).
     rc = RingCompletion(node_id=0, peer_ids=[1])
     rc.on_data(C)
     assert rc.resolved_clients() == []  # still PROCESSING
@@ -146,8 +137,7 @@ def test_resolved_clients_lists_emitted_and_done():
 
 
 def test_resolved_clients_includes_done_and_survives_restore():
-    # A single node closes straight to DONE; the resolved set must survive a restore so
-    # a revived node frees the spill of a client that completed before it crashed.
+    # A single node closes straight to DONE; the resolved set must survive a restore so a revived node frees the spill of a client that completed before it crashed.
     rc = RingCompletion(node_id=0, peer_ids=[])
     _drive_local_complete(rc, 0, received=4, expected=4, sent={0: 2})
     assert rc.resolved_clients() == [C]
@@ -164,8 +154,7 @@ def test_peer_that_sent_zero_still_participates():
 
 
 def test_non_leader_does_not_start_a_barrier():
-    # only the leader (min id) circulates a token; a non-leader that completes just
-    # transitions to EMITTED and waits to be collected -> exactly one DownstreamEOF.
+    # only the leader (min id) circulates a token; a non-leader that completes transitions to EMITTED and waits to be collected -> exactly one DownstreamEOF.
     peer1 = RingCompletion(node_id=1, peer_ids=[0, 2])
     for _ in range(6):
         peer1.on_data(C)
@@ -175,8 +164,7 @@ def test_non_leader_does_not_start_a_barrier():
 
 
 def test_token_does_not_count_a_peer_still_processing():
-    # staleness guard: a token passing a peer that has not emitted yet must NOT
-    # record its (stale, empty) slot, or the barrier would close with a wrong sum.
+    # staleness guard: a token passing a peer that has not emitted yet must not record its (stale, empty) slot, or the barrier closes with a wrong sum.
     peer1 = RingCompletion(node_id=1, peer_ids=[0, 2])
     peer1.on_data(C)  # still PROCESSING, no upstream EOF yet
     [fwd] = peer1.on_token(BarrierToken(C, origin=0, sent_by={0: {0: 5}}))
@@ -185,8 +173,7 @@ def test_token_does_not_count_a_peer_still_processing():
 
 
 def test_leader_token_relaps_until_every_peer_has_emitted():
-    # leader finishes first; its token must keep circulating (not close) until the
-    # straggler peer emits, then close once with the correct total.
+    # leader finishes first; its token must keep circulating (not close) until the straggler peer emits, then close once with the correct total.
     leader = RingCompletion(node_id=0, peer_ids=[1])
     [fwd] = _drive_local_complete(leader, 0, received=4, expected=4, sent={0: 2})
     assert isinstance(fwd, Forward)  # only the leader's slot so far

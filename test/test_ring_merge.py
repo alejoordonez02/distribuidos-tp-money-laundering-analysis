@@ -79,6 +79,5 @@ def test_checkpoint_is_flushed_before_emit_sends():
     node._maybe_complete(cid)
 
     assert "send" in rec.events, "the node should have emitted"
-    # the spill-freezing flush must precede any emitted message, so a crash mid-emit
-    # restores the frozen state and re-emits the same seqs (idempotent replay)
+    # the spill-freezing flush must precede any emit, so a crash mid-emit restores the frozen state and re-emits the same seqs (idempotent replay)
     assert rec.events.index("flush") < rec.events.index("send")

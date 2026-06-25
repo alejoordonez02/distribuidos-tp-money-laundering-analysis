@@ -69,9 +69,7 @@ class RingNode:
         if self.checkpointer and self.checkpointer.restore():
             logging.info("restored state from checkpoint")
             self._run(self.rc.recheck())
-            # free any client already past PROCESSING: its result was durably emitted
-            # before the crash, so its spilled state is dead weight the live EOF path
-            # will never reclaim (it only frees on the EOF that already passed).
+            # free any client past PROCESSING: result was durably emitted pre-crash, so spilled state is dead weight the live EOF path never reclaims.
             for client_id in self.rc.resolved_clients():
                 self._free(client_id)
             self.checkpointer.flush(force=True)

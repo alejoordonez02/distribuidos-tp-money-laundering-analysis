@@ -75,8 +75,7 @@ def load():
         return []
     with open(RESULTS_CSV, newline="") as f:
         rows = list(csv.DictReader(f))
-    # A run is plottable once it COMPLETED (it has a real wall-clock time). Whether its
-    # output validated 5/5 is a correctness question, orthogonal to throughput.
+    # A run is plottable once it COMPLETED (has a real wall-clock time); 5/5 validation is orthogonal to throughput.
     return [r for r in rows
             if str(r.get("completed")) == "True" and _f(r.get("total_s")) is not None]
 
@@ -129,9 +128,7 @@ def plot_sweep_all(rows, sweep, fname):
     ax.set_ylim(bottom=0.82)
     ax.set_ylim(top=ax.get_ylim()[1] * 1.12)  # headroom for the top label
 
-    # label each point with its slowdown; adjustText repositions every label so none overlap
-    # (with thin leader lines when it pulls one away), falling back to a per-column height-rank
-    # stack if the library is absent.
+    # label each point with its slowdown; adjustText repositions labels to avoid overlap, else a per-column height-rank stack.
     if adjust_text is not None:
         texts = [ax.text(xi, yi, rf"$+{(yi - 1.0) * 100:.0f}\%$", fontsize=8,
                          color=TIER_COLOR[tier], zorder=5)
