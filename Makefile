@@ -5,6 +5,7 @@ COMPOSE_FILE := docker-compose.yaml
 COMPOSE := docker compose -f $(COMPOSE_FILE)
 RABBIT_CONTAINER := rabbitmq
 SUPERVISOR_PREFIX := supervisor_
+CLIENT_PREFIX := client_
 SCRIPTS_DIR := scripts
 
 .PHONY: help gen_input_output gen_compose up stop_server down logs test test_ft test_ft_client scalability_test performance_vs_ft perf_plots report demo supervisor chaos chaos_stop nodes kill kill_prefix dead revive revive_prefix
@@ -43,6 +44,12 @@ logs: gen_compose
 
 supervisor: gen_compose
 	SERVICES=$$($(COMPOSE) config --services | grep '^$(SUPERVISOR_PREFIX)'); \
+	if [ -n "$$SERVICES" ]; then \
+		$(COMPOSE) logs -f $$SERVICES; \
+	fi
+
+clients: gen_compose
+	SERVICES=$$($(COMPOSE) config --services | grep '^$(CLIENT_PREFIX)'); \
 	if [ -n "$$SERVICES" ]; then \
 		$(COMPOSE) logs -f $$SERVICES; \
 	fi
