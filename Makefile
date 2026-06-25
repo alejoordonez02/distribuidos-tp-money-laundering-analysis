@@ -7,10 +7,10 @@ RABBIT_CONTAINER := rabbitmq
 SUPERVISOR_PREFIX := supervisor_
 SCRIPTS_DIR := scripts
 
-.PHONY: help gen_input_output gen_compose up stop_server down logs test test_ft test_ft_client scalability_test performance_vs_ft perf_plots report demo supervisor chaos chaos_stop
+.PHONY: help gen_input_output gen_compose up stop_server down logs test test_ft test_ft_client scalability_test performance_vs_ft perf_plots report demo supervisor chaos chaos_stop nodes kill kill_prefix
 
 help:
-	@echo '* opciones: help (esto) - gen_input_output - gen_compose - up - stop_server - down - logs - test - test_ft - test_ft_client - report - demo - supervisor - chaos - chaos_stop'
+	@echo '* opciones: help (esto) - gen_input_output - gen_compose - up - stop_server - down - logs - test - test_ft - test_ft_client - report - demo - supervisor - chaos - chaos_stop - nodes - kill - kill_prefix'
 	@echo '* los datasets a usar se configuran en `scripts/cfg.py`, hay que tenerlos bajados en `datasets/`'
 	@echo '* para los targets que se corren en python se usa `uv`. Hay que tenerlo instalado'
 
@@ -101,3 +101,38 @@ report:
 demo:
 	mkdir -p demo/files
 	PYTHONPATH=test uv run $(SCRIPTS_DIR)/gen_demo_files.py
+
+# --- inyección manual de fallas: matar nodos a mano para probar FT sin el chaos monkey ---
+# listar nodos vivos (qué se puede matar): make nodes
+# matar un nodo puntual:                   make kill NODE=join_0
+# matar varios (separados por coma):       make kill NODE=join_0,uc3_merge_1
+# matar un grupo entero por prefijo:       make kill_prefix PREFIX=join   (mata join_0, join_1, ...)
+nodes:
+	@docker ps --format '{{.Names}}' | grep -v -x '$(RABBIT_CONTAINER)' | sort
+
+kill:
+	@if [ -z "$(NODE)" ]; then \
+		echo 'uso: make kill NODE=<nombre>[,<nombre>...]   (ver nombres con: make nodes)'; \
+		exit 1; \
+	fi
+	@for n in $$(echo '$(NODE)' | tr ',' ' '); do \
+		if docker ps --format '{{.Names}}' | grep -q -x "$$n"; then \
+			docker kill "$$n" >/dev/null && echo "killed: $$n"; \
+		else \
+			echo "no está corriendo (skip): $$n"; \
+		fi; \
+	done
+
+# mata todos los contenedores vivos cuyo nombre empieza con PREFIX (rabbitmq queda protegido;
+# para matarlo usá `make kill NODE=$(RABBIT_CONTAINER)` explícitamente)
+kill_prefix:
+	@if [ -z "$(PREFIX)" ]; then \
+		echo 'uso: make kill_prefix PREFIX=<prefijo>   (ej: PREFIX=uc4 mata uc4_*)'; \
+		exit 1; \
+	fi
+	@VICTIMS=$$(docker ps --format '{{.Names}}' | grep -E "^$(PREFIX)" | grep -v -x '$(RABBIT_CONTAINER)'); \
+	if [ -z "$$VICTIMS" ]; then \
+		echo "no hay contenedores vivos con prefijo '$(PREFIX)'"; \
+		exit 0; \
+	fi; \
+	for n in $$VICTIMS; do docker kill "$$n" >/dev/null && echo "killed: $$n"; done
