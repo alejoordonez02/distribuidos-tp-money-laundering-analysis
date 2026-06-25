@@ -130,9 +130,9 @@ class LeaderRuntime(SupervisorRuntime):
             self._accept_handle.join()
         if self._replicas_handle.is_alive():
             self._replicas_handle.join()
-        if self._reviver_handle:
+        if self._reviver_handle and self._reviver_handle.is_alive():
             self._reviver_handle.join()
-        if self._dashboard_handle:
+        if self._dashboard_handle and self._dashboard_handle.is_alive():
             self._dashboard_handle.join()
 
     def _handle_clients(self):

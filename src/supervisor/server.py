@@ -69,7 +69,6 @@ class SupervisorNode:
         self._leader: Peer | None = None
         self._keep_running = False
 
-
     def start(self):
         self._keep_running = True
 
@@ -147,6 +146,7 @@ class SupervisorNode:
         acks = self._broadcast_message(SupervisorElection(), greater_peers)
 
         if acks > 0:
+            self._leader = None
             self._on_election = False
             return
 
@@ -241,10 +241,7 @@ class SupervisorNode:
             with self._new_runtime:
                 self._new_runtime.notify()
 
-
-
         self._runtime_handle.join()
         self._listener_handle.join()
         self._announce_handle.join()
         self._events.put(None)
-        
