@@ -1,5 +1,12 @@
 # Money Laundering Analysis
 
+```
+There are only two hard problems in distributed systems:
+  2. Exactly-once delivery
+  1. Guaranteed order of messages
+  2. Exactly-once delivery
+```
+
 Distributed pipeline that runs 5 use cases over transaction datasets.
 
 ## Requirements
@@ -10,45 +17,41 @@ Distributed pipeline that runs 5 use cases over transaction datasets.
 
 ## Configuration
 
-The dataset to use is set in `scripts/cfg.py` (`TRANSACTIONS_PATH`, `ACCOUNTS_PATH`).
-`NCLIENTS` controls how many clients are generated.
+The dataset and client count are set in `scripts/cfg.py` (`TRANSACTIONS_PATH`, `ACCOUNTS_PATH`, `NCLIENTS`).
 
 ## Running
 
-1. Set the dataset in `scripts/cfg.py`.
-2. Generate client input and expected responses:
+```
+make gen_input_output   # generate per-client input and expected responses
+make up                 # build images and start the system
+make test               # validate the responses against the oracle
+make down               # stop and remove everything
+```
 
-   ```
-   make gen_input_output
-   ```
+Other helpers: `make logs`, `make stop_server`.
 
-3. Build and start the system (follows logs):
+## Fault tolerance
 
-   ```
-   make up
-   ```
+Inject and inspect failures by hand on a running cluster:
 
-4. In another terminal, run the tests once the clients finish:
+```
+make supervisor                 # follow the supervisors' logs
+make chaos                      # arm the chaos monkey (kills random nodes)
+make chaos_stop                 # disarm the chaos monkey
+make nodes                      # list killable nodes
+make kill NODE=join_0           # kill specific nodes (comma-separated)
+make kill_prefix PREFIX=uc4     # kill a whole ring/group by prefix
+make dead                       # list downed nodes
+make revive NODE=join_0         # bring nodes back
+make revive_prefix PREFIX=uc4   # revive a whole group
+```
 
-   ```
-   make test
-   ```
+## Benchmarks
 
-5. Tear everything down:
-
-   ```
-   make down
-   ```
-
-## Make targets
-
-- `help` - list available targets.
-- `gen_input_output` - generate per-client input files and expected responses from the configured dataset.
-- `gen_compose` - generate `docker-compose.yaml` from `scripts/gen_compose/`.
-- `up` - generate the compose file, build images, start all services detached, and follow logs.
-- `stop_server` - stop every container except RabbitMQ.
-- `down` - stop and remove all containers.
-- `logs` - print the current logs.
-- `test` - run the test suite (compares produced responses against expected responses).
-- `report` - build the report under `doc/informe`.
-- `demo` - generate demo files.
+```
+make test_ft             # fault-tolerance e2e: crash each controller, verify recovery
+make test_ft_client      # same, restricted to client-crash points
+make scalability_test    # run several ring topologies per dataset tier
+make performance_vs_ft   # chaos + checkpoint sweeps, dumps results and figures
+make perf_plots          # re-render the figures from an existing results.csv
+```
