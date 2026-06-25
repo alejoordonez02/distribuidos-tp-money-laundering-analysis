@@ -746,6 +746,16 @@ conteos. El Join, en cambio, es de instancia única por caso de uso: no
 participa del anillo, sino que espera el EOF agregado y, al alcanzar la
 cuenta, materializa y emite las respuestas del cliente.
 
+La comunicación lógica de anillo se logra mediante el uso de un
+Exchange de RabbitMQ. Cada nodo suscribe a su ID y rutea sus mensajes
+al ID que le sigue (si hay 3, el 0 al 1, el 1 al 2 y el 2 al 0).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.3\textwidth,height=0.85\textheight,keepaspectratio]{../diagrams/v2/26ft-eof-barrier-infra-diagram.png}\\[1cm]
+    \caption{Infraestructura de la comunicación lógica en anillo}
+\end{figure}
+
 \subsection{Checkpointing y deduplicación}
 Cada nodo con estado persiste periódicamente un \textit{checkpoint}
 que incluye su estado de negocio, la tabla de deduplicación y los
