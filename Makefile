@@ -7,10 +7,10 @@ RABBIT_CONTAINER := rabbitmq
 SUPERVISOR_PREFIX := supervisor_
 SCRIPTS_DIR := scripts
 
-.PHONY: help gen_input_output gen_compose up stop_server down logs test test_ft test_ft_client scalability_test performance_vs_ft perf_plots report demo supervisor chaos chaos_stop nodes kill kill_prefix
+.PHONY: help gen_input_output gen_compose up stop_server down logs test test_ft test_ft_client scalability_test performance_vs_ft perf_plots report demo supervisor chaos chaos_stop nodes kill kill_prefix dead revive revive_prefix
 
 help:
-	@echo '* opciones: help (esto) - gen_input_output - gen_compose - up - stop_server - down - logs - test - test_ft - test_ft_client - report - demo - supervisor - chaos - chaos_stop - nodes - kill - kill_prefix'
+	@echo '* opciones: help (esto) - gen_input_output - gen_compose - up - stop_server - down - logs - test - test_ft - test_ft_client - report - demo - supervisor - chaos - chaos_stop - nodes - kill - kill_prefix - dead - revive - revive_prefix'
 	@echo '* los datasets a usar se configuran en `scripts/cfg.py`, hay que tenerlos bajados en `datasets/`'
 	@echo '* para los targets que se corren en python se usa `uv`. Hay que tenerlo instalado'
 
@@ -136,3 +136,38 @@ kill_prefix:
 		exit 0; \
 	fi; \
 	for n in $$VICTIMS; do docker kill "$$n" >/dev/null && echo "killed: $$n"; done
+
+# --- revivir nodos caídos a mano (docker start) — espejo de kill ---
+# listar nodos caídos:              make dead
+# revivir uno o varios (coma):      make revive NODE=join_0,uc3_merge_1
+# revivir un grupo por prefijo:     make revive_prefix PREFIX=join
+dead:
+	@docker ps -a --filter status=exited --format '{{.Names}}' | grep -v -x '$(RABBIT_CONTAINER)' | sort
+
+revive:
+	@if [ -z "$(NODE)" ]; then \
+		echo 'uso: make revive NODE=<nombre>[,<nombre>...]   (ver caídos con: make dead)'; \
+		exit 1; \
+	fi
+	@for n in $$(echo '$(NODE)' | tr ',' ' '); do \
+		if docker ps --format '{{.Names}}' | grep -q -x "$$n"; then \
+			echo "ya está corriendo (skip): $$n"; \
+		elif docker ps -a --format '{{.Names}}' | grep -q -x "$$n"; then \
+			docker start "$$n" >/dev/null && echo "revived: $$n"; \
+		else \
+			echo "no existe (skip): $$n"; \
+		fi; \
+	done
+
+# revive todos los contenedores CAÍDOS cuyo nombre empieza con PREFIX
+revive_prefix:
+	@if [ -z "$(PREFIX)" ]; then \
+		echo 'uso: make revive_prefix PREFIX=<prefijo>   (ej: PREFIX=uc4 revive uc4_*)'; \
+		exit 1; \
+	fi
+	@TARGETS=$$(docker ps -a --filter status=exited --format '{{.Names}}' | grep -E "^$(PREFIX)"); \
+	if [ -z "$$TARGETS" ]; then \
+		echo "no hay contenedores caídos con prefijo '$(PREFIX)'"; \
+		exit 0; \
+	fi; \
+	for n in $$TARGETS; do docker start "$$n" >/dev/null && echo "revived: $$n"; done
