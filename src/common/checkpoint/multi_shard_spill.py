@@ -23,13 +23,26 @@ class MultiShardSpill:
     def _path(self, client_id: UUID, shard: int) -> str:
         return os.path.join(self._dir, f"{self._tag}_{client_id}_{shard}.spill")
 
+    def _open_append(self, path: str) -> IO[str]:
+        try:
+            return open(path, "a")
+        except FileNotFoundError:
+            os.makedirs(self._dir, exist_ok=True)
+            return open(path, "a")
+
     def append(self, client_id: UUID, shard: int, line: str):
         key = (client_id, shard)
         handle = self._handles.get(key)
         if handle is None:
-            handle = open(self._path(client_id, shard), "a")
+            handle = self._open_append(self._path(client_id, shard))
             self._handles[key] = handle
         handle.write(line)
+
+    def _rmdir_if_empty(self):
+        try:
+            os.rmdir(self._dir)
+        except OSError:
+            pass
 
     def _disk_shards(self, client_id: UUID) -> set[int]:
         prefix = os.path.join(self._dir, f"{self._tag}_{client_id}_")
@@ -62,6 +75,7 @@ class MultiShardSpill:
                 os.unlink(self._path(client_id, shard))
             except OSError:
                 pass
+        self._rmdir_if_empty()
 
     def clear_all(self):
         for handle in self._handles.values():
@@ -72,6 +86,7 @@ class MultiShardSpill:
                 os.unlink(path)
             except OSError:
                 pass
+        self._rmdir_if_empty()
 
     def snapshot_state(self) -> dict[str, Any]:
         # no fsync: process-crash model (RabbitMQ stable), OS page cache survives; power loss out of scope

@@ -22,10 +22,23 @@ class PersistentSpill:
     def _path(self, client_id: UUID) -> str:
         return os.path.join(self._dir, f"{self._tag}_{client_id}.spill")
 
+    def _open_append(self, path: str) -> IO[str]:
+        try:
+            return open(path, "a")
+        except FileNotFoundError:
+            os.makedirs(self._dir, exist_ok=True)
+            return open(path, "a")
+
+    def _rmdir_if_empty(self):
+        try:
+            os.rmdir(self._dir)
+        except OSError:
+            pass
+
     def _handle(self, client_id: UUID) -> IO[str]:
         handle = self._handles.get(client_id)
         if handle is None:
-            handle = open(self._path(client_id), "a")
+            handle = self._open_append(self._path(client_id))
             self._handles[client_id] = handle
         return handle
 
@@ -60,6 +73,7 @@ class PersistentSpill:
             with open(path) as f:
                 yield from f
             os.unlink(path)
+            self._rmdir_if_empty()
 
     def clear(self, client_id: UUID):
         """Drop a client's spilled lines without reading them (used on abort)."""
@@ -69,6 +83,7 @@ class PersistentSpill:
         path = self._path(client_id)
         if os.path.exists(path):
             os.unlink(path)
+            self._rmdir_if_empty()
 
     def clear_all(self):
         for handle in self._handles.values():
@@ -79,6 +94,7 @@ class PersistentSpill:
                 os.unlink(path)
             except OSError:
                 pass
+        self._rmdir_if_empty()
 
     def iter_chunks_and_clear(
         self, client_id: UUID, batch_lines: int
@@ -109,4 +125,4 @@ class PersistentSpill:
             if os.path.exists(path):
                 with open(path, "r+") as f:
                     f.truncate(length)
-            self._handles[client_id] = open(path, "a")
+            self._handles[client_id] = self._open_append(path)
