@@ -24,3 +24,13 @@ def expected_nodes_csv() -> str:
     """Comma-separated list of every supervised node, in declaration order. Must
     be read AFTER all node services were generated so the list is complete."""
     return ",".join(_SUPERVISED_NODES)
+
+
+def state_volumes_block() -> str:
+    """Top-level compose `volumes:` section declaring one named volume per node, so each
+    node owns its state instead of a shared host bind mount (multi-computer model). Must be
+    read AFTER all node services were generated so the list is complete."""
+    if not _SUPERVISED_NODES:
+        return ""
+    decls = "\n".join(f"  {name}_state:" for name in _SUPERVISED_NODES)
+    return f"\n\nvolumes:\n{decls}\n"

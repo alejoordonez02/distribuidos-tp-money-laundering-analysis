@@ -34,7 +34,7 @@ stop_server: gen_compose
 
 down: gen_compose
 	$(COMPOSE) stop -t 5
-	$(COMPOSE) down
+	$(COMPOSE) down --volumes --remove-orphans
 
 logs: gen_compose
 	SERVICES=$$($(COMPOSE) config --services | grep -v '^$(SUPERVISOR_PREFIX)'); \

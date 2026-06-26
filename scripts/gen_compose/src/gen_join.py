@@ -37,4 +37,4 @@ def _join_service(idx: int, uc_ids: list[int]) -> str:
       - STATE_DIR=/state
       - CHECKPOINT_EVERY={CHECKPOINT_EVERY}{sup}
     volumes:
-      - ./state/join_{idx}:/state"""
+      - join_{idx}_state:/state"""

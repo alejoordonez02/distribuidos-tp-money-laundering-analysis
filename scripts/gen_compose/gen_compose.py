@@ -13,6 +13,7 @@ from .src import (
     gen_uc3,
     gen_uc4,
     gen_uc5,
+    state_volumes_block,
 )
 
 
@@ -46,6 +47,7 @@ def main():
     compose += join
     compose += gen_chaos()
     compose += clients
+    compose += state_volumes_block()
 
     with open(filename, "w") as f:
         f.write(compose)

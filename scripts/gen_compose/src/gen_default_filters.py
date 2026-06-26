@@ -59,6 +59,6 @@ def gen_default_filters() -> str:
       - STATE_DIR=/state
       - CHECKPOINT_EVERY={CHECKPOINT_EVERY}{sup}
     volumes:
-      - ./state/default_filter_{idx}:/state"""
+      - default_filter_{idx}_state:/state"""
 
     return compose
