@@ -25,17 +25,16 @@ class UC4Join(JoinFn):
         self.client_responses[el.client_id].counts.update(el.counts)
 
     def get_response(self, client_id: UUID) -> Response:  # type: ignore[reportIncompatibleMethodOverride]
-        body = "--- UC4 ---"
+        accounts: set[tuple[Any, Any]] = set()
         for path in self.client_responses.pop(
             client_id, PathCounts(client_id, {})
         ).counts.keys():
-            obank = path.origin.bank
-            oaccount = path.origin.account
-            dbank = path.destination.bank
-            daccount = path.destination.account
+            accounts.add((path.origin.bank, path.origin.account))
+            accounts.add((path.destination.bank, path.destination.account))
 
-            body += f"\nbank: {obank:<20} account: {oaccount}"
-            body += f"\nbank: {dbank:<20} account: {daccount}"
+        body = "--- UC4 ---"
+        for bank, account in accounts:
+            body += f"\nbank: {bank:<20} account: {account}"
 
         body += "\n"
         response = Response(client_id, body)
