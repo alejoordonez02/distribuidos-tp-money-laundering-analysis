@@ -1,20 +1,10 @@
 import logging
-import subprocess
 import threading
 import time
 from typing import Callable, Optional
 
+from .docker_start import _docker_start
 from .registry import NodeRegistry, Status
-
-
-def _docker_start(node_id: str) -> None:
-    # recovery (not detection) may use Docker: restart the container reusing its state volume to restore from checkpoint
-    subprocess.run(
-        ["docker", "start", node_id],
-        check=False,
-        capture_output=True,
-        timeout=15,
-    )
 
 
 class Reviver:
@@ -45,7 +35,10 @@ class Reviver:
         for node in nodes:
             if node.status is not Status.DEAD:
                 continue
-            if now - self._last_attempt.get(node.node_id, float("-inf")) <= self._cooldown:
+            if (
+                now - self._last_attempt.get(node.node_id, float("-inf"))
+                <= self._cooldown
+            ):
                 continue
             self._revive(node.node_id, now)
 

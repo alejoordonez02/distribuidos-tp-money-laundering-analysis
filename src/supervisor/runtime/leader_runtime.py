@@ -6,6 +6,7 @@ from threading import Event, Thread
 from common.comms.supervisor import Heartbeat, Register, decode, encode
 from common.comms.transport import Connection
 
+from ..docker_start import _docker_start
 from ..make_skt import _make_skt
 from ..registry import NodeRegistry
 from ..reviver import Reviver
@@ -28,7 +29,8 @@ def _shutdown_skt(skt: socket):
 
 
 class ReplicaLink:
-    def __init__(self, conn: Connection):
+    def __init__(self, replica_id: str, conn: Connection):
+        self.id = replica_id
         self._conn = conn
         self._keep_running = True
 
@@ -43,6 +45,7 @@ class ReplicaLink:
 
         except OSError as e:
             logging.debug("lost connection with replica (%s)", e)
+            raise ReplicaDownError()
         finally:
             try:
                 self._conn.close()
@@ -171,11 +174,14 @@ class LeaderRuntime(SupervisorRuntime):
 
     def _handle_replicas(self):
         def handle_replica(conn_skt):
-            rep = ReplicaLink(Connection(conn_skt))
+            conn = Connection(conn_skt)
+            rep_id = conn.recv().decode()
+            rep = ReplicaLink(rep_id, conn)
             try:
                 while not self._stop.is_set():
                     rep.pong_ping()
             except ReplicaDownError as e:
+                _docker_start(rep_id)
                 logging.debug("lost connection with replica (%s)", e)
 
         assert self._replica_listener  # pleasing linter

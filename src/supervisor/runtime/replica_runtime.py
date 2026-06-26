@@ -14,8 +14,10 @@ class LeaderDownError(Exception): ...
 
 
 class ReplicaRuntime(SupervisorRuntime):
-    def __init__(self, leader_addr: tuple[str, int], ping_delay: float):
-        self._leader = LeaderLink(leader_addr)
+    def __init__(
+        self, replica_id: str, leader_addr: tuple[str, int], ping_delay: float
+    ):
+        self._leader = LeaderLink(replica_id, leader_addr)
         self._keep_running = False
         self._ping_delay = ping_delay
 
@@ -35,7 +37,9 @@ class ReplicaRuntime(SupervisorRuntime):
 
 
 class LeaderLink:
-    def __init__(self, leader_addr: tuple[str, int]):
+    def __init__(self, replica_id: str, leader_addr: tuple[str, int]):
+        self._replica_id = replica_id
+
         self._addr = leader_addr
         self._conn: Connection | None = None
         self._keep_running = True
@@ -50,7 +54,9 @@ class LeaderLink:
                     return
                 skt.connect(self._addr)
                 skt.settimeout(None)
-                self._conn = Connection(skt)
+                conn = Connection(skt)
+                conn.send(self._replica_id.encode())
+                self._conn = conn
                 return
             except OSError:
                 continue
@@ -60,7 +66,7 @@ class LeaderLink:
         if not self._conn:
             self._connect()
         conn = self._conn
-        if self._keep_running == False:
+        if not self._keep_running:
             return
         assert conn is not None  # pleasing linter
 
