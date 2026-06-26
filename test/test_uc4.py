@@ -1,3 +1,4 @@
+from collections import Counter
 from dataclasses import dataclass
 
 from scripts.cfg import (
@@ -25,15 +26,15 @@ def test_uc4():
     * the expected responses have already been generated.
     """
     for n in range(NCLIENTS):
-        expected = set()
-        got = set()
+        expected = Counter()
+        got = Counter()
 
         with open(
             CLIENT_EXPECTED_RESPONSES_PATH + f"uc4_{n}.csv", "r"
         ) as expected_responses:
             expected_responses.readline()  # skip header
             while line := expected_responses.readline():
-                expected.add(Result(*line.rstrip("\n").split(",")[1:]))
+                expected[Result(*line.rstrip("\n").split(",")[1:])] += 1
 
         with open(CLIENT_RESPONSES_PATH + f"responses_{n}.csv", "r") as responses:
             while line := responses.readline():
@@ -44,7 +45,7 @@ def test_uc4():
                 if "--- UC" in line:
                     break
 
-                got.add(
+                got[
                     Result(
                         *line.rstrip("\n")
                         .replace(" ", "")
@@ -52,6 +53,6 @@ def test_uc4():
                         .replace("account:", ",")
                         .split(",")
                     )
-                )
+                ] += 1
 
         assert got == expected
