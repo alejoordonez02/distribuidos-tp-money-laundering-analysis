@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 from socket import SHUT_RDWR, socket
 from threading import Event, Thread
@@ -12,6 +13,17 @@ from ..registry import NodeRegistry
 from ..reviver import Reviver
 from ..tui import Dashboard
 from .supervisor_runtime import SupervisorRuntime
+
+# NOTE: esto está pegado con cinta porque lo hicimos a último momento y no teníamos
+#       pensado hacerlo!
+NSUPERVISORS = int(os.getenv("NNODES", 1))
+SUPERVISOR_PREFIX = "supervisor_"
+REVIVE_DELAY = 2
+
+
+def _revive_supervisors():
+    for idx in range(NSUPERVISORS):
+        _docker_start(f"{SUPERVISOR_PREFIX}{idx}")
 
 
 class ReplicaDownError(Exception): ...
@@ -119,6 +131,10 @@ class LeaderRuntime(SupervisorRuntime):
             self._reviver_handle.start()
         if self._dashboard_handle:
             self._dashboard_handle.start()
+
+        while not self._stop.is_set():
+            time.sleep(REVIVE_DELAY)
+            _revive_supervisors()
 
     def stop(self):
         self._stop.set()
