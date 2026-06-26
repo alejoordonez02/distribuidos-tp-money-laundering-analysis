@@ -21,6 +21,8 @@ from .reviver import Reviver
 from .runtime import LeaderDownError, LeaderRuntime, ReplicaRuntime, SupervisorRuntime
 from .tui import Dashboard
 
+SUPERVISOR_PREFIX = "supervisor_"
+
 
 class SupervisorNode:
     def __init__(
@@ -130,7 +132,11 @@ class SupervisorNode:
         self._change_runtime(runtime)
 
     def _downgrade(self, leader_host: str):
-        runtime = ReplicaRuntime((leader_host, self._leader_port), self._ping_delay)
+        runtime = ReplicaRuntime(
+            f"{SUPERVISOR_PREFIX}{self._idx}",
+            (leader_host, self._leader_port),
+            self._ping_delay,
+        )
         self._change_runtime(runtime)
 
     def _handle_leader_down(self, _: LeaderDown):

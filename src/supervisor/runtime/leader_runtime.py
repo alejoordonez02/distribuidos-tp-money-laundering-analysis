@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 from socket import SHUT_RDWR, socket
 from threading import Event, Thread
@@ -6,11 +7,23 @@ from threading import Event, Thread
 from common.comms.supervisor import Heartbeat, Register, decode, encode
 from common.comms.transport import Connection
 
+from ..docker_start import _docker_start
 from ..make_skt import _make_skt
 from ..registry import NodeRegistry
 from ..reviver import Reviver
 from ..tui import Dashboard
 from .supervisor_runtime import SupervisorRuntime
+
+# NOTE: esto está pegado con cinta porque lo hicimos a último momento y no teníamos
+#       pensado hacerlo!
+NSUPERVISORS = int(os.getenv("NNODES", 1))
+SUPERVISOR_PREFIX = "supervisor_"
+REVIVE_DELAY = 2
+
+
+def _revive_supervisors():
+    for idx in range(NSUPERVISORS):
+        _docker_start(f"{SUPERVISOR_PREFIX}{idx}")
 
 
 class ReplicaDownError(Exception): ...
@@ -28,7 +41,8 @@ def _shutdown_skt(skt: socket):
 
 
 class ReplicaLink:
-    def __init__(self, conn: Connection):
+    def __init__(self, replica_id: str, conn: Connection):
+        self.id = replica_id
         self._conn = conn
         self._keep_running = True
 
@@ -43,6 +57,7 @@ class ReplicaLink:
 
         except OSError as e:
             logging.debug("lost connection with replica (%s)", e)
+            raise ReplicaDownError()
         finally:
             try:
                 self._conn.close()
@@ -117,6 +132,10 @@ class LeaderRuntime(SupervisorRuntime):
         if self._dashboard_handle:
             self._dashboard_handle.start()
 
+        while not self._stop.is_set():
+            time.sleep(REVIVE_DELAY)
+            _revive_supervisors()
+
     def stop(self):
         self._stop.set()
         if self._server_listener:
@@ -171,11 +190,14 @@ class LeaderRuntime(SupervisorRuntime):
 
     def _handle_replicas(self):
         def handle_replica(conn_skt):
-            rep = ReplicaLink(Connection(conn_skt))
+            conn = Connection(conn_skt)
+            rep_id = conn.recv().decode()
+            rep = ReplicaLink(rep_id, conn)
             try:
                 while not self._stop.is_set():
                     rep.pong_ping()
             except ReplicaDownError as e:
+                _docker_start(rep_id)
                 logging.debug("lost connection with replica (%s)", e)
 
         assert self._replica_listener  # pleasing linter
